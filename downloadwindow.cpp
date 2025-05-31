@@ -24,7 +24,14 @@ void DownloadWindow::setupUI()
 {
     setWindowTitle("Downloads");
     setMinimumSize(500, 400);
-    resize(600, 500);
+
+#ifdef FLATPAK_BUILD
+    resize(800, 500);  // Wider for Flatpak
+#else
+    resize(600, 500);  // Normal for desktop
+#endif
+
+    //resize(600, 500);
 
     m_mainLayout = new QVBoxLayout(this);
 

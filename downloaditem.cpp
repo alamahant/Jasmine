@@ -4,6 +4,9 @@
 #include <QUrl>
 #include <QTime>
 #include <QStyle>
+#include<QMessageBox>
+#include<QApplication>
+#include<QClipboard>
 
 DownloadItem::DownloadItem(QWebEngineDownloadRequest *download, QWidget *parent)
     : QWidget(parent)
@@ -185,24 +188,44 @@ void DownloadItem::updateButtons()
 
 }
 
-
-
-
-
-
 void DownloadItem::onCancelClicked()
 {
     m_download->cancel();
 }
 
-void DownloadItem::onOpenFileClicked()
-{
+
+void DownloadItem::onOpenFileClicked(){
+#ifdef FLATPAK_BUILD
+    QMessageBox::information(this, "Feature Not Available",
+                             "Opening files is not available in the Flatpak version of Jasmine due to sandbox restrictions.");
+#else
     QDesktopServices::openUrl(QUrl::fromLocalFile(m_download->downloadDirectory() + "/" + m_download->downloadFileName()));
+#endif
 }
+
 
 void DownloadItem::onOpenFolderClicked()
 {
+#ifdef FLATPAK_BUILD
+    // Show helpful message for Flatpak users
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Downloads Location");
+    msgBox.setText(QString("Your downloads are saved to:\n\n%1\n\n"
+                           "You can access this folder using your system's file manager.")
+                       .arg(m_download->downloadDirectory()));
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    QPushButton *copyButton = msgBox.addButton("Copy Path", QMessageBox::ActionRole);
+
+    msgBox.exec();
+
+    if (msgBox.clickedButton() == copyButton) {
+        QApplication::clipboard()->setText(m_download->downloadDirectory());
+    }
+#else
+    // Open in system file manager
     QDesktopServices::openUrl(QUrl::fromLocalFile(m_download->downloadDirectory()));
+#endif
+    //QDesktopServices::openUrl(QUrl::fromLocalFile(m_download->downloadDirectory()));
 }
 
 bool DownloadItem::isFinished() const

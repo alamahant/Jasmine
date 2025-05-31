@@ -3,14 +3,17 @@
 #include <QApplication>
 #include<QCoreApplication>
 #include<QLoggingCategory>
+#include <cstdio>
+
 //#include"securitymanager.h"
 
 int main(int argc, char *argv[])
 {
-    //QLoggingCategory::setFilterRules("*=false");
-    QLoggingCategory::setFilterRules("qt.webengine*=false");
+    //QLoggingCategory::setFilterRules("qt.webengine*=false");
+    QLoggingCategory::setFilterRules("*=false");
 
-
+    // Redirect stderr to null (Linux/Mac)
+    freopen("/dev/null", "w", stderr);
 
 #ifdef FLATPAK_BUILD
     // Set QtWebEngine paths for Flatpak
