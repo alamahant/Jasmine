@@ -3038,41 +3038,7 @@ void MainWindow::onUpdateSession() {
     QMessageBox::information(this, "Success", "Session successfully updated!");
 }
 
-
 /*
-void MainWindow::takeScreenshot()
-{
-    QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
-    if (!currentView) {
-        return;
-    }
-
-    QPixmap screenshot = currentView->grab();
-    if (screenshot.isNull()) {
-        return;
-    }
-
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss");
-    QString filename = QString("screenshot_%1.png").arg(timestamp);
-
-    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
-
-
-    QDir downloadsDir(downloadDirectory);
-    if (!downloadsDir.exists()) {
-        downloadsDir.mkpath(".");
-    }
-
-    QString filepath = downloadsDir.filePath(filename);
-
-    if (screenshot.save(filepath)) {
-        QMessageBox::information(this, "Screenshot", "Screenshot saved: " + filename);
-    } else {
-        QMessageBox::warning(this, "Error", "Failed to save screenshot.");
-    }
-}
-*/
-
 void MainWindow::takeScreenshot(){
     QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
     if (!currentView) {
@@ -3096,6 +3062,51 @@ void MainWindow::takeScreenshot(){
     QString filepath = downloadsDir.filePath(filename);
     if (screenshot.save(filepath)) {
         QMessageBox::information(this, "Screenshot", "Screenshot saved: " + filename);
+    } else {
+        QMessageBox::warning(this, "Error", "Failed to save screenshot.");
+    }
+}
+*/
+
+void MainWindow::takeScreenshot(){
+    QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
+    if (!currentView) {
+        return;
+    }
+    QPixmap screenshot = currentView->grab();
+    if (screenshot.isNull()) {
+        return;
+    }
+    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss");
+    QString filename = QString("screenshot_%1.png").arg(timestamp);
+#ifdef FLATPAK_BUILD
+    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads";
+#else
+    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
+#endif
+    QDir downloadsDir(downloadDirectory);
+    if (!downloadsDir.exists()) {
+        downloadsDir.mkpath(".");
+    }
+
+    QString filepath = downloadsDir.filePath(filename);
+    if (screenshot.save(filepath)) {
+#ifdef FLATPAK_BUILD
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Screenshot");
+        msgBox.setText("Screenshot saved: " + filename);
+        msgBox.setInformativeText("Location: " + downloadsDir.absolutePath());
+        QPushButton *copyButton = msgBox.addButton("Copy Path", QMessageBox::ActionRole);
+        msgBox.addButton(QMessageBox::Ok);
+        msgBox.exec();
+
+        if (msgBox.clickedButton() == copyButton) {
+            QClipboard *clipboard = QApplication::clipboard();
+            clipboard->setText(downloadsDir.absolutePath());
+        }
+#else
+        QMessageBox::information(this, "Screenshot", "Screenshot saved in " + downloadsDir.absolutePath() + " as "  + filename);
+#endif
     } else {
         QMessageBox::warning(this, "Error", "Failed to save screenshot.");
     }
