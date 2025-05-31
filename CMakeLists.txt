@@ -32,13 +32,13 @@ if(FLATPAK_BUILD)
                    "${CMAKE_CURRENT_BINARY_DIR}/libexec/QtWebEngineProcess" COPYONLY)
     configure_file("${WEBENGINE_BUNDLE_DIR}/libexec/qwebengine_convert_dict"
                    "${CMAKE_CURRENT_BINARY_DIR}/libexec/qwebengine_convert_dict" COPYONLY)
-    configure_file("${WEBENGINE_BUNDLE_DIR}/libexec/webenginedriver"
-                   "${CMAKE_CURRENT_BINARY_DIR}/libexec/webenginedriver" COPYONLY)
+    #configure_file("${WEBENGINE_BUNDLE_DIR}/libexec/webenginedriver"
+                   #"${CMAKE_CURRENT_BINARY_DIR}/libexec/webenginedriver" COPYONLY)
 
     # Set permissions
     file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/libexec/QtWebEngineProcess" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
     file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/libexec/qwebengine_convert_dict" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/libexec/webenginedriver" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+    #file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/libexec/webenginedriver" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
     link_directories("${CMAKE_CURRENT_BINARY_DIR}/lib")
     link_directories("${WEBENGINE_BUNDLE_DIR}/lib")
@@ -166,8 +166,8 @@ if(FLATPAK_BUILD)
 
     install(PROGRAMS "${WEBENGINE_BUNDLE_DIR}/libexec/QtWebEngineProcess"
             DESTINATION libexec)
-    install(PROGRAMS "${WEBENGINE_BUNDLE_DIR}/libexec/webenginedriver"
-            DESTINATION libexec)
+    #install(PROGRAMS "${WEBENGINE_BUNDLE_DIR}/libexec/webenginedriver"
+            #DESTINATION libexec)
     install(PROGRAMS "${WEBENGINE_BUNDLE_DIR}/libexec/qwebengine_convert_dict"
             DESTINATION libexec)
 
