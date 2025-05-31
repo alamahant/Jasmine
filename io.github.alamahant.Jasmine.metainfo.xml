@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.alamahant.Jasmine</id>
+  <name>Jasmine</name>
+  <summary>Launch Sites and Sessions</summary>
+  
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  
+  <description>
+    <p>
+      Jasmine is a comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace. Perfect for productivity enthusiasts and multi-account managers.
+    </p>
+    <p>
+      Key Features:
+    </p>
+    <ul>
+      <li>Smart Bookmarking: Store websites with titles, URLs, comments, favicons, and login references</li>
+      <li>Session Management: Create, save, and restore multi-tab browsing sessions with one click</li>
+      <li>Private Profile System: Completely isolated browsing environments for multi-account management</li>
+      <li>Multi-Account Support: Simultaneously access multiple accounts on the same service without conflicts</li>
+      <li>Built-in Download Manager: Complete download management with progress tracking</li>
+      <li>2FA Integration: Built-in two-factor authentication code generator</li>
+      <li>Screenshot Capture: Take and save screenshots of web pages for documentation</li>
+      <li>Master Password Protection: Secure your data with password protection</li>
+    </ul>
+    <p>
+      Perfect for managing multiple Gmail accounts, GitHub profiles, social media accounts, or any scenario where you need isolated browsing sessions. Each private profile operates as a separate browser with its own cookies, login sessions, and browsing data.
+    </p>
+    <p>
+      Whether you're a developer managing different environments, a content creator with multiple channels, or a business manager handling client accounts, Jasmine provides unprecedented control over your online identity management.
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">io.github.alamahant.Jasmine.desktop</launchable>
+  
+  <url type="homepage">https://github.com/alamahant/Jasmine</url>
+  <url type="bugtracker">https://github.com/alamahant/Jasmine/issues</url>
+  
+  <developer_name>Alamahant</developer_name>
+  
+  <categories>
+    <category>Network</category>
+    <category>WebBrowser</category>
+    <category>Office</category>
+    <category>Utility</category>
+  </categories>
+  
+  <keywords>
+    <keyword>browser</keyword>
+    <keyword>session</keyword>
+    <keyword>bookmark</keyword>
+    <keyword>multi-account</keyword>
+    <keyword>privacy</keyword>
+    <keyword>profile</keyword>
+    <keyword>launcher</keyword>
+    <keyword>productivity</keyword>
+    <keyword>2fa</keyword>
+    <keyword>download</keyword>
+  </keywords>
+  
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-info">mild</content_attribute>
+  </content_rating>
+  
+  <releases>
+    <release version="1.0.0" date="2025-06-01">
+      <description>
+        <p>Initial release of Jasmine Website and Session Manager</p>
+        <ul>
+          <li>Smart bookmarking system with favicon and login reference support</li>
+          <li>Complete session management with multi-tab restoration</li>
+          <li>Private profile system for isolated browsing environments</li>
+          <li>Multi-account support for simultaneous access to same services</li>
+          <li>Built-in download manager with progress tracking</li>
+          <li>Two-factor authentication (2FA) code generator</li>
+          <li>Screenshot capture functionality</li>
+          <li>Master password protection with SHA-256 encryption</li>
+          <li>Data management and privacy controls</li>
+          <li>Cross-platform Qt-based interface</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  
+  <provides>
+    <binary>jasmine</binary>
+  </provides>
+  
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+</component>
+

@@ -1,0 +1,11 @@
+CREDITS
+
+Framework:
+- Qt Framework (https://www.qt.io/)
+  Licensed under LGPL v3
+  Copyright (C) The Qt Company Ltd.
+
+Icons:
+- Feather Icons (https://feathericons.com/)
+  Licensed under MIT License
+  Copyright (c) 2013-2017 Cole Bemis

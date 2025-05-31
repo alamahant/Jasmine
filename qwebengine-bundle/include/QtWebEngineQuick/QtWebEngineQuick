@@ -1,0 +1,8 @@
+#ifndef QT_QTWEBENGINEQUICK_MODULE_H
+#define QT_QTWEBENGINEQUICK_MODULE_H
+#include <QtWebEngineQuick/QtWebEngineQuickDepends>
+#include "qtwebenginequickglobal.h"
+#include "qquickwebenginedownloadrequest.h"
+#include "qquickwebengineprofile.h"
+#include "qtwebenginequickversion.h"
+#endif
