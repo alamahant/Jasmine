@@ -1,22 +1,3 @@
-// Copyright (C) 2016 The Qt Company Ltd.
-// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
-
-#ifndef QTWEBENGINEQUICKGLOBAL_P_H
-#define QTWEBENGINEQUICKGLOBAL_P_H
-
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists purely as an
-// implementation detail.  This header file may change from version to
-// version without notice, or even be removed.
-//
-// We mean it.
-//
-
-#include <QtWebEngineQuick/qtwebenginequickglobal.h>
-#include <QtCore/private/qglobal_p.h>
-#include <QtWebEngineQuick/private/qtwebenginequick-config_p.h>
-
-#endif // QTWEBENGINEQUICKGLOBAL_P_H
+version https://git-lfs.github.com/spec/v1
+oid sha256:fc9f38f3d84217e0a3ea99a3c6c80eb4c4d538812ad62728aa554e6ee32068c0
+size 655

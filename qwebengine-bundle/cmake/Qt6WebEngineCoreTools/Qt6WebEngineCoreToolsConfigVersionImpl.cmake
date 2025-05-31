@@ -1,32 +1,3 @@
-# This is a basic version file for the Config-mode of find_package().
-# It is used by write_basic_package_version_file() as input file for configure_file()
-# to create a version-file which can be installed along a config.cmake file.
-#
-# The created file sets PACKAGE_VERSION_EXACT if the current version string and
-# the requested version string are exactly the same and it sets
-# PACKAGE_VERSION_COMPATIBLE if the current version is >= requested version.
-# The variable CVF_VERSION must be set before calling configure_file().
-
-set(PACKAGE_VERSION "6.8.0")
-
-if (PACKAGE_FIND_VERSION_RANGE)
-  # Package version must be in the requested version range
-  if ((PACKAGE_FIND_VERSION_RANGE_MIN STREQUAL "INCLUDE" AND PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION_MIN)
-      OR ((PACKAGE_FIND_VERSION_RANGE_MAX STREQUAL "INCLUDE" AND PACKAGE_VERSION VERSION_GREATER PACKAGE_FIND_VERSION_MAX)
-        OR (PACKAGE_FIND_VERSION_RANGE_MAX STREQUAL "EXCLUDE" AND PACKAGE_VERSION VERSION_GREATER_EQUAL PACKAGE_FIND_VERSION_MAX)))
-    set(PACKAGE_VERSION_COMPATIBLE FALSE)
-  else()
-    set(PACKAGE_VERSION_COMPATIBLE TRUE)
-  endif()
-else()
-  if(PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION)
-    set(PACKAGE_VERSION_COMPATIBLE FALSE)
-  else()
-    set(PACKAGE_VERSION_COMPATIBLE TRUE)
-    if(PACKAGE_FIND_VERSION STREQUAL PACKAGE_VERSION)
-      set(PACKAGE_VERSION_EXACT TRUE)
-    endif()
-  endif()
-endif()
-
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:2ca4714906f2b16b0c88df82ab2c872af20c99875a6f96427e8137c7c05a742e
+size 1402

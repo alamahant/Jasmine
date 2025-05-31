@@ -1,1 +1,3 @@
-#include "qwebenginenewwindowrequest.h" // IWYU pragma: export
+version https://git-lfs.github.com/spec/v1
+oid sha256:727f64520776645d942c578d5bcf6c7cd80507a8abf7bd160e745ea907b5defb
+size 63

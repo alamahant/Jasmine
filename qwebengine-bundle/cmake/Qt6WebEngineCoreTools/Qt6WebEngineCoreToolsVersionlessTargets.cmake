@@ -1,26 +1,3 @@
-# Copyright (C) 2024 The Qt Company Ltd.
-# SPDX-License-Identifier: BSD-3-Clause
-
-foreach(__qt_tool qwebengine_convert_dict)
-    if(NOT TARGET Qt::${__qt_tool} AND TARGET Qt6::${__qt_tool})
-        add_executable(Qt::${__qt_tool} IMPORTED GLOBAL)
-
-        # Check all the usual imported location properties to find one that contains a path.
-        foreach(__qt_imported_location_config
-                IMPORTED_LOCATION
-                IMPORTED_LOCATION_RELEASE
-                IMPORTED_LOCATION_RELWITHDEBINFO
-                IMPORTED_LOCATION_MINSIZEREL
-                IMPORTED_LOCATION_DEBUG)
-
-            get_target_property(__qt_imported_location
-                                Qt6::${__qt_tool} ${__qt_imported_location_config})
-            if(__qt_imported_location AND EXISTS "${__qt_imported_location}")
-                break()
-            endif()
-        endforeach()
-
-        set_target_properties(Qt::${__qt_tool}
-                              PROPERTIES IMPORTED_LOCATION "${__qt_imported_location}")
-    endif()
-endforeach()
+version https://git-lfs.github.com/spec/v1
+oid sha256:3aa2fc5d1b86f5d42918e3d4f4b84a8a41d20c9e7ebf2617eee95c3e1f00dcf6
+size 1042

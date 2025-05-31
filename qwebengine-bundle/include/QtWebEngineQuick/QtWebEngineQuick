@@ -1,8 +1,3 @@
-#ifndef QT_QTWEBENGINEQUICK_MODULE_H
-#define QT_QTWEBENGINEQUICK_MODULE_H
-#include <QtWebEngineQuick/QtWebEngineQuickDepends>
-#include "qtwebenginequickglobal.h"
-#include "qquickwebenginedownloadrequest.h"
-#include "qquickwebengineprofile.h"
-#include "qtwebenginequickversion.h"
-#endif
+version https://git-lfs.github.com/spec/v1
+oid sha256:e9e9af75b3a8e149c7656c60d43e34e500b054102ea1d07a47791451a2145047
+size 286

@@ -1,7 +1,3 @@
-# Protect against multiple inclusion, which would fail when already imported targets are
-# added once more.
-_qt_internal_check_multiple_inclusion(_targets_not_defined "WebEngineCore;WebEngineCorePrivate")
-
-_qt_internal_create_versionless_alias_targets("${_targets_not_defined}" Qt6)
-
-unset(_targets_not_defined)
+version https://git-lfs.github.com/spec/v1
+oid sha256:46e20722f80aab5eef0060e11008a70951722aa883cd06d9a99e9f9d5ef0d77c
+size 312

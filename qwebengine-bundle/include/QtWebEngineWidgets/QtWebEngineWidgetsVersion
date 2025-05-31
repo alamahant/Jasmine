@@ -1,1 +1,3 @@
-#include "qtwebenginewidgetsversion.h" // IWYU pragma: export
+version https://git-lfs.github.com/spec/v1
+oid sha256:b7e28268978263c1fa6d6679eb667ad480cc06d165ee57742b8a8daec958640b
+size 62
