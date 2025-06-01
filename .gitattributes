@@ -1,3 +1,0 @@
-*.so* filter=lfs diff=lfs merge=lfs -text
-webenginedriver filter=lfs diff=lfs merge=lfs -text
-qwebengine-bundle/** filter=lfs diff=lfs merge=lfs -text
