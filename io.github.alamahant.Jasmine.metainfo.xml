@@ -31,6 +31,39 @@
       Whether you're a developer managing different environments, a content creator with multiple channels, or a business manager handling client accounts, Jasmine provides unprecedented control over your online identity management.
     </p>
   </description>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main-DarkTheme.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Sessions-View.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Sessions-View-DarkTheme.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/WebView.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Webview-Dark.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/MoreSessions.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/MoreWebview.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/DownloadManager.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/2FAManager.png</image>
+    </screenshot>
+  </screenshots>
   
   <launchable type="desktop-id">io.github.alamahant.Jasmine.desktop</launchable>
   
@@ -84,7 +117,7 @@
   </releases>
   
   <provides>
-    <binary>jasmine</binary>
+    <binary>Jasmine</binary>
   </provides>
   
   <requires>
@@ -96,4 +129,6 @@
     <control>pointing</control>
   </recommends>
 </component>
+
+
 
