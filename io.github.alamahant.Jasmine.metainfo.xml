@@ -35,33 +35,43 @@
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main-DarkTheme.png</image>
+      <caption>Main Interface with Dark Theme Showing Website Cards</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main.png</image>
+      <caption>Main interface with light theme displaying organized bookmarks</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Sessions-View.png</image>
+      <caption>Sessions view for managing and organizing browsing sessions</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Sessions-View-DarkTheme.png</image>
+      <caption>Sessions view with dark theme for comfortable night usage</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/WebView.png</image>
+      <caption>Integrated web view for browsing websites within the application</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Webview-Dark.png</image>
+      <caption>Web view with dark theme for reduced eye strain</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/MoreSessions.png</image>
+      <caption>Extended sessions management with multiple session options</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/MoreWebview.png</image>
+      <caption>Advanced web view features and navigation options</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/DownloadManager.png</image>
+      <caption>Built-in download manager with progress tracking</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/2FAManager.png</image>
+      <caption>Two-factor authentication manager for secure login codes</caption>
     </screenshot>
   </screenshots>
   
@@ -129,6 +139,8 @@
     <control>pointing</control>
   </recommends>
 </component>
+
+
 
 
 
