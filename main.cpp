@@ -10,11 +10,12 @@
 int main(int argc, char *argv[])
 {
     //QLoggingCategory::setFilterRules("qt.webengine*=false");
-    QLoggingCategory::setFilterRules("*=false");
+    //QLoggingCategory::setFilterRules("*=false");
 
     // Redirect stderr to null (Linux/Mac)
-    freopen("/dev/null", "w", stderr);
+    //freopen("/dev/null", "w", stderr);
 
+/*
 #ifdef FLATPAK_BUILD
     // Set QtWebEngine paths for Flatpak
     qputenv("QTWEBENGINEPROCESS_PATH", "/app/libexec/QtWebEngineProcess");
@@ -22,6 +23,8 @@ int main(int argc, char *argv[])
     qputenv("QTWEBENGINE_DICTIONARIES_PATH", "/app/share/qtwebengine");
     qputenv("QTWEBENGINE_LOCALES_PATH", "/app/share/qtwebengine/locales");
 #endif
+*/
+
     QApplication a(argc, argv);
 #ifdef FLATHUB_BUILD
     QCoreApplication::setApplicationName("Jasmine");

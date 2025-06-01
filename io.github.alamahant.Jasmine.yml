@@ -1,4 +1,6 @@
 app-id: io.github.alamahant.Jasmine
+base: io.qt.qtwebengine.BaseApp
+base-version: '6.8'
 runtime: org.kde.Platform
 runtime-version: '6.8'
 sdk: org.kde.Sdk
@@ -14,8 +16,6 @@ modules:
     buildsystem: cmake-ninja
     build-options:
       strip: true
-      no-debuginfo: true
-      no-debuginfo-compression: true
     config-opts:
       - -DFLATPAK_BUILD=ON
       - -DCMAKE_BUILD_TYPE=Release
@@ -23,4 +23,8 @@ modules:
       - type: git
         url: https://github.com/alamahant/Jasmine.git
         tag: v1.0.0
+
+
+
+
 
