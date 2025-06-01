@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 */
 
     QApplication a(argc, argv);
-#ifdef FLATHUB_BUILD
+#ifdef FLATPAK_BUILD
     QCoreApplication::setApplicationName("Jasmine");
     QCoreApplication::setOrganizationName("");
 #else

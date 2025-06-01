@@ -39,7 +39,7 @@ qt_add_executable(Jasmine
 )
 
 if(FLATPAK_BUILD)
-    add_compile_definitions(FLATHUB_BUILD)
+    add_compile_definitions(FLATPAK_BUILD)
 endif()
 
 # Link libraries (WebEngine provided by BaseApp)

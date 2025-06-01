@@ -129,7 +129,7 @@ void DownloadWindow::onOpenDownloadsFolderClicked()
         downloadsDir.mkpath(".");
     }
 
-#ifdef FLATHUB_BUILD
+#ifdef FLATPAK_BUILD
     // Show helpful message for Flathub users
     QMessageBox::information(this, "Downloads Location",
                              QString("Your downloads are saved to:\n\n%1\n\n"
