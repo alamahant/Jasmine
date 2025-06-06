@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#4A90E2"/>
+      <stop offset="100%" style="stop-color:#2E5BBA"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Blue background -->
+  <rect width="64" height="64" fill="url(#bg)" rx="8"/>
+  
+  <!-- Jasmine flower - 5 petals -->
+  <g transform="translate(32,32)">
+    <!-- Petal 1 (top) -->
+    <ellipse cx="0" cy="-12" rx="4" ry="8" fill="white" opacity="0.95"/>
+    <!-- Petal 2 (top-right) -->
+    <ellipse cx="9" cy="-7" rx="4" ry="8" fill="white" opacity="0.95" transform="rotate(72)"/>
+    <!-- Petal 3 (bottom-right) -->
+    <ellipse cx="6" cy="10" rx="4" ry="8" fill="white" opacity="0.95" transform="rotate(144)"/>
+    <!-- Petal 4 (bottom-left) -->
+    <ellipse cx="-6" cy="10" rx="4" ry="8" fill="white" opacity="0.95" transform="rotate(216)"/>
+    <!-- Petal 5 (top-left) -->
+    <ellipse cx="-9" cy="-7" rx="4" ry="8" fill="white" opacity="0.95" transform="rotate(288)"/>
+    
+    <!-- Center -->
+    <circle cx="0" cy="0" r="3" fill="#FFF8DC" opacity="0.9"/>
+    <circle cx="0" cy="0" r="1.5" fill="#FFD700" opacity="0.8"/>
+  </g>
+</svg>
+

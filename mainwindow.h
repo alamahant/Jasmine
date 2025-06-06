@@ -1,4 +1,3 @@
-
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -30,10 +29,12 @@
 #include<QToolButton>
 #include<QtSvg/QSvgRenderer>
 #include<QPainter>
+#include<QSize>
 #include"downloadmanager.h"
 #include"twofamanager.h"
 #include"securitymanager.h"
 #include"helpmenudialog.h"
+#include"urlbar.h"
 
 // Session data structure
 struct SessionData {
@@ -78,6 +79,7 @@ private slots:
     void onCleanAllData();
 
 private:
+
     // UI Components
     QStackedWidget* m_stackedWidget;
     QWidget* m_dashboardWidget;
@@ -256,6 +258,21 @@ private:
     QPushButton* deleteBtn;
     QIcon m_originalDownloadIcon;
     bool m_isDarkTheme = false;
+    //urlbar
+    URLBar* m_urlBar;
+    QAction* m_toggleUrlBarAction;
+    bool isUrlBarVisible = false;
+    void updateUrlBarState();
+    QSize m_savedWebViewSize;
+    static const int DASHBOARD_WIDTH = 1150;
+    static const int DASHBOARD_HEIGHT = 800;
+    void connectUrlBar();
+    void createNewTabWithUrl(const QString &url);
+    QAction* m_addWebsiteFromUrlAction;
+    QAction* m_goHomeAction;
+    void createNewTab();
+    QWebEngineView* getCurrentWebView() const;
+
 };
 
 #endif // MAINWINDOW_H

@@ -1,6 +1,6 @@
 #include"helpmenudialog.h"
-
 #include <QApplication>
+
 
 HelpMenuDialog::HelpMenuDialog(HelpType type, QWidget *parent)
     : QDialog(parent)
@@ -92,9 +92,6 @@ QString HelpMenuDialog::getTitle(HelpType type)
     default: return "Help";
     }
 }
-
-
-
 
 QString HelpMenuDialog::getBestPracticesContent()
 {
@@ -276,8 +273,6 @@ QString HelpMenuDialog::getFeaturesContent()
         </div>
     )";
 }
-
-
 
 QString HelpMenuDialog::getInstructionsContent()
 {

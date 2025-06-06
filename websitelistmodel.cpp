@@ -9,14 +9,6 @@ int WebsiteListModel::rowCount(const QModelIndex &parent) const {
     return m_websites.size();
 }
 
-/*
-QVariant WebsiteListModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= m_websites.size()) return QVariant();
-    if (role == Qt::DisplayRole) return m_websites.at(index.row()).title;
-    return QVariant();
-}
-*/
-
 QVariant WebsiteListModel::data(const QModelIndex &index, int role) const {
     if (!index.isValid() || index.row() >= m_websites.size())
         return QVariant();
@@ -81,29 +73,6 @@ void WebsiteListModel::setWebsite(int row, const Website& website) {
         emit dataChanged(modelIndex, modelIndex);
     }
 }
-/*
-QDataStream &operator<<(QDataStream &out, const Website &website) {
-    out << website.title << website.url << website.comments
-        << website.lastVisited << website.visitCount;
-    QPixmap pixmap;
-    if (!website.favicon.isNull()) {
-        pixmap = website.favicon.pixmap(16, 16);  // Common favicon size
-    }
-    out << pixmap;
-    return out;
-}
-
-QDataStream &operator>>(QDataStream &in, Website &website) {
-    in >> website.title >> website.url >> website.comments
-        >> website.lastVisited >> website.visitCount;
-    QPixmap pixmap;
-    in >> pixmap;
-    if (!pixmap.isNull()) {
-        website.favicon = QIcon(pixmap);
-    }
-    return in;
-}
-*/
 
 QDataStream &operator<<(QDataStream &out, const Website &website) {
     out << website.url << website.title << website.username << website.password

@@ -29,14 +29,25 @@
 #include <QToolBar>
 #include <QApplication>
 #include<QClipboard>
+#include<QWebEngineHistory>
+#include<QWebEngineHistoryItem>
+#include <QComboBox>
+
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 
 {
+
     setWindowTitle("Jasmine");
     setWindowIcon(QIcon(":/resources/jasmine.png"));
-    resize(1100, 800);
+    //this->setFixedSize(1130, 800);
+    this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+
+    //resize(1130, 800);
+    //this->installEventFilter(this);
+
 
     // Load stylesheet
     QFile styleFile(":/resources/stylesheet.css");
@@ -50,12 +61,18 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Create the stacked widget as the central widget
     m_stackedWidget = new QStackedWidget(this);
+
     setCentralWidget(m_stackedWidget);
 
     // Create the dashboard and add it to the stacked widget
     m_dashboardWidget = createModernDashboard();
     m_stackedWidget->addWidget(m_dashboardWidget);
 
+    // add urlbar
+    m_urlBar = new URLBar(this);
+
+    m_urlBar->setObjectName("urlBar");
+    m_urlBar->setVisible(false); // Initially hidden
     // Create the web view container and add it to the stacked widget
     m_webViewContainer = createWebViewContainer();
     m_stackedWidget->addWidget(m_webViewContainer);
@@ -103,6 +120,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Create toolbar with actions
     QToolBar* toolbar = createToolbar();
 
+
+
     // Connect list view signals (keep for compatibility)
     connect(m_websiteList, &QListView::clicked, this, &MainWindow::onWebsiteSelected);
     connect(m_websiteList, &QListView::doubleClicked, this, &MainWindow::onWebsiteDoubleClicked);
@@ -149,6 +168,8 @@ MainWindow::MainWindow(QWidget *parent)
     createMenus();
     //2FA
     m_twoFAManager = nullptr;
+    //connect urlbar
+    connectUrlBar();
 
     statusBar()->showMessage("Ready");
 }
@@ -197,6 +218,7 @@ QWidget* MainWindow::createModernDashboard() {
     m_websitesScrollArea->setFrameShape(QFrame::NoFrame);
     m_websitesContainer = new QWidget();
     m_websitesGrid = new QGridLayout(m_websitesContainer);
+
     m_websitesGrid->setSpacing(12);
     m_websitesGrid->setContentsMargins(16, 16, 16, 16);
     //
@@ -464,9 +486,25 @@ QWidget* MainWindow::createWebViewContainer() {
     QVBoxLayout* layout = new QVBoxLayout(container);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-
+    // Add URLBar
+    layout->addWidget(m_urlBar);
+    //m_urlBar->setVisible(true);
     // Create tab widget
     m_tabWidget = new QTabWidget();
+
+    // connect tab switching to update url in urlbar
+    connect(m_tabWidget, &QTabWidget::currentChanged, this, [this](int index) {
+        if (index >= 0) {
+            if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->widget(index))) {
+                m_urlBar->setUrl(view->url().toString());
+                //refresh to solve resize issues
+                // Fix WebView display issues
+                view->updateGeometry();
+                view->update();
+            }
+        }
+    });
+
     m_tabWidget->setTabsClosable(true);
     m_tabWidget->setDocumentMode(true);
     m_tabWidget->setMovable(true);
@@ -485,6 +523,9 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     card->setCursor(Qt::PointingHandCursor);
     card->setObjectName("websiteCard");
     card->setFixedSize(180, 180); // Square cards
+    //card->setMinimumSize(180, 180); // Set minimum instead
+    //card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
     card->setCursor(Qt::ArrowCursor);  // Always arrow, never hand
 
 
@@ -547,7 +588,7 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     // Edit button
     editBtn = new QPushButton();
     editBtn->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-    editBtn->setToolTip("Edit Website");
+    editBtn->setToolTip("Update Website Details");
     editBtn->setFlat(true);
     editBtn->setCursor(Qt::PointingHandCursor);
     editBtn->setObjectName("cardButton");
@@ -574,8 +615,9 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     });
 
     connect(editBtn, &QPushButton::clicked, [this, index]() {
-        m_websiteList->setCurrentIndex(m_model->index(index, 0));
-        onWebsiteSelected(m_model->index(index, 0));
+        //m_websiteList->setCurrentIndex(m_model->index(index, 0));
+        //onWebsiteSelected(m_model->index(index, 0));
+        onEditWebsite();
     });
 
     connect(deleteBtn, &QPushButton::clicked, [this, index]() {
@@ -721,6 +763,7 @@ void MainWindow::updateWebsiteCards() {
     }
     // Add a stretch at the end
     m_websitesGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
+
 
     // Restore highlight for currently selected website
     QModelIndex currentSelection = m_websiteList->currentIndex();
@@ -1033,7 +1076,13 @@ void MainWindow::onLaunchWebsite() {
 
     // Create a new web view for the website
     QWebEngineView *webView = new QWebEngineView(m_tabWidget);
-
+    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+        if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            if (sender() == currentView) {
+                m_urlBar->setUrl(url.toString());
+            }
+        }
+    });
     // Determine which profile to use
     QWebEngineProfile *profile;
     if (m_usingSeparateProfiles) {
@@ -1187,10 +1236,39 @@ void MainWindow::onWebsiteDoubleClicked(const QModelIndex &index) {
         showDashboard();
         m_toggleViewAction->setText("To WebView");
         setWindowTitle("Jasmine");
+    }else{
+        QTimer::singleShot(10, this, [this]() {
+            if (QWebEngineView* currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+                // Update WebView geometry and display
+                currentView->updateGeometry();
+                currentView->update();
+
+                // Update URL bar
+                if (m_urlBar) {
+                    m_urlBar->setUrl(currentView->url().toString());
+                }
+
+                // Update window title
+                QString title = currentView->title();
+                if (!title.isEmpty()) {
+                    setWindowTitle(title + " - Jasmine");
+                } else {
+                    setWindowTitle("Jasmine - Web Browser");
+                }
+
+                // Give focus to the current tab
+                currentView->setFocus();
+
+                // Update container if needed
+                if (m_webViewContainer) {
+                    m_webViewContainer->updateGeometry();
+                    m_webViewContainer->update();
+                }
+            }
+        });
+
     }
 }
-
-
 
 void MainWindow::populateFormFromWebsite(const Website &website) {
     m_urlInput->setText(website.url);
@@ -1207,39 +1285,78 @@ void MainWindow::populateFormFromWebsite(const Website &website) {
     }
 }
 
+void MainWindow::showDashboard() {
+    // Save current web view size before switching
+    if (m_stackedWidget->currentWidget() == m_webViewContainer) {
+        m_savedWebViewSize = this->size();
+    }
 
+    // Switch to dashboard
+    m_stackedWidget->setCurrentWidget(m_dashboardWidget);
+    if (this->isMaximized()) {
+        this->setWindowState(Qt::WindowNoState);
+    }
+
+    // Lock dashboard size
+    this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+
+    m_stackedWidget->update();
+    m_toggleViewAction->setText("To WebView");
+    setWindowTitle("Jasmine");
+    m_urlBar->setVisible(false); // Hide URLBar when in dashboard
+
+    // Always keep the toggle button enabled
+    m_toggleViewAction->setEnabled(true);
+    // Update tab count
+    updateTabCountStatus();
+}
 
 void MainWindow::showWebViews() {
     // Switch to web view
     m_stackedWidget->setCurrentWidget(m_webViewContainer);
+
+    // Allow resizing in web view
+    this->setMinimumSize(0, 0);
+    this->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+
+    // Restore previous web view size if available, otherwise use dashboard size
+    if (!m_savedWebViewSize.isEmpty()) {
+        this->resize(m_savedWebViewSize);
+    } else {
+        this->resize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+    }
+
     m_stackedWidget->update();
+
+    updateUrlBarState();
+
+
     m_toggleViewAction->setText("To Dashboard");
     setWindowTitle("Jasmine - Web Browser");
 
     // Always keep the toggle button enabled
     m_toggleViewAction->setEnabled(true);
-
-    // Update tab count
-    updateTabCountStatus();
-}
-
-void MainWindow::showDashboard() {
-    // Switch to dashboard
-    m_stackedWidget->setCurrentWidget(m_dashboardWidget);
-    m_stackedWidget->update();
-    m_toggleViewAction->setText("To WebView");
-    setWindowTitle("Jasmine");
-    //
-    //selectFirstItemIfNoneSelected();
-    //
-    // Always keep the toggle button enabled
-
-    m_toggleViewAction->setEnabled(true);
-
     // Update tab count
     updateTabCountStatus();
 
+    QWebEngineView* currentView = getCurrentWebView();
+
+    if (currentView) {
+        QTimer::singleShot(0, this, [this, currentView]() {
+            currentView->updateGeometry();
+            currentView->update();
+        });
+    }
+
 }
+
+QWebEngineView* MainWindow::getCurrentWebView() const {
+    if (m_tabWidget && m_tabWidget->currentWidget()) {
+        return qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
+    }
+    return nullptr;
+}
+
 
 void MainWindow::updateReturnToWebViewButton() {
     bool hasOpenTabs = m_tabWidget->count() > 0;
@@ -1315,12 +1432,14 @@ void MainWindow::createMenus() {
     QMenu* sessionMenu = menuBar()->addMenu("Sessions");
     QMenu* toolsMenu = menuBar()->addMenu("Tools");
     QMenu* helpMenu = menuBar()->addMenu("Help");
+
     //security menu
     m_securityManager->setupSecurityMenu(menuBar());
 
     // Add existing toolbar actions to menus
     fileMenu->addAction(m_addCurrentSessionAction);
     fileMenu->addSeparator();
+    fileMenu->addAction(m_addWebsiteFromUrlAction);
     fileMenu->addAction(m_screenshotAction);
     fileMenu->addAction(m_openDownloadsFolderAction);
     fileMenu->addSeparator();
@@ -1329,10 +1448,38 @@ void MainWindow::createMenus() {
     editMenu->addSeparator();
     editMenu->addAction(m_addCurrentWebsiteAction);
 
-    viewMenu->addAction(m_zoomInAction);
-    viewMenu->addAction(m_zoomOutAction);
+    // Create zoom submenu
+    QMenu* zoomSubmenu = viewMenu->addMenu("Zoom");
+
+    // Create separate zoom actions for menu only
+    QAction* menuZoomInAction = new QAction(QIcon(":/resources/icons/zoom-in.svg"), "Zoom In", this);
+    QAction* menuZoomOutAction = new QAction(QIcon(":/resources/icons/zoom-out.svg"), "Zoom Out", this);
+
+    // Set shortcuts for menu zoom actions
+    menuZoomInAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Up));
+    menuZoomOutAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Down));
+    // Add actions to main window for global shortcuts
+    this->addAction(menuZoomInAction);
+    this->addAction(menuZoomOutAction);
+
+    zoomSubmenu->addAction(menuZoomInAction);
+    zoomSubmenu->addAction(menuZoomOutAction);
+
+    // Connect menu zoom actions
+    connect(menuZoomInAction, &QAction::triggered, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            view->setZoomFactor(view->zoomFactor() + 0.1);
+        }
+    });
+    connect(menuZoomOutAction, &QAction::triggered, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            view->setZoomFactor(view->zoomFactor() - 0.1);
+        }
+    });
+
     viewMenu->addSeparator();
     viewMenu->addAction(m_toggleViewAction);
+    viewMenu->addAction(m_toggleUrlBarAction);
     viewMenu->addSeparator();
     viewMenu->addAction(m_downloadsAction);
     viewMenu->addAction(m_closeAllTabsAction);
@@ -1340,6 +1487,7 @@ void MainWindow::createMenus() {
     navigateMenu->addAction(m_webBackAction);
     navigateMenu->addAction(m_webForwardAction);
     navigateMenu->addAction(m_webReloadAction);
+    navigateMenu->addAction(m_goHomeAction);
 
     // Create new actions for sessions menu
     QAction* saveSessionAction = sessionMenu->addAction("Save Current Session");
@@ -1348,12 +1496,14 @@ void MainWindow::createMenus() {
     sessionMenu->addSeparator();
     QAction* cleanAllDataAction = sessionMenu->addAction("Clean Current Session Data");
     QAction* cleanSharedDataAction = sessionMenu->addAction("Clean Shared Profile Data");
-    //QAction* factoryResetAction = sessionMenu->addAction("Restore Factory Defaults", this);
     QAction* factoryResetAction = new QAction("Restore Factory Defaults", this);
     sessionMenu->addAction(factoryResetAction);
+
     // Create new actions for tools menu
     QAction* separateProfilesAction = toolsMenu->addAction("Toggle Private Profile");
     QAction* themeAction = toolsMenu->addAction("Toggle Theme");
+    toolsMenu->addSeparator();
+    toolsMenu->addAction(m_open2faManagerAction);
 
     // Create new actions for other menus
     QAction* exitAction = fileMenu->addAction("Exit");
@@ -1388,45 +1538,95 @@ void MainWindow::createMenus() {
 
     // Connect other actions
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
-
     connect(aboutAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::About, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
-
     connect(featuresAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::Features, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
-
     connect(instructionsAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::Instructions, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
     connect(securityAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::Security, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
     connect(twofaAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::TwoFA, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
-
     connect(dataManagementAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::DataManagement, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
     connect(downloadManagementAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::DownloadManagement, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
     connect(onSitesandSessiosAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::onSitesAndSessions, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
     connect(onSecurityAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::onSecurity, this);
-        dialog.exec();
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
     });
 }
 
@@ -1506,6 +1706,15 @@ void MainWindow::loadSession(const QString& name) {
     // Restore tabs based on their actual profile state
     for (int i = 0; i < session.openTabUrls.size(); i++) {
         QWebEngineView* webView = new QWebEngineView(m_tabWidget);
+
+        connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+            if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+                if (sender() == currentView) {
+                    m_urlBar->setUrl(url.toString());
+                }
+            }
+        });
+
         QWebEngineProfile* profile;
 
         // Check if THIS specific tab had a separate profile when saved
@@ -1649,12 +1858,9 @@ void MainWindow::onSaveSession(){
     if (ok && !name.isEmpty()) {
         // Check if session already exists
         if (m_sessions.contains(name)) {
-            int ret = QMessageBox::question(this, "Session Exists",
-                                            QString("Session '%1' already exists. Overwrite?").arg(name),
-                                            QMessageBox::Yes | QMessageBox::No);
-            if (ret != QMessageBox::Yes) {
-                return; // User chose not to overwrite
-            }
+            QMessageBox::information(this, "Session Exists",
+                                     QString("Session '%1' already exists. Please use a different name.").arg(name));
+            return; // Don't save, let user try again
         }
 
         saveSession(name);
@@ -1662,12 +1868,18 @@ void MainWindow::onSaveSession(){
     }
 }
 
+
+
 void MainWindow::saveSession(const QString& name) {
     // Don't save if name is empty
     if (name.isEmpty()) {
         return;
     }
-
+    // Don't save if no tabs are open
+    if (m_tabWidget->count() == 0) {
+        QMessageBox::information(this, "No Tabs", "Cannot save session - no tabs are currently open.");
+        return;
+    }
     SessionData session;
     session.timestamp = QDateTime::currentDateTime();
     session.name = name;
@@ -2025,7 +2237,7 @@ void MainWindow::prepareForShutdown() {
     // Close all tabs without triggering our normal cleanup
     while (m_tabWidget->count() > 0) {
         QWidget* widget = m_tabWidget->widget(0);
-        m_tabWidget->removeTab(0);
+       m_tabWidget ->removeTab(0);
         widget->deleteLater();
     }
 
@@ -2062,6 +2274,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
+    // Existing card click handling
     if (event->type() == QEvent::MouseButtonPress) {
         // Handle website card clicks
         if (obj->property("websiteIndex").isValid()) {
@@ -2071,7 +2284,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
             onWebsiteSelected(modelIndex);
             return true;
         }
-
         // Handle session card clicks
         if (obj->property("sessionName").isValid()) {
             QString sessionName = obj->property("sessionName").toString();
@@ -2079,6 +2291,31 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
             return true;
         }
     }
+
+    // Block maximize attempts in dashboard mode
+    if (obj == this) {
+        if (event->type() == QEvent::WindowStateChange) {
+            if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
+                if (this->isMaximized()) {
+                    // Immediately restore without timer to reduce flicker
+                    this->showNormal();
+                    this->resize(1130, 800);
+                    return true;
+                }
+            }
+        }
+        // Also block resize events that would make window too large in dashboard
+        else if (event->type() == QEvent::Resize) {
+            if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
+                QResizeEvent* resizeEvent = static_cast<QResizeEvent*>(event);
+                if (resizeEvent->size().width() > 1130 || resizeEvent->size().height() > 800) {
+                    this->resize(1130, 800);
+                    return true;
+                }
+            }
+        }
+    }
+
     return QMainWindow::eventFilter(obj, event);
 }
 
@@ -2129,8 +2366,6 @@ void MainWindow::updateWebsiteIcon(int websiteIndex, const QIcon &icon) {
         }
     }
 }
-
-
 
 QFrame* MainWindow::createSessionDetailPanel() {
     QFrame* panel = new QFrame();
@@ -2432,22 +2667,24 @@ QToolBar* MainWindow::createToolbar() {
     m_webBackAction = toolbar->addAction(QIcon(":/resources/icons/arrow-left.svg"), "Back");
     m_webForwardAction = toolbar->addAction(QIcon(":/resources/icons/arrow-right.svg"), "Forward");
     m_webReloadAction = toolbar->addAction(QIcon(":/resources/icons/refresh-cw.svg"), "Reload");
-
+    m_goHomeAction = toolbar->addAction(QIcon(":/resources/icons/home.svg"), "Home");
     // Add separator
     toolbar->addSeparator();
 
     // Add session and website actions - always visible
     m_addCurrentSessionAction = toolbar->addAction(QIcon(":/resources/icons/save.svg"), "Save Current Session");
-    m_addCurrentWebsiteAction = toolbar->addAction(QIcon(":/resources/icons/plus.svg"), "Add Currently Selected Website. Open multiple tabs of same site");
+    m_addWebsiteFromUrlAction = toolbar->addAction(QIcon(":/resources/icons/file-plus.svg"), "Create Website from Current Url");
+    m_addCurrentWebsiteAction = toolbar->addAction(QIcon(":/resources/icons/plus.svg"), "Open Currently Selected Website");
 
     // Add separator
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
 
     // Add zoom actions - always visible
     m_zoomInAction = toolbar->addAction(QIcon(":/resources/icons/zoom-in.svg"), "Zoom In");
+    m_zoomInAction->setVisible(false);
     m_zoomOutAction = toolbar->addAction(QIcon(":/resources/icons/zoom-out.svg"), "Zoom Out");
+    m_zoomOutAction->setVisible(false);
 
-    // Add separator
     toolbar->addSeparator();
 
     // Add copy URL action - always visible
@@ -2479,9 +2716,6 @@ QToolBar* MainWindow::createToolbar() {
     m_downloadsAction->setToolTip("Show Downloads");
     m_originalDownloadIcon = m_downloadsAction->icon(); // Store current icon
 
-    //make the button green when in progress
-
-    //
     toolbar->addSeparator();
 
     //close tabs
@@ -2498,27 +2732,6 @@ QToolBar* MainWindow::createToolbar() {
     m_separateProfilesToggle = new QPushButton();
     m_separateProfilesToggle->setCheckable(true);
     m_separateProfilesToggle->setFixedSize(50, 25);
-    /*
-    m_separateProfilesToggle->setStyleSheet(
-        "QPushButton {"
-        "    border: 2px solid #ccc;"
-        "    border-radius: 12px;"
-        "    background-color: #f0f0f0;"
-        "    text-align: center;"
-        "}"
-        "QPushButton:checked {"
-        "    background-color: #4CAF50;"
-        "    border-color: #4CAF50;"
-        "}"
-        "QPushButton::indicator {"
-        "    width: 20px;"
-        "    height: 20px;"
-        "    border-radius: 10px;"
-        "    background-color: white;"
-        "    border: 1px solid #ccc;"
-        "}"
-        );
-    */
 
     m_separateProfilesToggle->setStyleSheet(
         "QPushButton {"
@@ -2538,8 +2751,6 @@ QToolBar* MainWindow::createToolbar() {
         "}"
         );
 
-
-
     m_separateProfilesToggle->setText("OFF");
     toolbar->addWidget(m_separateProfilesToggle);
 
@@ -2550,7 +2761,6 @@ QToolBar* MainWindow::createToolbar() {
     m_themeToggle = new QPushButton();
     m_themeToggle->setCheckable(true);
     m_themeToggle->setFixedSize(50, 25);
-
 
     m_themeToggle->setStyleSheet(
         "QPushButton {"
@@ -2569,7 +2779,6 @@ QToolBar* MainWindow::createToolbar() {
     //m_themeToggle->setText("☀️");
     m_themeToggle->setIcon(QIcon(":/resources/icons/sun.svg"));
 
-
     m_themeToggle->setToolTip("Toggle Dark/Light Theme");
     toolbar->addWidget(m_themeToggle);
 
@@ -2581,7 +2790,6 @@ QToolBar* MainWindow::createToolbar() {
             m_isDarkTheme = true;
             setStyleSheet(loadDarkTheme());
             m_themeToggle->setIcon(QIcon(":/resources/icons-white/moon.svg"));
-
         } else {
             m_isDarkTheme = false;
             setStyleSheet(loadLightTheme());
@@ -2609,10 +2817,27 @@ QToolBar* MainWindow::createToolbar() {
     m_open2faManagerAction = toolbar->addAction(QIcon(":/resources/icons/shield.svg"), "2FAManager");
     m_open2faManagerAction->setToolTip("Open 2FA Manager");
     connect(m_open2faManagerAction, &QAction::triggered, this, &MainWindow::on_Open2faManager);
-    //
+    //show URLbar chevron action
+    toolbar->addSeparator();
+    // URLBar toggle action
+    m_toggleUrlBarAction = toolbar->addAction(QIcon(":/resources/icons/eye.svg"), "Show URL Bar");
+    m_toggleUrlBarAction->setToolTip("Toggle URL Bar Visibility");
+
+    // Connect the toggle
+    connect(m_toggleUrlBarAction, &QAction::triggered, [this]() {
+        if (m_stackedWidget->currentWidget() != m_webViewContainer) {
+            QMessageBox::information(this, "URL Bar Toggle",
+                                     "The URL bar is only visible in Web View mode.");
+            return;
+        }
+
+        m_urlBar->setVisible(!m_urlBar->isVisible());
+        updateUrlBarState(); // Update state after toggle
+    });
+    // end urlbar
+
     connect(m_openDownloadsFolderAction, &QAction::triggered, this, &MainWindow::openDownloadsFolder);
 
-    //
     // Connect separate profiles toggle
     connect(m_separateProfilesToggle, &QPushButton::toggled, [this](bool checked) {
         m_usingSeparateProfiles = checked;
@@ -2620,7 +2845,6 @@ QToolBar* MainWindow::createToolbar() {
         m_separateProfilesToggle->setToolTip(checked ? "Using private profile" : "Using shared profile");
     });
 
-    //
     // Connect close all tabs action
     connect(m_closeAllTabsAction, &QAction::triggered, [this]() {
         while (m_tabWidget->count() > 0) {
@@ -2628,13 +2852,11 @@ QToolBar* MainWindow::createToolbar() {
         }
     });
 
-    //
     // Connect downloads action
     connect(m_downloadsAction, &QAction::triggered, [this]() {
         downloadManager->showDownloadsWindow();
     });
 
-    //
     // Connect web navigation actions
     connect(m_webBackAction, &QAction::triggered, [this]() {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget()))
@@ -2678,6 +2900,57 @@ QToolBar* MainWindow::createToolbar() {
     // Connect toggle view action
     connect(m_toggleViewAction, &QAction::triggered, this, &MainWindow::toggleView);
 
+    connect(m_goHomeAction, &QAction::triggered, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            // Get the initial URL from the web view's history
+            QWebEngineHistory *history = view->history();
+            if (history->count() > 0) {
+                // Go to the first item in history (the initial URL)
+                QWebEngineHistoryItem firstItem = history->itemAt(0);
+                view->load(firstItem.url());
+            }
+        }
+    });
+
+    connect(m_addWebsiteFromUrlAction, &QAction::triggered, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            QString currentUrl = view->url().toString();
+            if (currentUrl.isEmpty() || currentUrl == "about:blank") {
+                QMessageBox::information(this, "No URL", "No valid URL to add as website.");
+                return;
+            }
+
+            bool ok;
+            QString title = QInputDialog::getText(this, "Add Website",
+                                                  "Enter title for this website:",
+                                                  QLineEdit::Normal,
+                                                  "", &ok);
+            if (ok && !title.isEmpty()) {
+                // Check if website already exists
+                for (int i = 0; i < m_model->rowCount(); ++i) {
+                    Website existing = m_model->getWebsite(i);
+                    if (existing.url == currentUrl) {
+                        QMessageBox::information(this, "Already Exists", "This website is already in your list.");
+                        return;
+                    }
+                }
+
+                // Create new website
+                Website newWebsite;
+                newWebsite.url = currentUrl;
+                newWebsite.title = title;
+                newWebsite.favicon = view->icon();
+                newWebsite.lastVisited = QDateTime::currentDateTime();
+                newWebsite.visitCount = 1;
+
+                m_model->addWebsite(newWebsite);
+                updateWebsiteCards();
+                statusBar()->showMessage("Website added: " + title, 3000);
+            }
+        }
+    });
+
+
     return toolbar;
 }
 
@@ -2688,22 +2961,40 @@ void MainWindow::toggleView() {
         m_toggleViewAction->setText("To Dashboard");
         setWindowTitle("Jasmine - Web Browser");
 
-        // Force update
+        // Allow resizing in web view
+        this->setMinimumSize(0, 0);
+        this->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+
+        // Restore previous web view size if available, otherwise use dashboard size
+        if (!m_savedWebViewSize.isEmpty()) {
+            this->resize(m_savedWebViewSize);
+        } else {
+            //this->resize(1130, 800);
+            this->resize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+
+        }
+
         m_stackedWidget->update();
     } else {
         // Currently in web view, switch to dashboard
+        m_savedWebViewSize = this->size();
+
         m_stackedWidget->setCurrentWidget(m_dashboardWidget);
+        if (this->isMaximized()) {
+            this->setWindowState(Qt::WindowNoState);
+        }
+
+        // Lock dashboard size - prevents all resizing including drag
+        //this->setFixedSize(1130, 800);
+        this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+
         m_toggleViewAction->setText("To WebView");
         setWindowTitle("Jasmine");
-
-        // Force update
         m_stackedWidget->update();
+        m_urlBar->setVisible(false);
     }
-
-    // Always keep the toggle button enabled
+    updateUrlBarState();
     m_toggleViewAction->setEnabled(true);
-
-    // Update tab count
     updateTabCountStatus();
 }
 
@@ -3038,35 +3329,6 @@ void MainWindow::onUpdateSession() {
     QMessageBox::information(this, "Success", "Session successfully updated!");
 }
 
-/*
-void MainWindow::takeScreenshot(){
-    QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
-    if (!currentView) {
-        return;
-    }
-    QPixmap screenshot = currentView->grab();
-    if (screenshot.isNull()) {
-        return;
-    }
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss");
-    QString filename = QString("screenshot_%1.png").arg(timestamp);
-#ifdef FLATPAK_BUILD
-    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) = "/Downloads";
-#else
-    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
-#endif
-    QDir downloadsDir(downloadDirectory);
-    if (!downloadsDir.exists()) {
-        downloadsDir.mkpath(".");
-    }
-    QString filepath = downloadsDir.filePath(filename);
-    if (screenshot.save(filepath)) {
-        QMessageBox::information(this, "Screenshot", "Screenshot saved: " + filename);
-    } else {
-        QMessageBox::warning(this, "Error", "Failed to save screenshot.");
-    }
-}
-*/
 
 void MainWindow::takeScreenshot(){
     QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
@@ -3176,9 +3438,16 @@ QString MainWindow::loadDarkTheme(){
         m_open2faManagerAction->setIcon(QIcon(":/resources/icons-white/shield.svg"));
         m_usernameEyeButton->setIcon(QIcon(":/resources/icons-white/eye.svg"));
         m_passwordEyeButton->setIcon(QIcon(":/resources/icons-white/eye.svg"));
+        m_toggleUrlBarAction->setIcon(QIcon(":/resources/icons-white/eye.svg"));
+        if (m_urlBar) {
+            m_urlBar->updateTheme(true);
+        }
+        m_addWebsiteFromUrlAction->setIcon(QIcon(":/resources/icons-white/file-plus.svg"));
+        m_goHomeAction->setIcon(QIcon(":/resources/icons-white/home.svg"));
 
         return stylesheet;
     }
+
     return QString();
 }
 
@@ -3210,6 +3479,13 @@ QString MainWindow::loadLightTheme(){
         m_open2faManagerAction->setIcon(QIcon(":/resources/icons/shield.svg"));
         m_usernameEyeButton->setIcon(QIcon(":/resources/icons/eye.svg"));
         m_passwordEyeButton->setIcon(QIcon(":/resources/icons/eye.svg"));
+        m_toggleUrlBarAction->setIcon(QIcon(":/resources/icons/eye.svg"));
+        if (m_urlBar) {
+            m_urlBar->updateTheme(false);
+        }
+        m_addWebsiteFromUrlAction->setIcon(QIcon(":/resources/icons/file-plus.svg"));
+        m_goHomeAction->setIcon(QIcon(":/resources/icons/home.svg"));
+
 
         return stylesheet;
     }
@@ -3238,8 +3514,6 @@ void MainWindow::onCleanSharedProfileData() {
         statusBar()->showMessage("Shared profile data has been cleared.", 3000);
     }
 }
-
-
 
 void MainWindow::onRestoreFactoryDefaults() {
     QMessageBox::StandardButton reply = QMessageBox::warning(this,
@@ -3321,6 +3595,230 @@ bool MainWindow::checkStartupSecurity() {
 }
 
 
+void MainWindow::updateUrlBarState() {
+    bool inWebView = (m_stackedWidget->currentWidget() == m_webViewContainer);
+    bool urlBarVisible = m_urlBar->isVisible();
 
+    // Enable/disable toggle button based on view mode
+    m_toggleUrlBarAction->setEnabled(inWebView);
+
+    // Update tooltip based on current state
+    if (inWebView) {
+        m_toggleUrlBarAction->setToolTip(urlBarVisible ? "Hide URL Bar" : "Show URL Bar");
+        m_toggleUrlBarAction->setText(urlBarVisible ? "Hide URL Bar" : "Show URL Bar"); // Added this line
+    }
+}
+
+void MainWindow::connectUrlBar() {
+
+
+    connect(m_urlBar, &URLBar::urlChanged, this, [this](const QString &url) {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            // Tab exists, load URL in current tab
+            //view->load(QUrl(url));
+            createNewTabWithUrl(url);
+
+        } else {
+            // No tabs open, create a new tab with this URL
+            createNewTabWithUrl(url);
+        }
+    });
+
+    connect(m_urlBar, &URLBar::backRequested, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget()))
+            view->back();
+    });
+
+    connect(m_urlBar, &URLBar::forwardRequested, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget()))
+            view->forward();
+    });
+
+    connect(m_urlBar, &URLBar::reloadRequested, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget()))
+            view->reload();
+    });
+
+    connect(m_urlBar, &URLBar::homeRequested, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            // Get the initial URL from the web view's history
+            QWebEngineHistory *history = view->history();
+            if (history->count() > 0) {
+                // Go to the first item in history (the initial URL)
+                QWebEngineHistoryItem firstItem = history->itemAt(0);
+                view->load(firstItem.url());
+            }
+        }
+    });
+
+    connect(m_urlBar, &URLBar::copyUrlRequested, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            QUrl url = view->url();
+            if (url.isValid()) {
+                QClipboard *clipboard = QApplication::clipboard();
+                clipboard->setText(url.toString());
+                statusBar()->showMessage("URL copied to clipboard", 3000);
+            }
+        }
+    });
+
+    connect(m_urlBar, &URLBar::addWebsiteRequested, this, [this]() {
+        if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            QString currentUrl = view->url().toString();
+            if (currentUrl.isEmpty() || currentUrl == "about:blank") {
+                QMessageBox::information(this, "No URL", "No valid URL to add as website.");
+                return;
+            }
+
+            bool ok;
+            QString title = QInputDialog::getText(this, "Add Website",
+                                                  "Enter title for this website:",
+                                                  QLineEdit::Normal,
+                                                  "", &ok);
+            if (ok && !title.isEmpty()) {
+                // Check if website already exists
+                for (int i = 0; i < m_model->rowCount(); ++i) {
+                    Website existing = m_model->getWebsite(i);
+                    if (existing.url == currentUrl) {
+                        QMessageBox::information(this, "Already Exists", "This website is already in your list.");
+                        return;
+                    }
+                }
+
+                // Create new website
+                Website newWebsite;
+                newWebsite.url = currentUrl;
+                newWebsite.title = title;
+                newWebsite.favicon = view->icon();
+                newWebsite.lastVisited = QDateTime::currentDateTime();
+                newWebsite.visitCount = 1;
+
+                m_model->addWebsite(newWebsite);
+                updateWebsiteCards();
+                statusBar()->showMessage("Website added: " + title, 3000);
+            }
+        }
+    });
+
+    connect(m_urlBar, &URLBar::newTabRequested, this, [this]() {
+        createNewTab();
+
+    });
+}
+
+void MainWindow::createNewTabWithUrl(const QString &url) {
+    QWebEngineView *webView = new QWebEngineView(m_tabWidget);
+    // URL sync connection
+    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+        if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            if (sender() == currentView) {
+                m_urlBar->setUrl(url.toString());
+            }
+        }
+    });
+    connect(webView, &QWebEngineView::titleChanged, this, [this, webView](const QString &title) {
+        int tabIndex = m_tabWidget->indexOf(webView);
+        if (tabIndex != -1) {
+            QString displayTitle = title.isEmpty() ? "New Tab" : title;
+            if (displayTitle.length() > 20) {
+                displayTitle = displayTitle.left(17) + "...";
+            }
+            m_tabWidget->setTabText(tabIndex, displayTitle);
+        }
+    });
+    // Determine which profile to use
+    QWebEngineProfile *profile;
+    if (m_usingSeparateProfiles) {
+        profile = createProfileForTab();
+        m_tabProfiles[webView] = profile;
+    } else {
+        profile = m_webProfile;
+    }
+    // Create page with the selected profile
+    QWebEnginePage *page = new QWebEnginePage(profile, webView);
+    webView->setPage(page);
+    // Connect downloads to download manager
+    if (m_usingSeparateProfiles) {
+        connect(profile, &QWebEngineProfile::downloadRequested,
+                downloadManager, &DownloadManager::handleDownloadRequest);
+    }
+    // Add new tab
+    int tabIndex = m_tabWidget->addTab(webView, "New Tab");
+    showWebViews();
+    m_tabWidget->setCurrentIndex(tabIndex);
+    // Load the URL
+    //webView->setUrl(QUrl(url));
+    QString finalUrl;
+    QString processedUrl = url;
+    // Add https:// if no protocol is specified
+    if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://") && !processedUrl.startsWith("file://")) {
+        processedUrl = "https://" + processedUrl;
+    }
+    QUrl testUrl(processedUrl);
+    // Check if it looks like a URL (has dots, no spaces, etc.)
+    if (testUrl.isValid() && processedUrl.contains('.') && !processedUrl.contains(' ')) {
+        finalUrl = processedUrl;
+    } else {
+        // Treat as search term - use URLBar's selected search engine
+        QUrl searchBase = m_urlBar->getSearchUrl();
+        QString searchTerm = QUrl::toPercentEncoding(url);
+        finalUrl = searchBase.toString() + searchTerm;
+    }
+    // Load the final URL
+    webView->setUrl(QUrl(finalUrl));
+    // Connect to the destroyed signal to clean up the profile
+    connect(webView, &QObject::destroyed, this, [this, webView]() {
+        cleanupTabProfile(webView);
+    });
+}
+
+void MainWindow::createNewTab() {
+    QWebEngineView *webView = new QWebEngineView(m_tabWidget);
+    // URL sync connection
+    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+        if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+            if (sender() == currentView) {
+                m_urlBar->setUrl(url.toString());
+            }
+        }
+    });
+    connect(webView, &QWebEngineView::titleChanged, this, [this, webView](const QString &title) {
+        int tabIndex = m_tabWidget->indexOf(webView);
+        if (tabIndex != -1) {
+            QString displayTitle = title.isEmpty() ? "New Tab" : title;
+            if (displayTitle.length() > 20) {
+                displayTitle = displayTitle.left(17) + "...";
+            }
+            m_tabWidget->setTabText(tabIndex, displayTitle);
+        }
+    });
+    // Determine which profile to use
+    QWebEngineProfile *profile;
+    if (m_usingSeparateProfiles) {
+        profile = createProfileForTab();
+        m_tabProfiles[webView] = profile;
+    } else {
+        profile = m_webProfile;
+    }
+    // Create page with the selected profile
+    QWebEnginePage *page = new QWebEnginePage(profile, webView);
+    webView->setPage(page);
+    // Connect downloads to download manager
+    if (m_usingSeparateProfiles) {
+        connect(profile, &QWebEngineProfile::downloadRequested,
+                downloadManager, &DownloadManager::handleDownloadRequest);
+    }
+    // Add new tab
+    int tabIndex = m_tabWidget->addTab(webView, "New Tab");
+    showWebViews();
+    m_tabWidget->setCurrentIndex(tabIndex);
+    // Load the selected search engine URL
+    QUrl searchEngineUrl = m_urlBar->getSearchUrl();
+    webView->setUrl(searchEngineUrl);
+    // Connect to the destroyed signal to clean up the profile
+    connect(webView, &QObject::destroyed, this, [this, webView]() {
+        cleanupTabProfile(webView);
+    });
+}
 
 

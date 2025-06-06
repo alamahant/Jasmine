@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.alamahant.Jasmine</id>
   <name>Jasmine</name>
-  <summary>Launch Sites and Sessions</summary>
+  <summary>Launch websites and sessions</summary>
   
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
@@ -34,12 +34,12 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main-DarkTheme.png</image>
-      <caption>Main Interface with Dark Theme Showing Website Cards</caption>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main.png</image>
+      <caption>Main interface displaying organized bookmarks</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main.png</image>
-      <caption>Main interface with light theme displaying organized bookmarks</caption>
+      <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main-DarkTheme.png</image>
+      <caption>Main Interface with Dark Theme Showing Website Cards</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Sessions-View.png</image>
@@ -107,6 +107,20 @@
   </content_rating>
   
   <releases>
+    <release version="1.0.1" date="2025-06-07">
+      <description>
+        <p>Enhanced UI and functionality improvements</p>
+        <ul>
+          <li>Added fully functional URL bar with toggle visibility via eye icon in toolbar</li>
+          <li>New feature to create website cards directly from the currently loaded URL</li>
+          <li>Set dashboard to fixed size while keeping web view resizable for improved visual quality</li>
+          <li>Fixed website card update button connection to proper slot function</li>
+          <li>Improved theme handling for help menu items with temporary light theme switching</li>
+          <li>Fixed critical QWebEngineView resizing bugs affecting display and performance</li>
+          <li>Enhanced overall application layout with better size management</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2025-06-01">
       <description>
         <p>Initial release of Jasmine Website and Session Manager</p>
@@ -139,6 +153,8 @@
     <control>pointing</control>
   </recommends>
 </component>
+
+
 
 
 

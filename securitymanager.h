@@ -43,9 +43,6 @@ private:
 
 signals:
     void factoryResetRequested();
-
-
-
 };
 
 #endif // SECURITYMANAGER_H

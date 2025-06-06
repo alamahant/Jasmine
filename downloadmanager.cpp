@@ -86,9 +86,6 @@ void DownloadManager::handleDownloadRequest(QWebEngineDownloadRequest *download)
     emit activeDownloadsChanged(activeDownloadsCount());
 }
 
-
-
-
 void DownloadManager::onDownloadFinished()
 {
     QWebEngineDownloadRequest *download = qobject_cast<QWebEngineDownloadRequest*>(sender());
@@ -117,8 +114,6 @@ void DownloadManager::onDownloadProgress()
         int progress = (bytesReceived * 100) / bytesTotal;
     }
 }
-
-
 
 QString DownloadManager::getDownloadPath(const QString &fileName)
 {

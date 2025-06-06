@@ -41,8 +41,6 @@ private:
 
     QList<DownloadItem*> m_downloadItems;
     QString m_downloadDirectory;
-
-
 };
 
 #endif // DOWNLOADWINDOW_H

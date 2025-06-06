@@ -59,5 +59,13 @@
         <file>resources/icons/folder-plus.svg</file>
         <file>resources/icons-white/folder-plus.svg</file>
         <file>resources/icons/download-green.svg</file>
+        <file>resources/icons/chevron-down.svg</file>
+        <file>resources/icons/chevron-up.svg</file>
+        <file>resources/icons-white/chevron-down.svg</file>
+        <file>resources/icons-white/chevron-up.svg</file>
+        <file>resources/icons/file-plus.svg</file>
+        <file>resources/icons-white/file-plus.svg</file>
+        <file>resources/icons/search.svg</file>
+        <file>resources/icons-white/search.svg</file>
     </qresource>
 </RCC>
