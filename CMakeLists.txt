@@ -37,6 +37,7 @@ qt_add_executable(Jasmine
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
     urlbar.h urlbar.cpp
+    Constants.h
 )
 
 if(FLATPAK_BUILD)

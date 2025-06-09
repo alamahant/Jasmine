@@ -18,7 +18,8 @@ enum class HelpType {
     DataManagement,
     DownloadManagement,
     onSitesAndSessions,
-    onSecurity
+    onSecurity,
+    onNewStorageSystem
 };
 
 class HelpMenuDialog : public QDialog
@@ -46,6 +47,7 @@ private:
     QString getDownloadManagerContent();
     QString getSitesSessionsContent();
     QString getOnSecurityContent();
+    QString getOnNewStorageSystemContent();
 
     QVBoxLayout *m_layout;
     QTextEdit *m_contentArea;

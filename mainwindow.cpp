@@ -32,7 +32,7 @@
 #include<QWebEngineHistory>
 #include<QWebEngineHistoryItem>
 #include <QComboBox>
-
+#include<QProgressDialog>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -170,6 +170,8 @@ MainWindow::MainWindow(QWidget *parent)
     m_twoFAManager = nullptr;
     //connect urlbar
     connectUrlBar();
+    //cleanu temp profiles
+    cleanupTempProfiles();
 
     statusBar()->showMessage("Ready");
 }
@@ -716,14 +718,13 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     });
 
     connect(deleteBtn, &QPushButton::clicked, [this, sessionName]() {
-        if (QMessageBox::question(this, "Delete Session",
-                                  QString("Are you sure you want to delete the session '%1'?").arg(sessionName),
-                                  QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
-            onSessionSelected(sessionName);
-            deleteSession(sessionName);
-            updateSessionCards();
-        }
+        onSessionSelected(sessionName);
+
+        onDeleteSession();
     });
+
+
+
 
     card->installEventFilter(this);
     card->setProperty("sessionName", sessionName);
@@ -1494,7 +1495,7 @@ void MainWindow::createMenus() {
     QAction* loadSessionAction = sessionMenu->addAction("Load Session");
     QAction* manageSessionsAction = sessionMenu->addAction("Manage Sessions");
     sessionMenu->addSeparator();
-    QAction* cleanAllDataAction = sessionMenu->addAction("Clean Current Session Data");
+    QAction* cleanAllDataAction = sessionMenu->addAction("Clean Current Sessions' Data");
     QAction* cleanSharedDataAction = sessionMenu->addAction("Clean Shared Profile Data");
     QAction* factoryResetAction = new QAction("Restore Factory Defaults", this);
     sessionMenu->addAction(factoryResetAction);
@@ -1516,6 +1517,7 @@ void MainWindow::createMenus() {
     QAction* downloadManagementAction = helpMenu->addAction("Download Management");
     QAction* onSitesandSessiosAction = helpMenu->addAction("On Sites and Sessions");
     QAction* onSecurityAction = helpMenu->addAction("On Security");
+    QAction* onNewStorageAction = helpMenu->addAction("On the New Storage System");
 
     // Set shortcuts
     exitAction->setShortcut(QKeySequence::Quit);
@@ -1628,6 +1630,47 @@ void MainWindow::createMenus() {
             dialog.exec();
         }
     });
+
+    connect(onNewStorageAction, &QAction::triggered, [this]() {
+        HelpMenuDialog dialog(HelpType::onNewStorageSystem, this);
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
+    });
+
+    // Cleaup at app startup checkbox
+    toolsMenu->addSeparator();
+    QAction* cleanupTempProfilesAction = toolsMenu->addAction("Clean Temporary Profiles on Startup");
+    cleanupTempProfilesAction->setCheckable(true);
+
+    // Load setting and set checkbox state
+    QSettings settings;
+    bool cleanupEnabled = settings.value("cleanupTempProfilesOnStartup", false).toBool();
+    cleanupTempProfilesAction->setChecked(cleanupEnabled);
+
+    // Connect to save setting when toggled
+    connect(cleanupTempProfilesAction, &QAction::triggered, [this, cleanupTempProfilesAction](bool checked) {
+
+        if (checked) {
+            QMessageBox::StandardButton reply = QMessageBox::warning(this,
+                                                                     tr("Warning"),
+                                                                     tr("Enabling this option will remove temporary profile directories, potentially including those from older versions. "
+                                                                        "The storage system has changed in this version, and enabling this will result in the loss of your sessions created before this update. "
+                                                                        "Are you sure you want to enable this?"),
+                                                                     QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::No) {
+                cleanupTempProfilesAction->setChecked(false); // Uncheck the box if the user cancels
+                return;
+            }
+        }
+        QSettings settings;
+        settings.setValue("cleanupTempProfilesOnStartup", checked);
+        settings.sync();
+    });
 }
 
 QStringList MainWindow::getAvailableSessions() {
@@ -1651,12 +1694,12 @@ void MainWindow::deleteSession(const QString& name) {
 
 void MainWindow::saveSessionsData() {
 
-    // Remove this line: if (m_sessions.isEmpty()) { return; }
 
     // Save using QSettings for basic data
     QSettings settings;
     settings.beginGroup("Sessions");
     settings.remove("");
+
     for (auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         const QString& name = it.key();
         const SessionData& session = it.value();
@@ -1790,6 +1833,7 @@ void MainWindow::loadSessionsData() {
     QSettings settings;
     settings.beginGroup("Sessions");
 
+
     QStringList sessionNames = settings.childGroups();
 
     for (const QString& name : sessionNames) {
@@ -1880,75 +1924,76 @@ void MainWindow::saveSession(const QString& name) {
         QMessageBox::information(this, "No Tabs", "Cannot save session - no tabs are currently open.");
         return;
     }
+    // Show progress dialog and disable tab operations
+    QProgressDialog progressDialog("Saving session...", "Cancel", 0, 0, this);
+    progressDialog.setWindowModality(Qt::WindowModal);
+    progressDialog.setMinimumDuration(0);
+    progressDialog.setCancelButton(nullptr); // No cancel button
+    progressDialog.show();
+    // Disable tab widget to prevent user interaction
+    m_tabWidget->setEnabled(false);
+    // Process events to show the dialog
+    QApplication::processEvents();
     SessionData session;
     session.timestamp = QDateTime::currentDateTime();
     session.name = name;
-    session.usingSeparateProfiles = m_usingSeparateProfiles;  // Current toggle state for reference
-
-    // First, force all web views to save their state by executing a JavaScript function
+    session.usingSeparateProfiles = m_usingSeparateProfiles;
+    // First, force all web views to save their state
     for (int i = 0; i < m_tabWidget->count(); i++) {
         QWebEngineView* view = qobject_cast<QWebEngineView*>(m_tabWidget->widget(i));
-        /*
-        if (view) {
-            // Execute a simple script to ensure the page has committed any pending state
-            view->page()->runJavaScript("localStorage['_saveMarker'] = new Date().toString();");
-        }
-        */
         if (view && m_tabProfiles.contains(view)) {
             QWebEngineProfile* profile = m_tabProfiles[view];
-
             // Force profile to write pending data
             profile->clearHttpCache(); // This forces a sync
-
-            // Or try this alternative:
-            // profile->cookieStore()->deleteAllCookies();
-            // profile->cookieStore()->loadAllCookies();
         }
     }
-
-    // Wait longer to ensure data is written
+    // Wait for data to be written
     QEventLoop loop;
-    QTimer::singleShot(5000, &loop, &QEventLoop::quit);
+    QTimer::singleShot(2000, &loop, &QEventLoop::quit);
     loop.exec();
-
-    // Now store open tabs and copy profile data based on actual tab state
+    // Now store open tabs and create symlinks for profile data
     for (int i = 0; i < m_tabWidget->count(); i++) {
         QWebEngineView* view = qobject_cast<QWebEngineView*>(m_tabWidget->widget(i));
         if (view) {
             session.openTabUrls.append(view->url().toString());
             session.openTabTitles.append(m_tabWidget->tabText(i));
-
             // Store the favicon
             QIcon icon = m_tabWidget->tabIcon(i);
             session.openTabIcons.append(icon);
-
             // Check if THIS specific tab actually has a separate profile
             bool tabHasSeparateProfile = m_tabProfiles.contains(view);
             session.tabHasSeparateProfile.append(tabHasSeparateProfile);
-
             if (tabHasSeparateProfile) {
-                // This tab has its own profile
+                // This tab has its own profile - create symlink
                 QWebEngineProfile* currentProfile = m_tabProfiles[view];
-                //session.tabOriginalProfileNames.append(currentProfile->profileName());
-
-                // Get the current profile's storage path
                 QString currentPath = currentProfile->persistentStoragePath();
+
+                // Follow symlink chain to get the final target
+                QFileInfo pathInfo(currentPath);
+                while (pathInfo.isSymLink()) {
+                    currentPath = pathInfo.symLinkTarget();
+                    pathInfo.setFile(currentPath);
+                }
 
                 // Create a session-specific profile name and path
                 QString sessionProfileName = "Session_" + name + "_Tab_" + QString::number(i);
                 QString sessionProfilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
                                              "/profiles/" + sessionProfileName;
-
-                // Delete the destination directory if it already exists
-                QDir destDir(sessionProfilePath);
-                if (destDir.exists()) {
-                    destDir.removeRecursively();
+                // Remove existing symlink/directory if it exists
+                QFileInfo destInfo(sessionProfilePath);
+                if (destInfo.exists()) {
+                    if (destInfo.isSymLink()) {
+                        QFile::remove(sessionProfilePath);
+                    } else {
+                        QDir(sessionProfilePath).removeRecursively();
+                    }
                 }
-
-                // Copy the profile data
-                if (copyProfileData(currentPath, sessionProfilePath)) {
+                // Create symlink to the final target (not to another symlink)
+                if (QFile::link(currentPath, sessionProfilePath)) {
+                    session.tabOriginalProfileNames.append(currentProfile->storageName());
                 } else {
-                    qWarning() << "Failed to copy profile data for tab" << i;
+                    qWarning() << "Failed to create symlink for tab" << i << "from" << currentPath << "to" << sessionProfilePath;
+                    session.tabOriginalProfileNames.append("");
                 }
             } else {
                 // This tab uses the shared profile
@@ -1956,7 +2001,6 @@ void MainWindow::saveSession(const QString& name) {
             }
         }
     }
-
     // Generate session icon
     session.icon = generateRandomSvgIcon();
     QString iconDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/session_icons/";
@@ -1966,20 +2010,26 @@ void MainWindow::saveSession(const QString& name) {
     QString iconPath = iconDir + name + "_session.png";
     QPixmap pixmap = session.icon.pixmap(64, 64);
     pixmap.save(iconPath, "PNG");
-
     // Save to sessions map
     m_sessions[name] = session;
     m_currentSessionName = name;
-
     // Save to disk
     saveSessionsData();
-
     // Update UI
     updateSessionCards();
-
+    // Re-enable tab widget
+    m_tabWidget->setEnabled(true);
+    // Close progress dialog
+    progressDialog.close();
+    // Show success message
+    QMessageBox::information(this, "Session Saved",
+                             QString("Session '%1' has been saved successfully with %2 tabs.")
+                                 .arg(name).arg(m_tabWidget->count()));
     // Update status
-    statusBar()->showMessage("Session saved: " + name, 3000);
+    statusBar()->showMessage("Session saved: " + name);
 }
+
+
 
 void MainWindow::onManageSessions() {
     QStringList sessions = getAvailableSessions();
@@ -2044,26 +2094,39 @@ void MainWindow::onManageSessions() {
 }
 
 
-void MainWindow::onCleanAllData() {
-    if (QMessageBox::question(this, "Clean Current Session Data",
-                              "Are you sure you want to clean browsing data from current sessions? This will remove cookies, cache, and browsing data from active sessions and shared profile.",
-                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
-        // Clear main profile data
-        m_webProfile->clearAllVisitedLinks();
-        m_webProfile->clearHttpCache();
-        m_webProfile->cookieStore()->deleteAllCookies();
 
-        // Clear tab profiles
+void MainWindow::onCleanAllData() {
+
+    // First check if there are any tabs open
+    if (m_tabWidget->count() == 0) {
+        QMessageBox::information(this, "No Tabs Open",
+                                 "There are no tabs currently open to clean.");
+        return;
+    }
+
+    if (QMessageBox::question(this, "Clean Session Data",
+                              "Are you sure you want to clean browsing data from currently loaded sessions?\n"
+                              "This will remove cookies, cache, and browsing data from active sessions with Private profiles.\n"
+                              "If any tab is using the Shared profile, no cleaning will be performed on it!\n"
+                              "You can clean the universal Shared profile in Menu->Sessions->'Clean Shared Profile Data'",
+                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
+
+        // Clear only tab profiles (separate profiles)
         for (QWebEngineProfile* profile : m_tabProfiles.values()) {
-            profile->clearAllVisitedLinks();
-            profile->clearHttpCache();
-            profile->cookieStore()->deleteAllCookies();
+            if (profile) {  // Check if profile pointer is valid
+                profile->clearAllVisitedLinks();
+                profile->clearHttpCache();
+                if (profile->cookieStore()) {
+                    profile->cookieStore()->deleteAllCookies();
+                }
+            }
         }
 
         // Show a status message
-        statusBar()->showMessage("Current session data has been cleared.", 3000);
+        statusBar()->showMessage("Session data for separate profiles has been cleared.", 3000);
     }
 }
+
 
 
 
@@ -2190,17 +2253,14 @@ bool MainWindow::copyProfileData(const QString& sourceDir, const QString& destDi
 void MainWindow::cleanupSessionProfileDirectories(const QString& sessionName) {
     // Get the directories to check
     QStringList dirsToCheck;
-
     // Add the app's profile directory
     QString baseProfilesDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
     dirsToCheck.append(baseProfilesDir);
-
     // Add the Jasmine profiles directory if it's different
     QString webAppsProfilesDir = QDir::homePath() + "/.local/share/Jasmine/profiles";
     if (baseProfilesDir != webAppsProfilesDir) {
         dirsToCheck.append(webAppsProfilesDir);
     }
-
 
     for (const QString& dirPath : dirsToCheck) {
         QDir dir(dirPath);
@@ -2208,25 +2268,33 @@ void MainWindow::cleanupSessionProfileDirectories(const QString& sessionName) {
             continue;
         }
 
-        // Get all subdirectories
-        QStringList entries = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        // Get all entries (both dirs and symlinks)
+        QStringList entries = dir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
 
-        // Find and remove directories matching the session pattern
+        // Find and remove entries matching the session pattern
         QString sessionPrefix = "Session_" + sessionName + "_Tab_";
         for (const QString& entry : entries) {
             if (entry.startsWith(sessionPrefix)) {
                 QString fullPath = dir.absoluteFilePath(entry);
+                QFileInfo info(fullPath);
 
-                QDir sessionDir(fullPath);
-                if (sessionDir.removeRecursively()) {
-                } else {
-                    qWarning() << "  Failed to remove directory";
+                bool success = false;
+                if (info.isSymLink()) {
+                    // Remove symlink
+                    success = QFile::remove(fullPath);
+                } else if (info.isDir()) {
+                    // Remove directory
+                    QDir sessionDir(fullPath);
+                    success = sessionDir.removeRecursively();
+                }
+
+                if (!success) {
+                    qWarning() << "Failed to remove:" << fullPath;
                 }
             }
         }
     }
 }
-
 
 void MainWindow::prepareForShutdown() {
 
@@ -2576,6 +2644,12 @@ void MainWindow::onSaveCurrentSession()
 
 void MainWindow::onDeleteSession()
 {
+    // Safeguard: Prevent deletion if there are open tabs
+    if (m_tabWidget->count() > 0) {
+        QMessageBox::warning(this, "Cannot Delete", "Cannot delete a session while tabs are open. Please close all tabs first.");
+        return; // Do not proceed with deletion
+    }
+
     QString sessionName = m_sessionNameInput->text();
     if (QMessageBox::question(this, "Delete Session",
                               QString("Are you sure you want to delete the session '%1'?").arg(sessionName),
@@ -3821,4 +3895,74 @@ void MainWindow::createNewTab() {
     });
 }
 
+/*
+void MainWindow::cleanupTempProfiles() {
+    QString profilesPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
+    QDir profilesDir(profilesPath);
+
+    if (!profilesDir.exists()) return;
+
+    // Always cleanup orphaned TabProfiles (no checkbox needed)
+    QStringList tabProfiles = profilesDir.entryList(QStringList() << "TabProfile_*", QDir::Dirs | QDir::NoDotAndDotDot);
+
+    for (const QString& profile : tabProfiles) {
+        QString profilePath = profilesDir.absoluteFilePath(profile);
+        if (!hasSymlinksPointingTo(profilePath)) {
+            QDir dir(profilePath);
+            if (dir.removeRecursively()) {
+            }
+        }
+    }
+}
+*/
+
+void MainWindow::cleanupTempProfiles() {
+
+    //Do not perform cleaning if checkbox unchecked
+    QSettings settings;
+    bool shouldCleanup = settings.value("cleanupTempProfilesOnStartup", false).toBool();
+
+
+
+    if (!shouldCleanup) {
+        return;
+    }
+
+    QString profilesPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
+    QDir profilesDir(profilesPath);
+    if (!profilesDir.exists()) return;
+
+    // Get ALL entries in profiles directory
+    QStringList allEntries = profilesDir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
+
+    for (const QString& entry : allEntries) {
+        QString fullPath = profilesDir.absoluteFilePath(entry);
+        QFileInfo info(fullPath);
+
+        // If it's a directory (not a symlink) and no symlinks point to it -> DELETE
+        if (info.isDir() && !info.isSymLink() && !hasSymlinksPointingTo(fullPath)) {
+            QDir dir(fullPath);
+            if (dir.removeRecursively()) {
+            }
+        }
+    }
+}
+
+
+
+bool MainWindow::hasSymlinksPointingTo(const QString& targetPath) {
+    QString profilesPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
+    QDir profilesDir(profilesPath);
+
+    // Get all Session_* entries (these could be symlinks)
+    QStringList sessions = profilesDir.entryList(QStringList() << "Session_*", QDir::AllEntries | QDir::NoDotAndDotDot);
+
+    for (const QString& session : sessions) {
+        QFileInfo info(profilesDir.absoluteFilePath(session));
+        if (info.isSymLink() && info.symLinkTarget() == targetPath) {
+            return true;
+        }
+    }
+    return false;
+}
 

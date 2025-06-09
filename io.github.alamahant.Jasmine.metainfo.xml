@@ -107,6 +107,17 @@
   </content_rating>
   
   <releases>
+    <release version="1.1.0" date="2025-06-12">
+      <description>
+        <ul>
+          <li>Implemented a new symlink-based storage system that dramatically reduces disk space usage</li>
+          <li>Profile data now uses symbolic links instead of copying entire directories, improving performance and efficiency</li>
+          <li>Added progress bar when saving sessions for better visual feedback and to prevent premature closure</li>
+          <li>Implemented automatic cleanup of orphaned profile directories at startup (configurable in Tools menu)</li>
+          <li>Added help documentation explaining the new storage system benefits and recommendations - users are  kindly advised to read it carefully</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2025-06-07">
       <description>
         <p>Enhanced UI and functionality improvements</p>
@@ -153,6 +164,8 @@
     <control>pointing</control>
   </recommends>
 </component>
+
+
 
 
 

@@ -1,6 +1,7 @@
 #include"helpmenudialog.h"
 #include <QApplication>
-
+#include"Constants.h"
+#include<QString>
 
 HelpMenuDialog::HelpMenuDialog(HelpType type, QWidget *parent)
     : QDialog(parent)
@@ -68,6 +69,9 @@ void HelpMenuDialog::loadContent(HelpType type)
     case HelpType::onSecurity:
         content = getOnSecurityContent();
         break;
+    case HelpType::onNewStorageSystem:
+        content = getOnNewStorageSystemContent();
+        break;
     }
 
     m_contentArea->setHtml(content);
@@ -88,6 +92,7 @@ QString HelpMenuDialog::getTitle(HelpType type)
     case HelpType::DownloadManagement: return "Jasmine Download Management";
     case HelpType::onSitesAndSessions: return "On Sites And Sessions";
     case HelpType::onSecurity: return "On Security";
+    case HelpType::onNewStorageSystem: return "On the New Storage System";
 
     default: return "Help";
     }
@@ -108,24 +113,22 @@ QString HelpMenuDialog::getShortcutsContent()
     return QString();  // TODO: Implement
 }
 
-QString HelpMenuDialog::getAboutContent()
-{
-    return R"(
+
+
+QString HelpMenuDialog::getAboutContent() {
+    return QString(R"(
         <div style="text-align: center; font-family: Arial, sans-serif;">
             <h1 style="color: #2c3e50; margin-bottom: 10px;">🌸 Jasmine</h1>
             <h3 style="color: #7f8c8d; margin-bottom: 20px;">Website & Session Manager</h3>
-
             <p style="font-size: 16px; margin-bottom: 20px;">
                 A comprehensive web launcher and session management application that transforms
                 your scattered bookmarks and browser tabs into an organized, launchable workspace.
             </p>
-
             <div style="background-color: #ecf0f1; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><strong>Version:</strong> 1.0.0</p>
+                <p style="margin: 5px 0;"><strong>Version:</strong> %1</p>
                 <p style="margin: 5px 0;"><strong>Built with:</strong> Qt Framework</p>
                 <p style="margin: 5px 0;"><strong>Platform:</strong> Cross-platform</p>
             </div>
-
             <div style="margin: 30px 0;">
                 <h4 style="color: #2c3e50;">Key Features</h4>
                 <p style="text-align: left; margin: 10px 20px;">
@@ -136,9 +139,7 @@ QString HelpMenuDialog::getAboutContent()
                     • 2FA integration and login reference storage
                 </p>
             </div>
-
             <hr style="margin: 30px 0; border: 1px solid #bdc3c7;">
-
             <div style="margin: 20px 0;">
                 <p style="margin: 5px 0; color: #7f8c8d;">
                     <strong>Copyright © 2025 Alamahant</strong>
@@ -147,14 +148,13 @@ QString HelpMenuDialog::getAboutContent()
                     All rights reserved. This software is provided as-is without warranty.
                 </p>
             </div>
-
             <div style="margin: 20px 0;">
                 <p style="font-size: 14px; color: #7f8c8d;">
                     Made with ❤️ for productivity enthusiasts and multi-account managers
                 </p>
             </div>
         </div>
-    )";
+    )").arg(APP_VERSION);
 }
 
 QString HelpMenuDialog::getFeaturesContent()
@@ -1276,5 +1276,20 @@ QString HelpMenuDialog::getOnSecurityContent()
         "and letting your browser handle credential storage.</p>"
         );
 }
+
+QString HelpMenuDialog::getOnNewStorageSystemContent() {
+    return QString(
+        "<h3>New Storage System (Jasmine 1.1.0 and onwards)</h3>"
+        "<p>This version of Jasmine uses a new storage system that improves performance and efficiency by using symlinks for profile data. This means that instead of copying entire profile directories, only links are created, saving disk space and speeding up operations.</p>"
+        "<h4>Recommendations:</h4>"
+        "<p>To fully leverage the new storage system and ensure optimal performance, we highly recommend performing a factory reset. This will clear all old data and provide a clean start. You can find the factory reset option in the 'Sessions' menu.</p>"
+        "<h4>Clean up orphaned profile directories on startup:</h4>"
+        "<p>As part of the new storage system, a checkbox is available in the 'Tools' menu to automatically clean up unused, orphaned profile directories at application startup. It is STRONGLY RECOMMENDED to keep this option enabled UNLESS you also have old-format sessions saved.</p>"
+        "<h4>Handling Old-Format Sessions:</h4>"
+        "<p>If you have existing sessions that use the old directory-based storage, you can continue to use them. However, we strongly advise against adding new tabs or saving changes to these older sessions. To ensure optimal performance and avoid potential issues, it's best to create new sessions using the new storage system.</p>"
+        );
+}
+
+
 
 

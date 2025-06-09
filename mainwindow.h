@@ -272,6 +272,8 @@ private:
     QAction* m_goHomeAction;
     void createNewTab();
     QWebEngineView* getCurrentWebView() const;
+    void cleanupTempProfiles();
+    bool hasSymlinksPointingTo(const QString& targetPath);
 
 };
 

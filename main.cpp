@@ -4,8 +4,10 @@
 #include<QCoreApplication>
 #include<QLoggingCategory>
 #include <cstdio>
-
 //#include"securitymanager.h"
+#include"Constants.h"
+
+const char* APP_VERSION = "1.1.0";
 
 int main(int argc, char *argv[])
 {
