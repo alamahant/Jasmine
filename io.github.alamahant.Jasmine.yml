@@ -18,7 +18,11 @@ modules:
       - -DFLATPAK_BUILD=ON
       - -DCMAKE_BUILD_TYPE=Release
     sources:
-      - type: dir
-        path: .
+      - type: git
+        url: https://github.com/alamahant/Jasmine.git
+        tag: v1.2.0
+
+
+
 
 
