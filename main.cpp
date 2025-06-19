@@ -9,6 +9,8 @@
 
 const char* APP_VERSION = "1.1.0";
 
+
+
 int main(int argc, char *argv[])
 {
     //QLoggingCategory::setFilterRules("qt.webengine*=false");

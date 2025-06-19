@@ -72,6 +72,9 @@ void HelpMenuDialog::loadContent(HelpType type)
     case HelpType::onNewStorageSystem:
         content = getOnNewStorageSystemContent();
         break;
+    case HelpType::onNamedProfiles:
+        content = getOnNamedProfilesContent();
+        break;
     }
 
     m_contentArea->setHtml(content);
@@ -93,6 +96,7 @@ QString HelpMenuDialog::getTitle(HelpType type)
     case HelpType::onSitesAndSessions: return "On Sites And Sessions";
     case HelpType::onSecurity: return "On Security";
     case HelpType::onNewStorageSystem: return "On the New Storage System";
+    case HelpType::onNamedProfiles: return "On Shared Named Profiles";
 
     default: return "Help";
     }
@@ -1288,6 +1292,98 @@ QString HelpMenuDialog::getOnNewStorageSystemContent() {
         "<h4>Handling Old-Format Sessions:</h4>"
         "<p>If you have existing sessions that use the old directory-based storage, you can continue to use them. However, we strongly advise against adding new tabs or saving changes to these older sessions. To ensure optimal performance and avoid potential issues, it's best to create new sessions using the new storage system.</p>"
         );
+}
+
+QString HelpMenuDialog::getOnNamedProfilesContent()
+{
+    return QString(R"(
+        <div style="text-align: center; font-family: Arial, sans-serif;">
+            <h1 style="color: #2c3e50; margin-bottom: 10px;">Named Shared Profiles</h1>
+            <h3 style="color: #7f8c8d; margin-bottom: 20px;">Contextual Browsing Environments</h3>
+
+            <div style="text-align: left; margin: 20px 0; line-height: 1.6;">
+                <p>
+                    Jasmine's Named Shared Profiles feature takes your browsing organization to the next level by allowing
+                    multiple tabs to share the same browsing context under meaningful labels like "Work," "Home," "Shopping,"
+                    or "Research." This powerful addition bridges the gap between completely isolated private profiles and a
+                    single shared environment.
+                </p>
+
+                <div style="background-color: #ecf0f1; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="color: #2c3e50; margin-top: 0;">Examples:</h4>
+                    <ul style="margin-left: 20px;">
+                        <li><strong>Work Profile:</strong> Company email, project management tools, and internal documentation all share cookies and login states</li>
+                        <li><strong>Personal Profile:</strong> Social media and entertainment sites kept separate from work accounts</li>
+                        <li><strong>Finance Profile:</strong> Banking, investment, and budgeting tools with shared authentication</li>
+                        <li><strong>Travel Profile:</strong> Airline, hotel, and rental car sites that need to exchange booking information</li>
+                    </ul>
+                </div>
+
+                <p>
+                    This contextual grouping maintains the perfect balance between isolation and integration: your work accounts
+                    never mix with personal browsing, but related tools within each context can seamlessly communicate when needed.
+                    Named Shared Profiles eliminate the all-or-nothing approach to profile isolation, giving you granular control
+                    over exactly which tabs should share data with each other while maintaining barriers between different areas of your digital life.
+                </p>
+
+                <h3 style="color: #2c3e50; margin-top: 30px;">How to Use Named Profiles</h3>
+
+                <ol style="margin-left: 20px;">
+                    <li><strong>Create Profiles:</strong> In the profile area of the toolbar, in the profileSelector combobox select "New Profile..." and give it a meaningful name like "Work" or "Personal"</li>
+                    <li><strong>Select a Profile:</strong> Choose your desired profile from the dropdown before launching websites</li>
+                    <li><strong>Launch Websites:</strong> Any sites launched while a named profile is selected will share the same browsing context</li>
+                    <li><strong>Create Sessions:</strong> Save groups of tabs launched under the same named profile for quick restoration</li>
+                    <li><strong>Manage Profiles:</strong> Select "Manage Profiles..." to create, delete, or clean profile data</li>
+                </ol>
+
+                <div style="background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3498db;">
+                <p><strong>Note:</strong> Keeping the profile selector set to "Default" will use the universal shared profile,
+                which is the standard shared browsing environment. Private profiles (toggled per tab via the Private Toggle Button) always remain
+                completely isolated regardless of named profile selection.</p>
+
+                <p><strong>Simply put:</strong></p>
+                <ul style="margin-left: 20px;">
+                    <li>To create tabs with private profile, toggle the Private Profile button ON in the toolbar.
+                    This will inactivate the Named Profile selector.</li>
+                    <li>To use a named shared profile, untoggle the Private Profile button (if toggled) and select a previously
+                    created named shared profile from the combobox.</li>
+                    <li>Or leave it set to "Default" to use the universal profile.</li>
+                </ul>
+                </div>
+
+
+
+                <h3 style="color: #2c3e50; margin-top: 30px;">Profile Management</h3>
+                <p>
+                    You can manage your named profiles by selecting "Manage Profiles..." from the profile selector dropdown. This allows you to:
+                </p>
+                <ul style="margin-left: 20px;">
+                    <li><strong>Create new profiles</strong> for different contexts or projects</li>
+                    <li><strong>Delete profiles</strong> you no longer need (only if they're not in use by active sessions)</li>
+                    <li><strong>Clean profile data</strong> to remove cookies, cache, and browsing history while keeping the profile</li>
+                </ul>
+
+                <p>
+                    Each named profile maintains its own separate storage for:
+                </p>
+                <ul style="margin-left: 20px;">
+                    <li>Cookies and login sessions</li>
+                    <li>Browsing history and cache</li>
+                    <li>Local storage and website data</li>
+                    <li>Form data and preferences</li>
+                </ul>
+            </div>
+
+            <hr style="margin: 30px 0; border: 1px solid #bdc3c7;">
+
+            <div style="margin: 20px 0;">
+                <p style="font-size: 14px; color: #7f8c8d;">
+                    Organize your digital life with contextual browsing environments
+                </p>
+            </div>
+        </div>
+    )");
+
 }
 
 

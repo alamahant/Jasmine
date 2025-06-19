@@ -107,6 +107,18 @@
   </content_rating>
   
   <releases>
+    <release version="1.2.0" date="2025-06-20">
+      <description>
+        <p>Major Features and Improvements</p>
+        <ul>
+          <li>Named Shared Profiles: Implemented contextual browsing environments allowing multiple tabs to share the same browsing context under meaningful labels like "Work," "Home," or "Research"</li>
+          <li>Integrated Ad Blocker: Added comprehensive ad blocking functionality that can be toggled on/off via Tools menu</li>
+          <li>Enhanced Browser Headers: Implemented custom request interceptor with standardized headers for consistent browsing experience</li>
+          <li>Profile Management Tools: Added profile manager dialog for creating, deleting, and cleaning profiles with safety checks</li>
+          <li>UI Improvements: Added visual indicators for active profile and enhanced profile switching experience</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2025-06-12">
       <description>
         <ul>
@@ -114,7 +126,7 @@
           <li>Profile data now uses symbolic links instead of copying entire directories, improving performance and efficiency</li>
           <li>Added progress bar when saving sessions for better visual feedback and to prevent premature closure</li>
           <li>Implemented automatic cleanup of orphaned profile directories at startup (configurable in Tools menu)</li>
-          <li>Added help documentation explaining the new storage system benefits and recommendations - users are  kindly advised to read it carefully</li>
+          <li>Added help documentation explaining the new storage system benefits and recommendations - users are kindly advised to read it carefully</li>
         </ul>
       </description>
     </release>
@@ -164,6 +176,8 @@
     <control>pointing</control>
   </recommends>
 </component>
+
+
 
 
 

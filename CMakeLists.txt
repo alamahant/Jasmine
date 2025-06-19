@@ -38,6 +38,9 @@ qt_add_executable(Jasmine
     ${PROJECT_SOURCES}
     urlbar.h urlbar.cpp
     Constants.h
+    RequestInterceptor.h
+    simpleadblocker.h simpleadblocker.cpp
+    AdBlockScript.h
 )
 
 if(FLATPAK_BUILD)

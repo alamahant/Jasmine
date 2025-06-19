@@ -35,6 +35,9 @@
 #include"securitymanager.h"
 #include"helpmenudialog.h"
 #include"urlbar.h"
+#include"RequestInterceptor.h"
+#include "simpleadblocker.h"
+#include "AdBlockScript.h"
 
 // Session data structure
 struct SessionData {
@@ -49,6 +52,12 @@ struct SessionData {
     // New fields to track actual per-tab profile state
     QList<bool> tabHasSeparateProfile;  // Which tabs actually have separate profiles
     QStringList tabOriginalProfileNames;  // Original profile names for each tab
+
+    // Named profiles fields
+    bool usingNamedProfiles = false;
+    QString selectedProfileName;
+    QList<bool> tabHasNamedProfile;
+    QStringList tabNamedProfileNames;
 };
 
 class MainWindow : public QMainWindow
@@ -274,7 +283,29 @@ private:
     QWebEngineView* getCurrentWebView() const;
     void cleanupTempProfiles();
     bool hasSymlinksPointingTo(const QString& targetPath);
+    RequestInterceptor *interceptor = nullptr;
+    void configureBrowserSettings(QWebEngineProfile* profile);
+    // AdBlocker
+    SimpleAdBlocker *m_adBlocker;
 
+    //void setupAdBlocker(QWebEngineProfile* profile);
+    void injectAdBlockScript(QWebEnginePage *page);
+
+private:
+    // Named profiles system
+    bool m_usingNamedProfiles = false;
+    QString m_selectedProfileName;
+    QMap<QString, QWebEngineProfile*> m_namedProfiles;
+    QMap<QWebEngineView*, QString> m_tabNamedProfiles;
+    QComboBox* profileSelector = nullptr;
+    // Named profiles methods
+    QWebEngineProfile* getOrCreateNamedProfile(const QString& name);
+    void saveNamedProfilesData();
+    void loadNamedProfilesData();
+    void setupNamedProfilesUI();
+    void showProfileManager();
+    QToolBar *toolbar = nullptr;
+    QStringList profileNames;
 };
 
 #endif // MAINWINDOW_H
