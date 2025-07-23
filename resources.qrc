@@ -67,5 +67,13 @@
         <file>resources/icons-white/file-plus.svg</file>
         <file>resources/icons/search.svg</file>
         <file>resources/icons-white/search.svg</file>
+        <file>resources/icons/chevron-left.svg</file>
+        <file>resources/icons/chevron-right.svg</file>
+        <file>resources/icons-white/chevron-left.svg</file>
+        <file>resources/icons-white/chevron-right.svg</file>
+        <file>resources/icons/repeat.svg</file>
+        <file>resources/icons-white/repeat.svg</file>
+        <file>resources/icons/link.svg</file>
+        <file>resources/icons-white/link.svg</file>
     </qresource>
 </RCC>

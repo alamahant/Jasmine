@@ -7,7 +7,7 @@
 //#include"securitymanager.h"
 #include"Constants.h"
 
-const char* APP_VERSION = "1.1.0";
+const char* APP_VERSION = "1.2.1";
 
 
 

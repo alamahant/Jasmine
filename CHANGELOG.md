@@ -1,39 +1,60 @@
 # Changelog
 
+## [v1.2.1] - 2025-07-23
+
+### Bug Fixes and Improvements
+
+- **Session Profile Tagging Bug Fixed**: Resolved an issue introduced with named profiles where some tabs were not saved or displayed with the correct profile when saving sessions. Now, tabs are reliably saved and shown with their associated profile—Shared Universal, Named, or Private—according to the UI profile settings at launch time.
+
+- **Improved Security Dialogs and User Experience:**: All security-related dialogs (master password setup, password protection toggle) now include a Cancel button and properly abort the operation if Cancel or the window close (X) is pressed. This ensures that no unintended changes occur if the user cancels at any step, and toggle actions are always reverted if the process is not completed.
+
+- **Audio Support in Flatpak**: Added `pulseaudio` permission to the Flatpak manifest, enabling sound playback in the application.
+
+- **Fullscreen Video Support**: Implemented full screen functionality for embedded and standalone videos, enhancing the media viewing experience.
+
+- **Open Copied Link in New Tab**: Added a toolbar action and F11 shortcut to instantly open a copied link from the clipboard in a new tab.
+
+- **Code Optimizations and Polishes**: Performed various code improvements and optimizations for better performance, stability, and maintainability.
+
+---
+
 ## [v1.2.0] - 2025-06-20
+
 ### Major Features and Improvements
+
 - **Named Shared Profiles**: Implemented contextual browsing environments allowing multiple tabs to share the same browsing context under meaningful labels like "Work," "Home," or "Research"
-  - Create and manage multiple named profiles via toolbar dropdown
-  - Each profile maintains separate cookies, cache, and browsing data
-  - Perfect for organizing different areas of digital life while allowing related tools to communicate
-  - Easily switch between profiles with the profile selector in toolbar
-  
+- Create and manage multiple named profiles via toolbar dropdown
+- Each profile maintains separate cookies, cache, and browsing data
+- Perfect for organizing different areas of digital life while allowing related tools to communicate
+- Easily switch between profiles with the profile selector in toolbar
+
 - **Integrated Ad Blocker**: Added comprehensive ad blocking functionality
-  - Toggle ad blocking on/off via Tools menu
-  - Blocks common advertising domains and scripts
-  - Improves page load times and reduces bandwidth usage
-  - Works across all profiles (named, private, and default)
+- Toggle ad blocking on/off via Tools menu
+- Blocks common advertising domains and scripts
+- Improves page load times and reduces bandwidth usage
+- Works across all profiles (named, private, and default)
 
 - **Enhanced Browser Privacy**:
-  - Implemented custom request interceptor with standardized headers
-  - Configured secure default headers for all web requests
-  - Improved user agent consistency across browsing sessions
+- Implemented custom request interceptor with standardized headers
+- Configured secure default headers for all web requests
+- Improved user agent consistency across browsing sessions
 
 - **Profile Management Tools**:
-  - Added profile manager dialog for creating, deleting, and cleaning Named Shared Profiles
-  - Implemented named profiles data cleaning functionality to remove cookies and cache
-  - Added safety checks to prevent deleting named profiles in use by active sessions
-  - Improved named profile selection UI with clear visual indicators
+- Added profile manager dialog for creating, deleting, and cleaning Named Shared Profiles
+- Implemented named profiles data cleaning functionality to remove cookies and cache
+- Added safety checks to prevent deleting named profiles in use by active sessions
+- Improved named profile selection UI with clear visual indicators
 
 - **UI Improvements**:
-  - Added visual indicators for active Named profile
-  - Improved toolbar layout with Named profile selector
-  - Enhanced profile switching experience
-  - Better integration between private toggle and named profiles
+- Added visual indicators for active Named profile
+- Improved toolbar layout with Named profile selector
+- Enhanced profile switching experience
+- Better integration between private toggle and named profiles
 
 ---
 
 ## [v1.1.0] - 2025-06-12
+
 - Implemented a new symlink-based storage system that dramatically reduces disk space usage
 - Profile data now uses symbolic links instead of copying entire directories, improving performance, speed and efficiency
 - Added progress bar when saving sessions for better visual feedback and to prevent premature closure
@@ -44,7 +65,9 @@
 ---
 
 ## [v1.0.1] - 2025-06-07
+
 ### Enhanced UI and functionality improvements
+
 - Added fully functional URL bar with toggle visibility via eye icon in toolbar
 - New feature to create website cards directly from the currently loaded URL
 - Set dashboard to fixed size while keeping web view resizable for improved visual quality
@@ -58,7 +81,9 @@
 ---
 
 ## [v1.0.0] - 2025-06-01
+
 ### Initial release of Jasmine Website and Session Manager
+
 - Website and session management with organized card-based interface
 - Complete session management with multi-tab restoration
 - Private profile system for isolated browsing environments
@@ -69,6 +94,8 @@
 - Master password protection with SHA-256 encryption
 - Data management and privacy controls
 - Cross-platform Qt-based interface
+
+
 
 
 

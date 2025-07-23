@@ -11,6 +11,7 @@ finish-args:
   - --socket=wayland
   - --device=dri
   - --share=network
+  - --socket=pulseaudio
 modules:
   - name: jasmine
     buildsystem: cmake-ninja
@@ -20,7 +21,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/alamahant/Jasmine.git
-        tag: v1.2.0
+        tag: v1.2.1
 
 
 

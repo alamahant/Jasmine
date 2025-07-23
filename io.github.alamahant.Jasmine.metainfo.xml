@@ -3,10 +3,10 @@
   <id>io.github.alamahant.Jasmine</id>
   <name>Jasmine</name>
   <summary>Launch websites and sessions</summary>
-  
+
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  
+
   <description>
     <p>
       Jasmine is a comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace. Perfect for productivity enthusiasts and multi-account managers.
@@ -74,21 +74,21 @@
       <caption>Two-factor authentication manager for secure login codes</caption>
     </screenshot>
   </screenshots>
-  
+
   <launchable type="desktop-id">io.github.alamahant.Jasmine.desktop</launchable>
-  
+
   <url type="homepage">https://github.com/alamahant/Jasmine</url>
   <url type="bugtracker">https://github.com/alamahant/Jasmine/issues</url>
-  
+
   <developer_name>Alamahant</developer_name>
-  
+
   <categories>
     <category>Network</category>
     <category>WebBrowser</category>
     <category>Office</category>
     <category>Utility</category>
   </categories>
-  
+
   <keywords>
     <keyword>browser</keyword>
     <keyword>session</keyword>
@@ -101,12 +101,26 @@
     <keyword>2fa</keyword>
     <keyword>download</keyword>
   </keywords>
-  
+
   <content_rating type="oars-1.1">
     <content_attribute id="social-info">mild</content_attribute>
   </content_rating>
-  
+
   <releases>
+    <release version="1.2.1" date="2025-07-23">
+      <description>
+        <p>Bug Fixes and Improvements</p>
+        <ul>
+          <li>Resolved an issue introduced with named profiles where some tabs were not saved or displayed with the correct profile when saving sessions. Now, tabs are reliably saved and shown with their associated profile—Shared Universal, Named, or Private—according to the UI profile settings at launch time.</li>
+          <li>Improved security dialogs and user experience: All security-related dialogs (master password setup, password protection toggle) now include a Cancel button and properly abort the operation if Cancel or the window close (X) is pressed. This ensures that no unintended changes occur if the user cancels at any step, and toggle actions are always reverted if the process is not completed.</li>
+          <li>Added pulseaudio permission to the Flatpak manifest, enabling sound playback in the application.</li>
+          <li>Implemented full screen functionality for embedded and standalone videos, enhancing the media viewing experience.</li>
+          <li>Added a toolbar action and F11 shortcut to instantly open a copied link from the clipboard in a new tab.</li>
+          <li>Performed various code improvements and optimizations for better performance, stability, and maintainability.</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="1.2.0" date="2025-06-20">
       <description>
         <p>Major Features and Improvements</p>
@@ -119,6 +133,7 @@
         </ul>
       </description>
     </release>
+
     <release version="1.1.0" date="2025-06-12">
       <description>
         <ul>
@@ -130,6 +145,7 @@
         </ul>
       </description>
     </release>
+
     <release version="1.0.1" date="2025-06-07">
       <description>
         <p>Enhanced UI and functionality improvements</p>
@@ -144,6 +160,7 @@
         </ul>
       </description>
     </release>
+
     <release version="1.0.0" date="2025-06-01">
       <description>
         <p>Initial release of Jasmine Website and Session Manager</p>
@@ -162,20 +179,21 @@
       </description>
     </release>
   </releases>
-  
+
   <provides>
     <binary>Jasmine</binary>
   </provides>
-  
+
   <requires>
     <display_length compare="ge">768</display_length>
   </requires>
-  
+
   <recommends>
     <control>keyboard</control>
     <control>pointing</control>
   </recommends>
 </component>
+
 
 
 

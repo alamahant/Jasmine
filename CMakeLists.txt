@@ -41,6 +41,7 @@ qt_add_executable(Jasmine
     RequestInterceptor.h
     simpleadblocker.h simpleadblocker.cpp
     AdBlockScript.h
+
 )
 
 if(FLATPAK_BUILD)
@@ -52,6 +53,7 @@ target_link_libraries(Jasmine PRIVATE
     Qt6::Widgets
     Qt6::WebEngineWidgets
     Qt6::Svg
+
 )
 
 set_target_properties(Jasmine PROPERTIES

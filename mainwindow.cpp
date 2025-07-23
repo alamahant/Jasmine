@@ -34,6 +34,10 @@
 #include <QComboBox>
 #include<QProgressDialog>
 #include<QWebEngineSettings>
+#include<QClipboard>
+#include<QGuiApplication>
+#include<QRegularExpression>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 
@@ -129,7 +133,6 @@ MainWindow::MainWindow(QWidget *parent)
     QToolBar* toolbar = createToolbar();
 
 
-
     // Connect list view signals (keep for compatibility)
     connect(m_websiteList, &QListView::clicked, this, &MainWindow::onWebsiteSelected);
     connect(m_websiteList, &QListView::doubleClicked, this, &MainWindow::onWebsiteDoubleClicked);
@@ -190,7 +193,6 @@ MainWindow::MainWindow(QWidget *parent)
         // Then set up the UI
         setupNamedProfilesUI();
     });
-
 
     statusBar()->showMessage("Ready");
 }
@@ -1085,6 +1087,7 @@ void MainWindow::onDeleteWebsite() {
 }
 
 void MainWindow::onLaunchWebsite() {
+
     QModelIndex index = m_websiteList->currentIndex();
 
     if (!index.isValid()) {
@@ -1095,7 +1098,7 @@ void MainWindow::onLaunchWebsite() {
     Website website = m_model->getWebsite(index.row());
 
     // Create a new web view for the website
-    QWebEngineView *webView = new QWebEngineView(m_tabWidget);
+    QWebEngineView* webView = new QWebEngineView(m_tabWidget);
     connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
         if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
             if (sender() == currentView) {
@@ -1107,36 +1110,73 @@ void MainWindow::onLaunchWebsite() {
     QWebEngineProfile *profile;
 
     if (m_usingNamedProfiles && !m_selectedProfileName.isEmpty()) {
-        // Use named profile
+        // Use private profile
         profile = getOrCreateNamedProfile(m_selectedProfileName);
+
+        //configureProfile(profile);
+
         m_tabNamedProfiles[webView] = m_selectedProfileName;
+
     } else if (m_usingSeparateProfiles) {
         // Use separate profile
         profile = createProfileForTab();
+
+        //configureProfile(profile);
+
         m_tabProfiles[webView] = profile;
+
     } else {
         // Use shared profile
         profile = m_webProfile;
     }
 
     // Create page with the selected profile
-    QWebEnginePage *page = new QWebEnginePage(profile, webView);
+    QWebEnginePage* page = new QWebEnginePage(profile, webView);
+
+    // full screen
+
+    /*
+    connect(page, &QWebEnginePage::fullScreenRequested,
+                      this, &MainWindow::handleFullScreenRequest);
+    connect(page, &QWebEnginePage::featurePermissionRequested,
+            [page](const QUrl &requestingOrigin, QWebEnginePage::Feature feature) {
+                static QSet<QPair<QUrl, QWebEnginePage::Feature>> pendingRequests;
+                auto request = qMakePair(requestingOrigin, feature);
+
+                if (pendingRequests.contains(request)) {
+                    return;
+                }
+
+                pendingRequests.insert(request);
+
+                switch(feature) {
+                //case QWebEnginePage::Geolocation:
+                case QWebEnginePage::MediaAudioCapture:
+                case QWebEnginePage::MediaVideoCapture:
+                case QWebEnginePage::MediaAudioVideoCapture:
+                case QWebEnginePage::MouseLock:
+                case QWebEnginePage::DesktopVideoCapture:
+                case QWebEnginePage::DesktopAudioVideoCapture:
+                case QWebEnginePage::Notifications:
+                    page->setFeaturePermission(requestingOrigin, feature,
+                                               QWebEnginePage::PermissionGrantedByUser);
+                    break;
+                default:
+                    break;
+                }
+
+                pendingRequests.remove(request);
+            });
+        */
+    enableFullScreen(page);
+
+
+    //full screen
+
     webView->setPage(page);
 
-
-    // Apply ad blocker if enabled
-    if (m_adBlocker && m_adBlocker->isEnabled()) {
-        injectAdBlockScript(page);
-    }
-
-
-    if (m_usingSeparateProfiles) {
-        connect(profile, &QWebEngineProfile::downloadRequested,
-                downloadManager, &DownloadManager::handleDownloadRequest);
-    }
-
-
     // Add new tab for this website FIRST
+
     int tabIndex = m_tabWidget->addTab(webView, website.title);
 
     // Set the tab icon if we already have a favicon
@@ -1146,6 +1186,7 @@ void MainWindow::onLaunchWebsite() {
     showWebViews();
     // Set the current tab
     m_tabWidget->setCurrentIndex(tabIndex);
+
     // NOW load the URL (after switching views)
     webView->setUrl(QUrl(website.url));
 
@@ -1159,9 +1200,7 @@ void MainWindow::onLaunchWebsite() {
         cleanupTabProfile(webView);
     });
 
-
     connect(webView, &QWebEngineView::iconChanged, this, [this, websiteIndex = index.row(), webView](const QIcon &icon) {
-
 
         updateWebsiteIcon(websiteIndex, icon);
 
@@ -1180,9 +1219,7 @@ void MainWindow::onLaunchWebsite() {
         // Disconnect ALL iconChanged signals from this webView to this MainWindow
         disconnect(webView, &QWebEngineView::iconChanged, this, nullptr);
     });
-
     statusBar()->showMessage("Launched: " + website.title, 3000);
-
 }
 
 void MainWindow::onClearForm() {
@@ -1322,6 +1359,7 @@ void MainWindow::populateFormFromWebsite(const Website &website) {
     }
 }
 
+
 void MainWindow::showDashboard() {
     // Save current web view size before switching
     if (m_stackedWidget->currentWidget() == m_webViewContainer) {
@@ -1330,6 +1368,7 @@ void MainWindow::showDashboard() {
 
     // Switch to dashboard
     m_stackedWidget->setCurrentWidget(m_dashboardWidget);
+
     if (this->isMaximized()) {
         this->setWindowState(Qt::WindowNoState);
     }
@@ -1338,13 +1377,16 @@ void MainWindow::showDashboard() {
     this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
 
     m_stackedWidget->update();
-    m_toggleViewAction->setText("To WebView");
+
+    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-right.svg"));
+    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
+
+    m_toggleViewAction->setToolTip("Switch to Webview");
     setWindowTitle("Jasmine");
+
     m_urlBar->setVisible(false); // Hide URLBar when in dashboard
 
-    // Always keep the toggle button enabled
     m_toggleViewAction->setEnabled(true);
-    // Update tab count
     updateTabCountStatus();
 }
 
@@ -1367,25 +1409,23 @@ void MainWindow::showWebViews() {
 
     updateUrlBarState();
 
+    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-left.svg"));
+    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
 
-    m_toggleViewAction->setText("To Dashboard");
+    m_toggleViewAction->setToolTip("Switch to Dashboard");
     setWindowTitle("Jasmine - Web Browser");
 
-    // Always keep the toggle button enabled
     m_toggleViewAction->setEnabled(true);
-    // Update tab count
     updateTabCountStatus();
-
     QWebEngineView* currentView = getCurrentWebView();
-
     if (currentView) {
         QTimer::singleShot(0, this, [this, currentView]() {
             currentView->updateGeometry();
             currentView->update();
         });
     }
-
 }
+
 
 QWebEngineView* MainWindow::getCurrentWebView() const {
     if (m_tabWidget && m_tabWidget->currentWidget()) {
@@ -1468,17 +1508,19 @@ void MainWindow::createMenus() {
     QMenu* navigateMenu = menuBar()->addMenu("Navigate");
     QMenu* sessionMenu = menuBar()->addMenu("Sessions");
     QMenu* toolsMenu = menuBar()->addMenu("Tools");
-    QMenu* helpMenu = menuBar()->addMenu("Help");
+    //QMenu* helpMenu = menuBar()->addMenu("Help");
 
     //security menu
     m_securityManager->setupSecurityMenu(menuBar());
+    QMenu* helpMenu = menuBar()->addMenu("Help");
 
     // Add existing toolbar actions to menus
     fileMenu->addAction(m_addCurrentSessionAction);
     fileMenu->addSeparator();
     fileMenu->addAction(m_addWebsiteFromUrlAction);
     fileMenu->addAction(m_screenshotAction);
-    fileMenu->addAction(m_openDownloadsFolderAction);
+
+
     fileMenu->addSeparator();
 
     editMenu->addAction(m_copyUrlAction);
@@ -1816,7 +1858,6 @@ void MainWindow::saveSessionsData() {
 }
 
 
-
 void MainWindow::loadSession(const QString& name) {
     if (!m_sessions.contains(name)) {
         QMessageBox::warning(this, "Session Not Found", "Could not find session: " + name);
@@ -1824,33 +1865,6 @@ void MainWindow::loadSession(const QString& name) {
     }
 
     SessionData session = m_sessions[name];
-
-    // Set the profile mode to what it was when session was saved
-    m_usingSeparateProfiles = session.usingSeparateProfiles;
-    m_usingNamedProfiles = session.usingNamedProfiles;
-    m_selectedProfileName = session.selectedProfileName;
-
-    // Update UI to reflect profile settings
-    if (m_separateProfilesToggle) {
-        m_separateProfilesToggle->setChecked(m_usingSeparateProfiles);
-        m_separateProfilesToggle->setText(m_usingSeparateProfiles ? "ON" : "OFF");
-    }
-
-    // Update named profiles UI if needed
-    if (profileSelector) {
-        profileSelector->setEnabled(!m_usingSeparateProfiles);
-
-        // Set the correct profile in the selector
-        if (!m_selectedProfileName.isEmpty()) {
-            int index = profileSelector->findData(m_selectedProfileName);
-            if (index >= 0) {
-                profileSelector->setCurrentIndex(index);
-            }
-        } else {
-            profileSelector->setCurrentIndex(0); // Default
-        }
-    }
-
     // Restore tabs based on their actual profile state
     for (int i = 0; i < session.openTabUrls.size(); i++) {
         QWebEngineView* webView = new QWebEngineView(m_tabWidget);
@@ -1871,62 +1885,43 @@ void MainWindow::loadSession(const QString& name) {
         if (tabHadNamedProfile) {
             // This tab used a named profile
             QString profileName = session.tabNamedProfileNames[i];
-            profile = getOrCreateNamedProfile(profileName);
-            m_tabNamedProfiles[webView] = profileName;
 
-            // Connect cleanup for named profile reference
+            profile = getOrCreateNamedProfile(profileName);
+
+            m_tabNamedProfiles[webView] = profileName;
             connect(webView, &QObject::destroyed, this, [this, webView]() {
                 m_tabNamedProfiles.remove(webView);
             });
         }
-        // Check if THIS specific tab had a separate profile when saved
+        // Check if tab had separate profile
+        else if (i < session.tabHasSeparateProfile.size() && session.tabHasSeparateProfile[i]) {
+            // Restore the tab's specific profile
+            QString sessionProfileName = "Session_" + name + "_Tab_" + QString::number(i);
+            QString sessionProfilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+                                         "/profiles/" + sessionProfileName;
+            profile = new QWebEngineProfile(sessionProfileName, this);
+
+            configureProfile(profile);
+
+            profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
+            profile->setPersistentStoragePath(sessionProfilePath);
+            profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
+            profile->setCachePath(sessionProfilePath + "/cache");
+
+            m_tabProfiles[webView] = profile;
+
+            connect(webView, &QObject::destroyed, this, [this, webView]() {
+                cleanupTabProfile(webView);
+            });
+        }
         else {
-            bool tabHadSeparateProfile = (i < session.tabHasSeparateProfile.size()) ?
-                                             session.tabHasSeparateProfile[i] : false;
+            // This tab used the shared profile
+            profile = m_webProfile;
 
-            if (tabHadSeparateProfile) {
-                // This tab had its own profile - restore it
-                QString sessionProfileName = "Session_" + name + "_Tab_" + QString::number(i);
-                QString sessionProfilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
-                                             "/profiles/" + sessionProfileName;
-
-                profile = new QWebEngineProfile(sessionProfileName, this);
-                profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
-                profile->setPersistentStoragePath(sessionProfilePath);
-                profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
-                profile->setCachePath(sessionProfilePath + "/cache");
-
-                m_tabProfiles[webView] = profile;
-
-                // Connect cleanup for separate profile
-                connect(webView, &QObject::destroyed, this, [this, webView]() {
-                    cleanupTabProfile(webView);
-                });
-            } else if (m_usingNamedProfiles && !m_selectedProfileName.isEmpty()) {
-                // Use the session's named profile
-                profile = getOrCreateNamedProfile(m_selectedProfileName);
-                m_tabNamedProfiles[webView] = m_selectedProfileName;
-
-                // Connect cleanup
-                connect(webView, &QObject::destroyed, this, [this, webView]() {
-                    m_tabNamedProfiles.remove(webView);
-                });
-            } else if (m_usingSeparateProfiles) {
-                // Create a new separate profile
-                profile = createProfileForTab();
-                m_tabProfiles[webView] = profile;
-
-                // Connect cleanup
-                connect(webView, &QObject::destroyed, this, [this, webView]() {
-                    cleanupTabProfile(webView);
-                });
-            } else {
-                // This tab used the shared profile
-                profile = m_webProfile;
-            }
         }
 
         QWebEnginePage* page = new QWebEnginePage(profile, webView);
+        enableFullScreen(page);
         webView->setPage(page);
 
         // Add the tab
@@ -2061,27 +2056,22 @@ void MainWindow::onSaveSession(){
     }
 }
 
-
-
 void MainWindow::saveSession(const QString& name) {
-    // Don't save if name is empty
     if (name.isEmpty()) {
         return;
     }
-    // Don't save if no tabs are open
     if (m_tabWidget->count() == 0) {
         QMessageBox::information(this, "No Tabs", "Cannot save session - no tabs are currently open.");
         return;
     }
-    // Show progress dialog and disable tab operations
+
+
     QProgressDialog progressDialog("Saving session...", "Cancel", 0, 0, this);
     progressDialog.setWindowModality(Qt::WindowModal);
     progressDialog.setMinimumDuration(0);
-    progressDialog.setCancelButton(nullptr); // No cancel button
+    progressDialog.setCancelButton(nullptr);
     progressDialog.show();
-    // Disable tab widget to prevent user interaction
     m_tabWidget->setEnabled(false);
-    // Process events to show the dialog
     QApplication::processEvents();
 
     SessionData session;
@@ -2091,56 +2081,49 @@ void MainWindow::saveSession(const QString& name) {
     session.usingNamedProfiles = m_usingNamedProfiles;
     session.selectedProfileName = m_selectedProfileName;
 
-    // First, force all web views to save their state
     for (int i = 0; i < m_tabWidget->count(); i++) {
         QWebEngineView* view = qobject_cast<QWebEngineView*>(m_tabWidget->widget(i));
         if (view) {
             QWebEngineProfile* profile = view->page()->profile();
-            // Force profile to write pending data
-            profile->clearHttpCache(); // This forces a sync
+            profile->clearHttpCache();
         }
     }
 
-    // Wait for data to be written
     QEventLoop loop;
     QTimer::singleShot(2000, &loop, &QEventLoop::quit);
     loop.exec();
 
-    // Now store open tabs and create symlinks for profile data
     for (int i = 0; i < m_tabWidget->count(); i++) {
         QWebEngineView* view = qobject_cast<QWebEngineView*>(m_tabWidget->widget(i));
         if (view) {
             session.openTabUrls.append(view->url().toString());
             session.openTabTitles.append(m_tabWidget->tabText(i));
-            // Store the favicon
-            QIcon icon = m_tabWidget->tabIcon(i);
-            session.openTabIcons.append(icon);
+            session.openTabIcons.append(m_tabWidget->tabIcon(i));
 
-            // Check if this tab uses a named profile
-            bool tabHasNamedProfile = m_tabNamedProfiles.contains(view);
-            session.tabHasNamedProfile.append(tabHasNamedProfile);
+            QWebEngineProfile* currentProfile = view->page()->profile();
+            if (m_tabNamedProfiles.contains(view)) {
+            }
 
-            if (tabHasNamedProfile) {
-                // This tab uses a named profile
+            // First check for named profile
+            if (m_tabNamedProfiles.contains(view)) {
                 QString profileName = m_tabNamedProfiles[view];
                 session.tabNamedProfileNames.append(profileName);
-                // Get the profile
+                session.tabHasNamedProfile.append(true);
+                session.tabHasSeparateProfile.append(false);
                 QWebEngineProfile* namedProfile = m_namedProfiles[profileName];
                 QString currentPath = namedProfile->persistentStoragePath();
-                // Follow symlink chain to get the final target
+
                 QFileInfo pathInfo(currentPath);
                 while (pathInfo.isSymLink()) {
                     currentPath = pathInfo.symLinkTarget();
                     pathInfo.setFile(currentPath);
                 }
 
-                // Create a session-specific profile name and path for named profile
                 QString sessionProfileName = "Session_" + name + "_NamedProfile_" + profileName + "_Tab_" + QString::number(i);
                 QString sessionProfilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
                                              "/profiles/sessions/" + sessionProfileName;
                 QDir().mkpath(QFileInfo(sessionProfilePath).dir().absolutePath());
 
-                // Remove existing symlink/directory if it exists
                 QFileInfo destInfo(sessionProfilePath);
                 if (destInfo.exists()) {
                     if (destInfo.isSymLink()) {
@@ -2150,40 +2133,32 @@ void MainWindow::saveSession(const QString& name) {
                     }
                 }
 
-                // Create symlink to the final target (not to another symlink)
                 if (QFile::link(currentPath, sessionProfilePath)) {
-                    // Successfully created symlink
+                    session.tabOriginalProfileNames.append("");
                 } else {
                     qWarning() << "Failed to create symlink for named profile tab" << i
                                << "from" << currentPath << "to" << sessionProfilePath;
                 }
-
-                // No need to set tabHasSeparateProfile or tabOriginalProfileNames for this tab
-                session.tabHasSeparateProfile.append(false);
-                session.tabOriginalProfileNames.append("");
             }
-            // Check if THIS specific tab actually has a separate profile
+            // Then check for separate/private profile
             else if (m_tabProfiles.contains(view)) {
-                bool tabHasSeparateProfile = true;
-                session.tabHasSeparateProfile.append(tabHasSeparateProfile);
+                session.tabHasSeparateProfile.append(true);
+                session.tabHasNamedProfile.append(false);
                 session.tabNamedProfileNames.append("");
 
-                // This tab has its own profile - create symlink
                 QWebEngineProfile* currentProfile = m_tabProfiles[view];
                 QString currentPath = currentProfile->persistentStoragePath();
-                // Follow symlink chain to get the final target
+
                 QFileInfo pathInfo(currentPath);
                 while (pathInfo.isSymLink()) {
                     currentPath = pathInfo.symLinkTarget();
                     pathInfo.setFile(currentPath);
                 }
 
-                // Create a session-specific profile name and path
                 QString sessionProfileName = "Session_" + name + "_Tab_" + QString::number(i);
                 QString sessionProfilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
                                              "/profiles/" + sessionProfileName;
 
-                // Remove existing symlink/directory if it exists
                 QFileInfo destInfo(sessionProfilePath);
                 if (destInfo.exists()) {
                     if (destInfo.isSymLink()) {
@@ -2193,7 +2168,6 @@ void MainWindow::saveSession(const QString& name) {
                     }
                 }
 
-                // Create symlink to the final target (not to another symlink)
                 if (QFile::link(currentPath, sessionProfilePath)) {
                     session.tabOriginalProfileNames.append(currentProfile->storageName());
                 } else {
@@ -2201,16 +2175,17 @@ void MainWindow::saveSession(const QString& name) {
                                << "from" << currentPath << "to" << sessionProfilePath;
                     session.tabOriginalProfileNames.append("");
                 }
-            } else {
-                // This tab uses the shared profile
+            }
+            // Must be shared profile if not in either map
+            else {
                 session.tabHasSeparateProfile.append(false);
+                session.tabHasNamedProfile.append(false);
                 session.tabNamedProfileNames.append("");
-                session.tabOriginalProfileNames.append("");  // Empty string indicates shared profile
+                session.tabOriginalProfileNames.append("");
             }
         }
     }
 
-    // Generate session icon
     session.icon = generateRandomSvgIcon();
     QString iconDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/session_icons/";
     if (!QDir(iconDir).exists()) {
@@ -2220,30 +2195,21 @@ void MainWindow::saveSession(const QString& name) {
     QPixmap pixmap = session.icon.pixmap(64, 64);
     pixmap.save(iconPath, "PNG");
 
-    // Save to sessions map
     m_sessions[name] = session;
     m_currentSessionName = name;
-
-    // Save to disk
     saveSessionsData();
-
-    // Update UI
     updateSessionCards();
 
-    // Re-enable tab widget
     m_tabWidget->setEnabled(true);
-
-    // Close progress dialog
     progressDialog.close();
 
-    // Show success message
     QMessageBox::information(this, "Session Saved",
                              QString("Session '%1' has been saved successfully with %2 tabs.")
                                  .arg(name).arg(m_tabWidget->count()));
-
-    // Update status
     statusBar()->showMessage("Session saved: " + name);
 }
+
+
 
 
 
@@ -2364,8 +2330,10 @@ QWebEngineProfile* MainWindow::createProfileForTab(int tabIndex, const QString& 
 
 
     QWebEngineProfile* profile = new QWebEngineProfile(profileName, this);
-    profile->setUrlRequestInterceptor(interceptor);
-    configureBrowserSettings(profile);
+
+
+    configureProfile(profile);
+
     profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
     profile->setPersistentStoragePath(profilePath);
     profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
@@ -2818,10 +2786,11 @@ QFrame* MainWindow::createSessionDetailPanel() {
     return panel;
 }
 
+
+
 void MainWindow::populateSessionForm(const SessionData &session) {
     m_sessionNameInput->setText(session.name);
     m_sessionTimestampLabel->setText(session.timestamp.toString("yyyy-MM-dd hh:mm"));
-
     // Display the session icon
     if (!session.icon.isNull()) {
         QPixmap pixmap = session.icon.pixmap(50, 50);
@@ -2832,26 +2801,20 @@ void MainWindow::populateSessionForm(const SessionData &session) {
         m_sessionIconLabel->setText("No Icon");
         m_sessionIconLabel->setAlignment(Qt::AlignCenter);
     }
-
     // Display comments
     m_sessionCommentsEdit->setPlainText(session.comments);
-
     // Clear and populate the tabs list
     m_sessionTabsDisplay->clear();
     QString iconDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/session_icons/";
-
     for (int i = 0; i < session.openTabUrls.size(); i++) {
         QString title = session.openTabTitles[i];
         QString url = session.openTabUrls[i];
-
         // Determine profile type for this tab
         QString profileInfo;
         QString profileTooltip;
-
         // Check if this tab has a named profile
         bool hasNamedProfile = (i < session.tabHasNamedProfile.size()) ?
                                    session.tabHasNamedProfile[i] : false;
-
         if (hasNamedProfile) {
             // This tab uses a named profile
             QString profileName = (i < session.tabNamedProfileNames.size()) ?
@@ -2862,27 +2825,24 @@ void MainWindow::populateSessionForm(const SessionData &session) {
             // Check if this tab has a separate profile
             bool hasSeparateProfile = (i < session.tabHasSeparateProfile.size()) ?
                                           session.tabHasSeparateProfile[i] : false;
-
             if (hasSeparateProfile) {
                 profileInfo = " [Private Profile]";
                 profileTooltip = "Private Profile";
             } else {
-                // Using the shared profile or session's named profile
-                if (session.usingNamedProfiles && !session.selectedProfileName.isEmpty()) {
-                    profileInfo = " [Session Profile: " + session.selectedProfileName + "]";
-                    profileTooltip = "Session Profile: " + session.selectedProfileName;
+                // New logic: if tab has no named profile name, it's always shared
+                if (i < session.tabNamedProfileNames.size() && !session.tabNamedProfileNames[i].isEmpty()) {
+                    profileInfo = " [Named Profile: " + session.tabNamedProfileNames[i] + "]";
+                    profileTooltip = "Named Profile: " + session.tabNamedProfileNames[i];
                 } else {
                     profileInfo = " [Shared Profile]";
                     profileTooltip = "Shared Profile";
                 }
             }
         }
-
         // Create item with title, URL, and profile info
         QListWidgetItem* item = new QListWidgetItem();
         item->setText(title + profileInfo + "\n" + url);
         item->setToolTip(url + "\nProfile: " + profileTooltip);
-
         // Load saved tab icon first
         QString tabIconPath = iconDir + session.name + "_tab_" + QString::number(i) + ".png";
         if (QFile::exists(tabIconPath)) {
@@ -2898,10 +2858,8 @@ void MainWindow::populateSessionForm(const SessionData &session) {
                 }
             }
         }
-
         m_sessionTabsDisplay->addItem(item);
     }
-
     // Enable edit/delete/load buttons
     m_sessionDeleteButton->setEnabled(true);
     m_sessionLoadButton->setEnabled(true);
@@ -3043,7 +3001,10 @@ QToolBar* MainWindow::createToolbar() {
     // Add separator
     toolbar->addSeparator();
 
-    m_toggleViewAction = new QAction(QIcon(":/resources/icons/monitor.svg"), "Dashboard");
+    //m_toggleViewAction = new QAction(QIcon(":/resources/icons/monitor.svg"), "Dashboard");
+    //m_toggleViewAction = new QAction(QIcon(":/resources/icons/chevron-right.svg"), "Dashboard");
+    m_toggleViewAction = new QAction(QIcon(":/resources/icons/repeat.svg"), "Dashboard");
+
     m_toggleViewAction->setToolTip("Switch between Dashboard and Web View");
 
     // Create a custom tool button that will display both icon and text
@@ -3068,10 +3029,6 @@ QToolBar* MainWindow::createToolbar() {
     // Add close all tabs button - always visible
     m_closeAllTabsAction = toolbar->addAction(QIcon(":/resources/icons/x.svg"), "Close All Tabs");
     m_closeAllTabsAction->setToolTip("Close All Open Tabs");
-
-
-
-
 
     //seperateprofiles toggle
     toolbar->addSeparator();
@@ -3182,15 +3139,37 @@ QToolBar* MainWindow::createToolbar() {
     m_open2faManagerAction = toolbar->addAction(QIcon(":/resources/icons/shield.svg"), "2FAManager");
     m_open2faManagerAction->setToolTip("Open 2FA Manager");
     connect(m_open2faManagerAction, &QAction::triggered, this, &MainWindow::on_Open2faManager);
-    //show URLbar chevron action
+
+    // Open Copied Link in New Tab action
     toolbar->addSeparator();
+    m_openCopiedLinkAction = toolbar->addAction(QIcon(":/resources/icons/link.svg"), "Open Copied Link in New Tab");
+
+    m_openCopiedLinkAction->setToolTip("Open copied link in a new tab - F11");
+    m_openCopiedLinkAction->setShortcut(QKeySequence(Qt::Key_F11));
+    m_openCopiedLinkAction->setShortcutContext(Qt::ApplicationShortcut);
+    // Connect the action
+    connect(m_openCopiedLinkAction, &QAction::triggered, [this]() {
+        QString clipboardText = QGuiApplication::clipboard()->text().trimmed();
+        QRegularExpression urlRegex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*$)", QRegularExpression::CaseInsensitiveOption);
+
+        if (urlRegex.match(clipboardText).hasMatch()) {
+            createNewTabWithUrl(clipboardText);
+        } else {
+            QMessageBox::warning(this, tr("Invalid Link"), tr("Clipboard does not contain a valid link."));
+        }
+    });
+
     // URLBar toggle action
+    toolbar->addSeparator();
     m_toggleUrlBarAction = toolbar->addAction(QIcon(":/resources/icons/eye.svg"), "Show URL Bar");
     m_toggleUrlBarAction->setToolTip("Toggle URL Bar Visibility");
 
     // Connect the toggle
     connect(m_toggleUrlBarAction, &QAction::triggered, [this]() {
+        QWidget* current = m_stackedWidget->currentWidget();
+
         if (m_stackedWidget->currentWidget() != m_webViewContainer) {
+
             QMessageBox::information(this, "URL Bar Toggle",
                                      "The URL bar is only visible in Web View mode.");
             return;
@@ -3203,14 +3182,7 @@ QToolBar* MainWindow::createToolbar() {
 
     connect(m_openDownloadsFolderAction, &QAction::triggered, this, &MainWindow::openDownloadsFolder);
 
-    // Connect separate profiles toggle
-    /*
-    connect(m_separateProfilesToggle, &QPushButton::toggled, [this](bool checked) {
-        m_usingSeparateProfiles = checked;
-        m_separateProfilesToggle->setText(checked ? "ON" : "OFF");
-        m_separateProfilesToggle->setToolTip(checked ? "Using private profile" : "Using shared profile");
-    });
-    */
+
 
     connect(m_separateProfilesToggle, &QPushButton::toggled, [this](bool checked) {
         m_usingSeparateProfiles = checked;
@@ -3343,8 +3315,6 @@ QToolBar* MainWindow::createToolbar() {
         }
     });
 
-
-
     return toolbar;
 }
 
@@ -3352,9 +3322,14 @@ void MainWindow::toggleView() {
     if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
         // Currently in dashboard, switch to web view
         m_stackedWidget->setCurrentWidget(m_webViewContainer);
-        //m_toggleViewAction->setText("To Dashboard");
+        /*
+        if (m_isDarkTheme) {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/chevron-left.svg"));
+        } else {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-left.svg"));
+        }
+        */
         m_toggleViewAction->setToolTip("Switch to Dashboard");
-        updateTabCountStatus();
         setWindowTitle("Jasmine - Web Browser");
 
         // Allow resizing in web view
@@ -3365,37 +3340,42 @@ void MainWindow::toggleView() {
         if (!m_savedWebViewSize.isEmpty()) {
             this->resize(m_savedWebViewSize);
         } else {
-            //this->resize(1130, 800);
             this->resize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
-
         }
 
         m_stackedWidget->update();
+
     } else {
         // Currently in web view, switch to dashboard
         m_savedWebViewSize = this->size();
-
         m_stackedWidget->setCurrentWidget(m_dashboardWidget);
         if (this->isMaximized()) {
             this->setWindowState(Qt::WindowNoState);
         }
 
         // Lock dashboard size - prevents all resizing including drag
-        //this->setFixedSize(1130, 800);
         this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+        /*
+        if (m_isDarkTheme) {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/chevron-right.svg"));
+        } else {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-right.svg"));
+        }
+        */
 
-        //m_toggleViewAction->setText("To WebView");
         m_toggleViewAction->setToolTip("Switch to Webview");
-
-        updateTabCountStatus();
         setWindowTitle("Jasmine");
-        m_stackedWidget->update();
+
         m_urlBar->setVisible(false);
+
+        m_stackedWidget->update();
     }
+
     updateUrlBarState();
     m_toggleViewAction->setEnabled(true);
     updateTabCountStatus();
 }
+
 
 void MainWindow::onAddCurrentWebsite()
 {
@@ -3828,7 +3808,16 @@ QString MainWindow::loadDarkTheme(){
         m_zoomInAction->setIcon(QIcon(":/resources/icons-white/zoom-in.svg"));
         m_zoomOutAction->setIcon(QIcon(":/resources/icons-white/zoom-out.svg"));
         m_copyUrlAction->setIcon(QIcon(":/resources/icons-white/copy.svg"));
-        m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/monitor.svg"));
+        m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/repeat.svg"));
+        m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons-white/link.svg"));
+        /*
+        if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/chevron-right.svg"));
+        } else {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/chevron-left.svg"));
+        }
+        */
+
         m_downloadsAction->setIcon(QIcon(":/resources/icons-white/download.svg"));
         m_closeAllTabsAction->setIcon(QIcon(":/resources/icons-white/x.svg"));
         m_screenshotAction->setIcon(QIcon(":/resources/icons-white/camera.svg"));
@@ -3869,7 +3858,16 @@ QString MainWindow::loadLightTheme(){
         m_zoomInAction->setIcon(QIcon(":/resources/icons/zoom-in.svg"));
         m_zoomOutAction->setIcon(QIcon(":/resources/icons/zoom-out.svg"));
         m_copyUrlAction->setIcon(QIcon(":/resources/icons/copy.svg"));
-        m_toggleViewAction->setIcon(QIcon(":/resources/icons/monitor.svg"));
+        m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
+        m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons/link.svg"));
+
+        /*
+        if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-right.svg"));
+        } else {
+            m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-left.svg"));
+        }
+        */
         m_downloadsAction->setIcon(QIcon(":/resources/icons/download.svg"));
         m_closeAllTabsAction->setIcon(QIcon(":/resources/icons/x.svg"));
         m_screenshotAction->setIcon(QIcon(":/resources/icons/camera.svg"));
@@ -3999,8 +3997,7 @@ void MainWindow::updateUrlBarState() {
     bool inWebView = (m_stackedWidget->currentWidget() == m_webViewContainer);
     bool urlBarVisible = m_urlBar->isVisible();
 
-    // Enable/disable toggle button based on view mode
-    m_toggleUrlBarAction->setEnabled(inWebView);
+
 
     // Update tooltip based on current state
     if (inWebView) {
@@ -4128,20 +4125,27 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
     });
     // Determine which profile to use
     QWebEngineProfile *profile;
-    if (m_usingSeparateProfiles) {
+
+
+
+    if (m_usingNamedProfiles && !m_selectedProfileName.isEmpty()) {
+        profile = getOrCreateNamedProfile(m_selectedProfileName);
+        m_tabNamedProfiles[webView] = m_selectedProfileName;
+    } else if (m_usingSeparateProfiles) {
         profile = createProfileForTab();
         m_tabProfiles[webView] = profile;
+
     } else {
         profile = m_webProfile;
     }
+
+
+
     // Create page with the selected profile
     QWebEnginePage *page = new QWebEnginePage(profile, webView);
+    enableFullScreen(page);
     webView->setPage(page);
-    // Connect downloads to download manager
-    if (m_usingSeparateProfiles) {
-        connect(profile, &QWebEngineProfile::downloadRequested,
-                downloadManager, &DownloadManager::handleDownloadRequest);
-    }
+
     // Add new tab
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
     showWebViews();
@@ -4194,20 +4198,26 @@ void MainWindow::createNewTab() {
     });
     // Determine which profile to use
     QWebEngineProfile *profile;
-    if (m_usingSeparateProfiles) {
+
+
+
+    if (m_usingNamedProfiles && !m_selectedProfileName.isEmpty()) {
+        profile = getOrCreateNamedProfile(m_selectedProfileName);
+        m_tabNamedProfiles[webView] = m_selectedProfileName;
+    } else if (m_usingSeparateProfiles) {
         profile = createProfileForTab();
         m_tabProfiles[webView] = profile;
+
     } else {
         profile = m_webProfile;
     }
+
+
     // Create page with the selected profile
     QWebEnginePage *page = new QWebEnginePage(profile, webView);
+    enableFullScreen(page);
     webView->setPage(page);
-    // Connect downloads to download manager
-    if (m_usingSeparateProfiles) {
-        connect(profile, &QWebEngineProfile::downloadRequested,
-                downloadManager, &DownloadManager::handleDownloadRequest);
-    }
+
     // Add new tab
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
     showWebViews();
@@ -4280,51 +4290,70 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
 {
     // === Profile Settings ===
 
-    // Set user agent
-    //profile->setHttpUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+    // Set user agent (uncomment to override default)
+    // profile->setHttpUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
     // Enable persistent storage (cookies, cache, etc.)
-    //profile->setPersistentStoragePath(QDir::homePath() + "/.myapp/browser_data");
-    //profile->setPersistentCookiesPolicy(QWebEngineProfile::AllowPersistentCookies);
+    // profile->setPersistentStoragePath(QDir::homePath() + "/.myapp/browser_data");
+    // profile->setPersistentCookiesPolicy(QWebEngineProfile::AllowPersistentCookies);
 
     // Configure cache
-    //profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
-    //profile->setCachePath(QDir::homePath() + "/.myapp/browser_cache");
+    // profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
+    // profile->setCachePath(QDir::homePath() + "/.myapp/browser_cache");
 
     // Set download path
-    //profile->setDownloadPath(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
 #ifdef FLATPAK_BUILD
     profile->setDownloadPath(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads");
 #else
     profile->setDownloadPath(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine");
 #endif
-    // === General Settings ===
-    QWebEngineSettings *settings = profile->settings();
 
-    // JavaScript settings
-    settings->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
-    //settings->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows, true);  // Can be false to block popups
-    settings->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
-    settings->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, true);
+    // === General WebEngine Settings ===
+    QWebEngineSettings* settings = profile->settings();
 
-    // Content settings
-    settings->setAttribute(QWebEngineSettings::AutoLoadImages, true);
-    settings->setAttribute(QWebEngineSettings::WebGLEnabled, true);
-    settings->setAttribute(QWebEngineSettings::PluginsEnabled, true);
-    settings->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
+    // --- JavaScript ---
+    settings->setAttribute(QWebEngineSettings::JavascriptEnabled, true); // Enable JavaScript
+    settings->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows, true); // Block popups (set true for compatibility, but can be abused)
+    settings->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, false); // v Allow JS clipboard access (potential privacy risk)
+    settings->setAttribute(QWebEngineSettings::JavascriptCanPaste, false); // v Allow JS paste (potential privacy risk)
+    settings->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, false); // Allow JS to activate windows (can be abused for popups)
+    settings->setAttribute(QWebEngineSettings::ReadingFromCanvasEnabled, true); //  Allow reading from canvas (can be used for fingerprinting)
 
-    // Privacy settings
-    settings->setAttribute(QWebEngineSettings::LocalStorageEnabled, true);
-    settings->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
-    settings->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, false);  // Security measure
-    settings->setAttribute(QWebEngineSettings::XSSAuditingEnabled, true);  // Protection against XSS attacks
+    // --- Content ---
+    settings->setAttribute(QWebEngineSettings::AutoLoadImages, true); //  Load images automatically
+    // Enable auto loading of icons for pages (favicons)
+    settings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, true);
+    settings->setAttribute(QWebEngineSettings::WebGLEnabled, true); // Enable WebGL (potential fingerprinting vector)
+    settings->setAttribute(QWebEngineSettings::PluginsEnabled, true); // Enable plugins (can be a security risk)
+    settings->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true); // Allow fullscreen API
+    settings->setAttribute(QWebEngineSettings::PdfViewerEnabled, true); // Enable built-in PDF viewer
 
-    // Media settings
-    //settings->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false);  // Allow autoplay
-    //settings->setAttribute(QWebEngineSettings::WebAudioEnabled, true);
-    settings->setAttribute(QWebEngineSettings::ShowScrollBars, true);
+    // --- Privacy & Security ---
+    settings->setAttribute(QWebEngineSettings::LocalStorageEnabled, true); // Enable HTML5 local storage (can be used for tracking)
+    settings->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, false); // Allow local files to access remote URLs (security risk)
+    settings->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, false); //  Allow local files to access other local files (security risk)
+    settings->setAttribute(QWebEngineSettings::XSSAuditingEnabled, true); // Enable XSS protection
+    settings->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, false); // Disable hyperlink auditing (privacy improvement)
+    settings->setAttribute(QWebEngineSettings::DnsPrefetchEnabled, true); //  Enable DNS prefetching (improves speed, but can leak visited domains)
 
-    // Font settings
+    // --- Media ---
+    settings->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false); // Allow autoplay (can be annoying)
+    settings->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, true); // Allow screen capture (security risk if abused)
+    settings->setAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly, true); // Restrict WebRTC to public interfaces (privacy improvement)
+
+    // --- UI/UX ---
+    settings->setAttribute(QWebEngineSettings::ShowScrollBars, true); // Show scrollbars
+    settings->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled, false); // Do not focus on navigation by default
+    settings->setAttribute(QWebEngineSettings::PrintElementBackgrounds, true); // Print backgrounds
+    settings->setAttribute(QWebEngineSettings::TouchIconsEnabled, true); // Enable touch icons
+    settings->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, true); // Enable smooth scrolling
+    settings->setAttribute(QWebEngineSettings::SpatialNavigationEnabled, false); // Disable spatial navigation (enable for TV-like interfaces)
+    settings->setAttribute(QWebEngineSettings::LinksIncludedInFocusChain, false); // Exclude links from focus chain
+    settings->setAttribute(QWebEngineSettings::ErrorPageEnabled, true); // Show error pages
+    settings->setAttribute(QWebEngineSettings::ForceDarkMode, false); // Do not force dark mode
+
+    // --- Fonts ---
     settings->setFontFamily(QWebEngineSettings::StandardFont, "Arial");
     settings->setFontFamily(QWebEngineSettings::FixedFont, "Courier New");
     settings->setFontFamily(QWebEngineSettings::SerifFont, "Times New Roman");
@@ -4333,34 +4362,38 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     settings->setFontSize(QWebEngineSettings::DefaultFixedFontSize, 13);
     settings->setFontSize(QWebEngineSettings::MinimumFontSize, 10);
 
-    // PDF settings
-    settings->setAttribute(QWebEngineSettings::PdfViewerEnabled, true);
+    // --- Additional/Optional Settings (commented out for reference) ---
 
-    // Modern web features
-    settings->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled, true);
-    settings->setAttribute(QWebEngineSettings::PrintElementBackgrounds, true);
-    settings->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, false);  // Security measure
-    settings->setAttribute(QWebEngineSettings::ErrorPageEnabled, true);
-    settings->setAttribute(QWebEngineSettings::TouchIconsEnabled, true);
-    settings->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, true);
+    // Enable accelerated 2D canvas for better performance
+    settings->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, true);
 
-    // Spatial navigation (for TV-like interfaces)
-    settings->setAttribute(QWebEngineSettings::SpatialNavigationEnabled, false);
 
-    // === Additional Configuration ===
 
-    // Set custom URL scheme handlers if needed
+    // Enable hyperlink auditing (ping attribute, optional)
+    //settings->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, true);
+
+    // Enable navigation on drop (drag-and-drop URLs)
+    //settings->setAttribute(QWebEngineSettings::NavigateOnDropEnabled, true);
+
+    // Set Unknown URL Scheme Policy (handle custom protocols, e.g., mailto:)
+    //settings->setUnknownUrlSchemePolicy(QWebEngineSettings::AllowUnknownUrlSchemesFromUserInteraction);
+
+    // Optionally, set image animation policy (Qt 6.8+)
+    // settings->setImageAnimationPolicy(QWebEngineSettings::ImageAnimationPolicy::Allow);
+
+
+    // --- Custom URL Scheme Handlers (uncomment and implement as needed) ---
     // m_webProfile->installUrlSchemeHandler("app", new AppSchemeHandler(this));
 
-    // Configure client certificate storage
+    // --- Client Certificate Storage (uncomment and implement as needed) ---
     // m_webProfile->setClientCertificateStore(...);
 
-    // Set up custom request interceptor
-    //RequestInterceptor *interceptor = new RequestInterceptor(this);
-    //m_webProfile->setUrlRequestInterceptor(interceptor);
+    // --- Custom Request Interceptor (uncomment and implement as needed) ---
+    // RequestInterceptor* interceptor = new RequestInterceptor(this);
+    // m_webProfile->setUrlRequestInterceptor(interceptor);
 
-// Configure proxy if needed
-/*
+    // --- Proxy Configuration (uncomment and configure as needed) ---
+    /*
     QNetworkProxy proxy;
     proxy.setType(QNetworkProxy::HttpProxy);
     proxy.setHostName("proxy.example.com");
@@ -4368,12 +4401,22 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     QNetworkProxy::setApplicationProxy(proxy);
     */
 
-// Configure spell checker (Qt 5.8+)
-#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-    //profile->setSpellCheckEnabled(true);
-    //profile->setSpellCheckLanguages(QStringList() << "en-US");
-#endif
+    // --- Spell Checker (Qt 5.8+) ---
+    /*
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+    profile->setSpellCheckEnabled(true);
+    profile->setSpellCheckLanguages(QStringList() << "en-US");
+    #endif
+    */
+
+    // --- Security Notes ---
+    // - Enabling LocalContentCanAccessRemoteUrls and LocalContentCanAccessFileUrls can expose local files or allow local HTML to make network requests. Only enable if you trust your content.
+    // - PluginsEnabled and WebGLEnabled can increase attack surface or fingerprinting risk.
+    // - Allowing JavaScript clipboard access, screen capture, or autoplay can be abused by malicious sites.
+    // - Review all enabled features for your application's threat model.
 }
+
+
 
 void MainWindow::injectAdBlockScript(QWebEnginePage *page)
 {
@@ -4401,21 +4444,14 @@ QWebEngineProfile* MainWindow::getOrCreateNamedProfile(const QString& name) {
                           "/profiles/named/" + name;
 
     QWebEngineProfile* profile = new QWebEngineProfile(name, this);
-
-    // Apply the same settings as your separate profiles
-    if (m_adBlocker && m_adBlocker->isEnabled()) {
-        profile->setUrlRequestInterceptor(m_adBlocker);
-    }
+    // add attributes
+    configureProfile(profile);
 
     // Configure the profile
     profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
     profile->setPersistentStoragePath(profilePath);
     profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
     profile->setCachePath(profilePath + "/cache");
-
-    // Connect download manager
-    connect(profile, &QWebEngineProfile::downloadRequested,
-            downloadManager, &DownloadManager::handleDownloadRequest);
 
     // Store in our map
     m_namedProfiles[name] = profile;
@@ -4434,7 +4470,7 @@ void MainWindow::saveNamedProfilesData() {
     settings.setValue("namedProfiles/usingNamedProfiles", m_usingNamedProfiles);
 
     // Save selected profile
-    settings.setValue("namedProfiles/selectedProfile", m_selectedProfileName);
+    //settings.setValue("namedProfiles/selectedProfile", m_selectedProfileName);
 }
 
 void MainWindow::loadNamedProfilesData() {
@@ -4444,13 +4480,14 @@ void MainWindow::loadNamedProfilesData() {
     m_usingNamedProfiles = settings.value("namedProfiles/usingNamedProfiles", false).toBool();
 
     // Load selected profile
-    m_selectedProfileName = settings.value("namedProfiles/selectedProfile", "").toString();
+    //m_selectedProfileName = settings.value("namedProfiles/selectedProfile", "").toString();
+    m_selectedProfileName = "";
 
     // Load list of profile names
     profileNames = settings.value("namedProfiles/profiles", QStringList()).toStringList();
 
     // Create profile objects for each name
-   for (const QString& name : profileNames) {
+    for (const QString& name : profileNames) {
         getOrCreateNamedProfile(name);
     }
 }
@@ -4706,6 +4743,126 @@ void MainWindow::showProfileManager() {
     dialog.exec();
 }
 
+
+void MainWindow::handleFullScreenRequest(QWebEngineFullScreenRequest request)
+{
+    qDebug() << "Fullscreen request received:" << request.toggleOn();
+
+    QWebEngineView* webView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
+    if (!webView)
+        return;
+
+    request.accept();
+
+    if (request.toggleOn()) {
+        enterTheaterMode(webView);
+    } else {
+        exitTheaterMode(webView);
+    }
+}
+
+void MainWindow::enterTheaterMode(QWebEngineView* webView)
+{
+    if (m_isInTheaterMode || !webView)
+        return;
+
+    m_isInTheaterMode = true;
+    m_theaterWebView = webView;
+    m_lastTabIndex = m_tabWidget->indexOf(webView);
+
+    // Maximize the main window, but do not go fullscreen
+    showMaximized();
+    showWebViews();
+
+    toolbar->setVisible(false);
+    menuBar()->setVisible(false);
+    m_urlBar->setVisible(false);
+    statusBar()->setVisible(false);
+
+    m_tabWidget->tabBar()->setVisible(false);
+
+}
+
+void MainWindow::exitTheaterMode(QWebEngineView* webView)
+{
+    if (!m_isInTheaterMode || !m_theaterWebView)
+        return;
+
+    //showNormal();
+    showDashboard();
+    showWebViews();
+
+    toolbar->setVisible(true);
+    menuBar()->setVisible(true);
+    m_urlBar->setVisible(false);
+    statusBar()->setVisible(true);
+    m_tabWidget->tabBar()->setVisible(true);
+
+
+    // Clean up state
+    m_isInTheaterMode = false;
+    m_theaterWebView = nullptr;
+}
+
+
+
+
+void MainWindow::configureProfile(QWebEngineProfile *profile)
+{
+    profile->setUrlRequestInterceptor(interceptor);
+    if (m_adBlocker && m_adBlocker->isEnabled()) {
+        profile->setUrlRequestInterceptor(m_adBlocker);
+    }
+    connect(profile, &QWebEngineProfile::downloadRequested,
+            downloadManager, &DownloadManager::handleDownloadRequest);
+    configureBrowserSettings(profile);
+
+}
+
+void MainWindow::enableFullScreen(QWebEnginePage *page)
+{
+    connect(page, &QWebEnginePage::fullScreenRequested,
+            this, &MainWindow::handleFullScreenRequest);
+    /*
+
+    connect(page, &QWebEnginePage::featurePermissionRequested,
+            [page](const QUrl &requestingOrigin, QWebEnginePage::Feature feature) {
+                static QSet<QPair<QUrl, QWebEnginePage::Feature>> pendingRequests;
+                auto request = qMakePair(requestingOrigin, feature);
+
+                if (pendingRequests.contains(request)) {
+                    return;
+                }
+
+                pendingRequests.insert(request);
+
+                switch(feature) {
+                //case QWebEnginePage::Geolocation:
+
+                //case QWebEnginePage::MediaAudioCapture:
+
+                //case QWebEnginePage::MediaVideoCapture:
+
+                //case QWebEnginePage::MediaAudioVideoCapture:
+
+                //case QWebEnginePage::MouseLock:
+
+                //case QWebEnginePage::DesktopVideoCapture:
+
+                //case QWebEnginePage::DesktopAudioVideoCapture:
+
+                //case QWebEnginePage::Notifications:
+                    page->setFeaturePermission(requestingOrigin, feature, QWebEnginePage::PermissionGrantedByUser);
+                    break;
+                default:
+                    break;
+                }
+
+                pendingRequests.remove(request);
+            });
+            */
+
+}
 
 
 

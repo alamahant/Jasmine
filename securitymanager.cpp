@@ -30,7 +30,7 @@ bool SecurityManager::isPasswordProtectionEnabled() const
 {
     return m_settings.value("security/passwordProtectionEnabled", false).toBool();
 }
-
+/*
 void SecurityManager::onTogglePasswordProtection(bool enabled)
 {
     if (enabled) {
@@ -61,6 +61,58 @@ void SecurityManager::onTogglePasswordProtection(bool enabled)
         }
     }
 }
+*/
+
+void SecurityManager::onTogglePasswordProtection(bool enabled)
+{
+    if (enabled) {
+        // Show info about enabling password protection, with Cancel option
+        QMessageBox msgBox(QMessageBox::Information,
+                           "Password Protection",
+                           "🔒 Enabling Password Protection\n\n"
+                           "Jasmine will now require a master password on startup.\n"
+                           "This helps protect your saved websites and data.",
+                           QMessageBox::Ok | QMessageBox::Cancel,
+                           m_parent);
+        int infoResult = msgBox.exec();
+        if (infoResult != QMessageBox::Ok) {
+            // User cancelled or closed dialog, revert the toggle
+            m_requirePasswordAction->setChecked(false);
+            return;
+        }
+
+        // Enabling password protection - need to set master password if not set
+        if (!m_settings.contains("security/masterPasswordHash")) {
+            setMasterPassword();
+            // If user cancels in setMasterPassword, it will revert the toggle and return
+            // So we should check if the password was actually set
+            if (!m_settings.contains("security/masterPasswordHash")) {
+                m_requirePasswordAction->setChecked(false);
+                return;
+            }
+        }
+
+        m_settings.setValue("security/passwordProtectionEnabled", true);
+
+    } else {
+        // Disabling password protection, with Cancel option
+        QMessageBox msgBox(QMessageBox::Question,
+                           "Disable Password Protection",
+                           "Are you sure you want to disable password protection?\n"
+                           "This will make your data accessible without a password.",
+                           QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                           m_parent);
+        msgBox.setDefaultButton(QMessageBox::No);
+        int ret = msgBox.exec();
+        if (ret == QMessageBox::Yes) {
+            m_settings.setValue("security/passwordProtectionEnabled", false);
+        } else {
+            // User cancelled or chose No, revert the action
+            m_requirePasswordAction->setChecked(true);
+            return;
+        }
+    }
+}
 
 
 
@@ -80,7 +132,7 @@ bool SecurityManager::promptForMasterPassword()
 
     return hashedInput == storedHash;
 }
-
+/*
 void SecurityManager::setMasterPassword(bool isEdit)
 {
     QMessageBox::information(m_parent, "Set Master Password",
@@ -125,6 +177,76 @@ void SecurityManager::setMasterPassword(bool isEdit)
                              "Master password has been set successfully.\n"
                              "Jasmine will now require this password on startup.");
 }
+*/
+
+void SecurityManager::setMasterPassword(bool isEdit)
+{
+    // Show security notice with Cancel option
+    QMessageBox msgBox(QMessageBox::Information,
+                       "Set Master Password",
+                       "⚠️ IMPORTANT SECURITY NOTICE ⚠️\n\n"
+                       "You are about to set a master password.\n\n"
+                       "• Choose a strong, memorable password\n"
+                       "• Write it down in a safe place\n"
+                       "• If you forget it, you'll need to factory reset\n\n"
+                       "Click OK to continue...",
+                       QMessageBox::Ok | QMessageBox::Cancel,
+                       m_parent);
+    int noticeResult = msgBox.exec();
+    if (noticeResult != QMessageBox::Ok) {
+        // User cancelled or closed dialog
+        m_requirePasswordAction->setChecked(false);
+        return;
+    }
+
+    // Prompt for new password
+    bool ok = false;
+    QString password = QInputDialog::getText(
+        m_parent,
+        "Set Master Password",
+        "Enter new master password:",
+        QLineEdit::Password,
+        "",
+        &ok
+        );
+    if (!ok) {
+        // User cancelled or closed dialog
+        m_requirePasswordAction->setChecked(false);
+        return;
+    }
+
+    // Confirm password
+    ok = false;
+    QString confirmPassword = QInputDialog::getText(
+        m_parent,
+        "Confirm Master Password",
+        "Confirm your master password:",
+        QLineEdit::Password,
+        "",
+        &ok
+        );
+    if (!ok) {
+        // User cancelled or closed dialog
+        m_requirePasswordAction->setChecked(false);
+        return;
+    }
+
+    if (password != confirmPassword) {
+        QMessageBox::warning(m_parent, "Password Mismatch",
+                             "Passwords do not match. Please try again.");
+        m_requirePasswordAction->setChecked(false);
+        return;
+    }
+
+    // Save hashed password
+    QString hashedPassword = hashPassword(password);
+    m_settings.setValue("security/masterPasswordHash", hashedPassword);
+
+    QMessageBox::information(m_parent, "Password Set Successfully",
+                             "Master password has been set successfully.\n"
+                             "Jasmine will now require this password on startup.");
+}
+
 
 
 QString SecurityManager::hashPassword(const QString& password)

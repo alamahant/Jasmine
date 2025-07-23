@@ -38,6 +38,8 @@
 #include"RequestInterceptor.h"
 #include "simpleadblocker.h"
 #include "AdBlockScript.h"
+#include<QWebEngineFullScreenRequest>
+#include<QShortcut>
 
 // Session data structure
 struct SessionData {
@@ -114,7 +116,6 @@ private:
     QAction* m_webBackAction;
     QAction* m_webForwardAction;
     QAction* m_webReloadAction;
-
     // Modern UI Components
     QTabWidget* m_leftPanelTabs;
     QScrollArea* m_websitesScrollArea;
@@ -306,6 +307,27 @@ private:
     void showProfileManager();
     QToolBar *toolbar = nullptr;
     QStringList profileNames;
+
+
+public slots:
+    void handleFullScreenRequest(QWebEngineFullScreenRequest request);
+private:
+    //full screen needed vars
+    int m_lastTabIndex = -1;
+
+    QWebEngineView* m_theaterWebView = nullptr;
+    QWebEngineView* m_normalWebView = nullptr;
+
+    bool m_isInTheaterMode = false;
+
+private slots:
+    void enterTheaterMode(QWebEngineView* webView);
+    void exitTheaterMode(QWebEngineView* webView);
+
+private:
+    void configureProfile(QWebEngineProfile* profile);
+    void enableFullScreen(QWebEnginePage* page);
+    QAction* m_openCopiedLinkAction;
 };
 
 #endif // MAINWINDOW_H
