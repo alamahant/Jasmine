@@ -1,6 +1,8 @@
 # 🌸 Jasmine
 **Website & Session Manager**
 
+![Jasmine Screenshot](screenshots/MoreSessions.png)
+
 A comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace.
 
 ## 📋 Table of Contents
