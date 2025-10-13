@@ -21,6 +21,7 @@ A comprehensive web launcher and session management application that transforms 
 **Built with:** Qt Framework  
 **Platform:** Cross-platform  
 - [Flatpak](https://flathub.org/en/apps/io.github.alamahant.Jasmine)
+- [Linux AppImage and Windows Deploy](https://github.com/alamahant/Jasmine/releases/latest)
 
 Jasmine combines bookmarking, multi-tab session handling, flexible browsing profiles, and integrated web utilities into one streamlined tool. Perfect for productivity enthusiasts and multi-account managers.
 
