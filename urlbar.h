@@ -17,6 +17,8 @@ public:
     void updateTheme(bool isDarkTheme);
     QUrl getSearchUrl() const;
 
+    QString getCurrentEngine() const;
+
 signals:
     void urlChanged(const QString &url);
     void backRequested();
@@ -53,6 +55,7 @@ private:
     QPushButton *m_addWebsiteButton;
     QPushButton *m_openTabButton;
     QComboBox *m_searchEngineCombo;
+    QString currentEngine;
 };
 
 #endif // URLBAR_H

@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Qt6 components (WebEngine is provided by BaseApp)
 find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 set(QT_VERSION_MAJOR 6)
 
 set(PROJECT_SOURCES
@@ -41,6 +42,11 @@ qt_add_executable(Jasmine
     RequestInterceptor.h
     simpleadblocker.h simpleadblocker.cpp
     AdBlockScript.h
+    mywebpage.h mywebpage.cpp
+    cosmeticfilterinjector.h cosmeticfilterinjector.cpp
+    donationdialog.cpp donationdialog.h
+    donationdialog.cpp donationdialog.h
+    donationdialog.cpp donationdialog.h
 
 )
 
@@ -55,6 +61,7 @@ target_link_libraries(Jasmine PRIVATE
     Qt6::Svg
 
 )
+target_link_libraries(Jasmine PRIVATE Qt6::Core)
 
 set_target_properties(Jasmine PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}

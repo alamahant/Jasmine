@@ -14,7 +14,7 @@ DownloadWindow::DownloadWindow(QWidget *parent)
 #ifdef FLATPAK_BUILD
     m_downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads";
 #else
-    m_downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Downloads";
+    m_downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
 #endif
     setupUI();
     updateEmptyState();

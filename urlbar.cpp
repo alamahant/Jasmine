@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QApplication>
 #include <QClipboard>
+#include<QSettings>
 
 URLBar::URLBar(QWidget *parent)
     : QWidget(parent)
@@ -50,7 +51,7 @@ void URLBar::setupUI()
     // Create URL input
     m_urlInput = new QLineEdit();
     m_urlInput->setObjectName("formInput");
-    m_urlInput->setPlaceholderText("Enter URL...");
+    m_urlInput->setPlaceholderText("Enter URL or Search Term...");
     m_urlInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     // make it readonly
     //m_urlInput->setReadOnly(true);
@@ -103,6 +104,15 @@ void URLBar::setupUI()
 
     // Initially disable navigation buttons
     updateButtonStates();
+
+    QSettings settings;
+    QString savedEngine = settings.value("searchEngine").toString();
+    if (!savedEngine.isEmpty()) {
+        int index = m_searchEngineCombo->findText(savedEngine);
+        if (index != -1)
+            m_searchEngineCombo->setCurrentIndex(index);
+    }
+
 }
 
 void URLBar::setupConnections()
@@ -184,6 +194,11 @@ void URLBar::updateButtonStates()
     //m_forwardButton->setEnabled(false);
 }
 
+QString URLBar::getCurrentEngine() const
+{
+    return m_searchEngineCombo->currentText();
+}
+
 void URLBar::updateTheme(bool isDarkTheme) {
     QString iconPath = isDarkTheme ? ":/resources/icons-white/" : ":/resources/icons/";
 
@@ -215,8 +230,8 @@ void URLBar::onOpenNewTab()
 }
 
 void URLBar::onSearchEngineChanged(const QString &text) {
-    // Do something when search engine changes
-    // Maybe emit a signal or update UI
+    QSettings settings;
+    settings.setValue("searchEngine", text);
     emit searchEngineChanged(text);
 }
 

@@ -20,7 +20,9 @@ enum class HelpType {
     onSitesAndSessions,
     onSecurity,
     onNewStorageSystem,
-    onNamedProfiles
+    onNamedProfiles,
+    onChangelog,
+    supportUs
 };
 
 class HelpMenuDialog : public QDialog
@@ -50,6 +52,9 @@ private:
     QString getOnSecurityContent();
     QString getOnNewStorageSystemContent();
     QString getOnNamedProfilesContent();
+    QString getChangelogContent();
+
+    QString getSupportusContent();
 
     QVBoxLayout *m_layout;
     QTextEdit *m_contentArea;

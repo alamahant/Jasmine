@@ -1,5 +1,17 @@
 # Changelog
 
+## [v1.2.2] - 2025-10-31
+
+### Bug Fixes and Improvements
+
+- **Custom Context Menu Implementation**: Subclassed QWebEnginePage and created a fully functional custom context menu with enhanced functionality and improved user experience.
+
+- **Consistent Profile Linking**: Ensured links opened from a tab share the same profile type as the calling tab, maintaining profile consistency across navigation and new tab operations.
+
+- **Code Polishes and Improvements**: Performed various code optimizations, refactoring, and maintenance improvements for better performance, stability, and maintainability.
+
+---
+
 ## [v1.2.1] - 2025-07-23
 
 ### Bug Fixes and Improvements

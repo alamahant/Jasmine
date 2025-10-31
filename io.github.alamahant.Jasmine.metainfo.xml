@@ -107,6 +107,18 @@
   </content_rating>
 
   <releases>
+
+<release version="1.2.2" date="2025-10-31">
+  <description>
+    <p>Bug Fixes and Improvements</p>
+    <ul>
+      <li>Subclassed QWebEnginePage and created a fully functional custom context menu with enhanced functionality and improved user experience.</li>
+      <li>Ensured links opened from a tab share the same profile type as the calling tab, maintaining profile consistency across navigation and new tab operations.</li>
+      <li>Performed various code optimizations, refactoring, and maintenance improvements for better performance, stability, and maintainability.</li>
+    </ul>
+  </description>
+</release>
+
     <release version="1.2.1" date="2025-07-23">
       <description>
         <p>Bug Fixes and Improvements</p>

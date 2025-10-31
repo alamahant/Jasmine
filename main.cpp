@@ -7,8 +7,7 @@
 //#include"securitymanager.h"
 #include"Constants.h"
 
-const char* APP_VERSION = "1.2.1";
-
+const char* APP_VERSION = "1.2.2";
 
 
 int main(int argc, char *argv[])
@@ -29,13 +28,15 @@ int main(int argc, char *argv[])
 #endif
 */
 
+
+
     QApplication a(argc, argv);
 #ifdef FLATPAK_BUILD
     QCoreApplication::setApplicationName("Jasmine");
     QCoreApplication::setOrganizationName("");
 #else
     QCoreApplication::setApplicationName("Jasmine-local");
-    QCoreApplication::setOrganizationName("");
+    QCoreApplication::setOrganizationName("Jasmine-local");
 #endif
     MainWindow w;
     // Check password protection before showing window

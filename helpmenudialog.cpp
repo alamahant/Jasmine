@@ -20,6 +20,8 @@ void HelpMenuDialog::setupUI()
 
     m_contentArea = new QTextEdit(this);
     m_contentArea->setReadOnly(true);
+   // m_contentArea->setAcceptRichText(true);
+
 
     m_closeButton = new QPushButton("Close", this);
     connect(m_closeButton, &QPushButton::clicked, this, &QDialog::accept);
@@ -75,7 +77,14 @@ void HelpMenuDialog::loadContent(HelpType type)
     case HelpType::onNamedProfiles:
         content = getOnNamedProfilesContent();
         break;
+    case HelpType::onChangelog:
+        content = getChangelogContent();
+        break;
+    case HelpType::supportUs:
+        content = getSupportusContent();
+        break;
     }
+
 
     m_contentArea->setHtml(content);
 }
@@ -97,6 +106,9 @@ QString HelpMenuDialog::getTitle(HelpType type)
     case HelpType::onSecurity: return "On Security";
     case HelpType::onNewStorageSystem: return "On the New Storage System";
     case HelpType::onNamedProfiles: return "On Shared Named Profiles";
+    case HelpType::onChangelog: return "Changelog";
+
+    case HelpType::supportUs: return "Support Us";
 
     default: return "Help";
     }
@@ -133,16 +145,20 @@ QString HelpMenuDialog::getAboutContent() {
                 <p style="margin: 5px 0;"><strong>Built with:</strong> Qt Framework</p>
                 <p style="margin: 5px 0;"><strong>Platform:</strong> Cross-platform</p>
             </div>
-            <div style="margin: 30px 0;">
-                <h4 style="color: #2c3e50;">Key Features</h4>
-                <p style="text-align: left; margin: 10px 20px;">
-                    • Smart bookmarking with favicons and metadata<br>
-                    • Multi-tab session management<br>
-                    • Private profile isolation for multi-account support<br>
-                    • Built-in download manager and screenshot capture<br>
-                    • 2FA integration and login reference storage
-                </p>
-            </div>
+<div style="margin: 30px 0;">
+    <h4 style="color: #2c3e50;">Key Features</h4>
+    <p style="text-align: left; margin: 10px 20px;">
+        • Smart bookmarking with favicons and metadata<br>
+        • Multi-tab session management<br>
+        • Private profile isolation for multi-account support<br>
+        • Built-in download manager and screenshot capture<br>
+        • 2FA integration and login reference storage
+    </p>
+    <p>Available for Linux, Windows, Macos and Flatpak.</p>
+    <p><a href="https://github.com/alamahant/Asteria/releases/latest" style="color: #3498db; text-decoration: none; font-weight: bold;">
+        https://github.com/alamahant/Jasmine/releases/latest
+    </a></p>
+</div>
             <hr style="margin: 30px 0; border: 1px solid #bdc3c7;">
             <div style="margin: 20px 0;">
                 <p style="margin: 5px 0; color: #7f8c8d;">
@@ -1383,6 +1399,70 @@ QString HelpMenuDialog::getOnNamedProfilesContent()
             </div>
         </div>
     )");
+
+}
+
+QString HelpMenuDialog::getChangelogContent()
+{
+    return QString(
+        "<h3>Changelog</h3>"
+
+        "<h4>[v1.2.2] - 2025-10-31</h4>"
+        "<ul>"
+        "<li><b>Custom Context Menu Implementation:</b> Subclassed QWebEnginePage and created a fully functional custom context menu with enhanced functionality and improved user experience.</li>"
+        "<li><b>Consistent Profile Linking:</b> Ensured links opened from a tab share the same profile type as the calling tab, maintaining profile consistency across navigation and new tab operations.</li>"
+        "<li><b>Code Polishes and Improvements:</b> Performed various code optimizations, refactoring, and maintenance improvements for better performance, stability, and maintainability.</li>"
+        "</ul>"
+
+        "<h4>[v1.2.1] - 2025-07-23</h4>"
+        "<ul>"
+        "<li><b>Session Profile Tagging Bug Fixed:</b> Resolved an issue introduced with named profiles where some tabs were not saved or displayed with the correct profile when saving sessions. Now, tabs are reliably saved and shown with their associated profile—Shared Universal, Named, or Private—according to the UI profile settings at launch time.</li>"
+        "<li><b>Improved Security Dialogs and User Experience:</b> All security-related dialogs (master password setup, password protection toggle) now include a Cancel button and properly abort the operation if Cancel or the window close (X) is pressed. This ensures that no unintended changes occur if the user cancels at any step, and toggle actions are always reverted if the process is not completed.</li>"
+        "<li><b>Audio Support in Flatpak:</b> Added `pulseaudio` permission to the Flatpak manifest, enabling sound playback in the application.</li>"
+        "<li><b>Fullscreen Video Support:</b> Implemented full screen functionality for embedded and standalone videos, enhancing the media viewing experience.</li>"
+        "<li><b>Open Copied Link in New Tab:</b> Added a toolbar action and F11 shortcut to instantly open a copied link from the clipboard in a new tab.</li>"
+        "<li><b>Code Optimizations and Polishes:</b> Performed various code improvements and optimizations for better performance, stability, and maintainability.</li>"
+        "</ul>"
+
+        "<h4>[v1.2.0] - 2025-06-20</h4>"
+        "<ul>"
+        "<li><b>Named Shared Profiles:</b> Implemented contextual browsing environments allowing multiple tabs to share the same browsing context under meaningful labels like \"Work,\" \"Home,\" or \"Research\"</li>"
+        "<li><b>Integrated Ad Blocker:</b> Added comprehensive ad blocking functionality with toggle option in Tools menu</li>"
+        "<li><b>Enhanced Browser Privacy:</b> Implemented custom request interceptor with standardized headers and secure default headers</li>"
+        "<li><b>Profile Management Tools:</b> Added profile manager dialog for creating, deleting, and cleaning Named Shared Profiles</li>"
+        "<li><b>UI Improvements:</b> Added visual indicators for active Named profile and improved toolbar layout</li>"
+        "</ul>"
+
+        "<h4>[v1.1.0] - 2025-06-12</h4>"
+        "<ul>"
+        "<li><b>New Symlink-Based Storage System:</b> Dramatically reduces disk space usage by using symbolic links instead of copying entire directories</li>"
+        "<li><b>Progress Bar for Session Saving:</b> Added visual feedback to prevent premature closure during session saves</li>"
+        "<li><b>Automatic Cleanup:</b> Implemented cleanup of orphaned profile directories at startup (configurable in Tools menu)</li>"
+        "<li><b>Help Documentation:</b> Added documentation explaining the new storage system benefits and recommendations</li>"
+        "</ul>"
+
+        "<h4>[v1.0.1] - 2025-06-07</h4>"
+        "<ul>"
+        "<li><b>Enhanced UI and Functionality:</b> Added fully functional URL bar with toggle visibility</li>"
+        "<li><b>Website Card Creation:</b> New feature to create website cards directly from currently loaded URL</li>"
+        "<li><b>Fixed Dashboard Size:</b> Set dashboard to fixed size while keeping web view resizable</li>"
+        "<li><b>Theme Improvements:</b> Enhanced theme handling for help menu items</li>"
+        "<li><b>Bug Fixes:</b> Fixed critical QWebEngineView resizing bugs and website card update button connections</li>"
+        "</ul>"
+
+        "<h4>[v1.0.0] - 2025-06-01</h4>"
+        "<ul>"
+        "<li><b>Initial Release:</b> Jasmine Website and Session Manager</li>"
+        "<li><b>Core Features:</b> Website and session management with card-based interface, multi-tab restoration, private profile system</li>"
+        "<li><b>Security:</b> Master password protection with SHA-256 encryption, two-factor authentication (2FA) code generator</li>"
+        "<li><b>Productivity:</b> Built-in download manager, screenshot capture, multi-account support</li>"
+        "</ul>"
+    );
+}
+
+QString HelpMenuDialog::getSupportusContent()
+{
+    return QString();
 
 }
 

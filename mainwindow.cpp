@@ -37,9 +37,15 @@
 #include<QClipboard>
 #include<QGuiApplication>
 #include<QRegularExpression>
+#include<QWebEngineContextMenuRequest>
+#include<QWebEngineScript>
+#include<QWebEngineScriptCollection>
+#include"donationdialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent),
+      page(nullptr),
+      devToolsView(new QWebEngineView)
 
 {
 
@@ -195,6 +201,8 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     statusBar()->showMessage("Ready");
+
+
 }
 
 MainWindow::~MainWindow() {
@@ -527,6 +535,36 @@ QWidget* MainWindow::createWebViewContainer() {
             }
         }
     });
+
+    //
+    /*
+    connect(page, &MyWebPage::newTabRequested, this, [this](QWebEngineView *view, QWebEngineProfile *profile){
+        qDebug() << "newtabrequesed signal received\n";
+        // Add the new view as a tab
+        int idx = m_tabWidget->addTab(view, "New Tab");
+        m_tabWidget->setCurrentIndex(idx);
+
+        // Register the profile
+        m_tabProfiles[view] = profile;
+
+        // Optional: connect title updates
+        MyWebPage *newPage = qobject_cast<MyWebPage*>(view->page());
+        if(newPage) {
+            connect(newPage, &MyWebPage::titleChangedExternally, this, [=](const QString &title){
+                int tIdx = m_tabWidget->indexOf(view);
+                if(tIdx != -1) m_tabWidget->setTabText(tIdx, title);
+            });
+        }
+    });
+    */
+
+    connect(page, &MyWebPage::newTabRequested, this, [this](QWebEngineView *view, QWebEngineProfile *){
+        // Just use your existing method
+        createNewTabWithUrlFromLink(view->url().toString(), view);
+    });
+
+    //
+
 
     m_tabWidget->setTabsClosable(true);
     m_tabWidget->setDocumentMode(true);
@@ -1131,49 +1169,13 @@ void MainWindow::onLaunchWebsite() {
     }
 
     // Create page with the selected profile
-    QWebEnginePage* page = new QWebEnginePage(profile, webView);
+    page = new MyWebPage(profile, webView);
 
     // full screen
-
-    /*
-    connect(page, &QWebEnginePage::fullScreenRequested,
-                      this, &MainWindow::handleFullScreenRequest);
-    connect(page, &QWebEnginePage::featurePermissionRequested,
-            [page](const QUrl &requestingOrigin, QWebEnginePage::Feature feature) {
-                static QSet<QPair<QUrl, QWebEnginePage::Feature>> pendingRequests;
-                auto request = qMakePair(requestingOrigin, feature);
-
-                if (pendingRequests.contains(request)) {
-                    return;
-                }
-
-                pendingRequests.insert(request);
-
-                switch(feature) {
-                //case QWebEnginePage::Geolocation:
-                case QWebEnginePage::MediaAudioCapture:
-                case QWebEnginePage::MediaVideoCapture:
-                case QWebEnginePage::MediaAudioVideoCapture:
-                case QWebEnginePage::MouseLock:
-                case QWebEnginePage::DesktopVideoCapture:
-                case QWebEnginePage::DesktopAudioVideoCapture:
-                case QWebEnginePage::Notifications:
-                    page->setFeaturePermission(requestingOrigin, feature,
-                                               QWebEnginePage::PermissionGrantedByUser);
-                    break;
-                default:
-                    break;
-                }
-
-                pendingRequests.remove(request);
-            });
-        */
-    enableFullScreen(page);
-
-
-    //full screen
+    configurePage(page);
 
     webView->setPage(page);
+    setupCustomContextMenu(webView, profile);
 
     // Add new tab for this website FIRST
 
@@ -1280,6 +1282,9 @@ void MainWindow::onTabCloseRequested(int index) {
     // Get the web view to be closed
     QWidget* widget = m_tabWidget->widget(index);
     QWebEngineView* webView = qobject_cast<QWebEngineView*>(widget);
+
+
+
 
     // Clean up the profile if this specific tab has a separate profile
     if (webView && m_tabProfiles.contains(webView)) {
@@ -1597,6 +1602,9 @@ void MainWindow::createMenus() {
     QAction* onSecurityAction = helpMenu->addAction("On Security");
     QAction* onNewStorageAction = helpMenu->addAction("On the New Storage System");
     QAction* onNamedProfilesAction = helpMenu->addAction("On Named Shared Profiles");
+    QAction* showChangelogAction = helpMenu->addAction("Changelog");
+
+    QAction* supportusAction = helpMenu->addAction("Support Us");
 
     // Set shortcuts
     exitAction->setShortcut(QKeySequence::Quit);
@@ -1730,6 +1738,30 @@ void MainWindow::createMenus() {
             dialog.exec();
         }
     });
+
+    connect(showChangelogAction, &QAction::triggered, [this]() {
+        HelpMenuDialog dialog(HelpType::onChangelog);
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
+
+    });
+
+    connect(supportusAction, &QAction::triggered, [this]() {
+        DonationDialog dialog(this);
+        if(m_isDarkTheme){
+            m_themeToggle->toggle();
+            dialog.exec();
+            m_themeToggle->toggle();
+        }else{
+            dialog.exec();
+        }
+
+    });
     // Cleaup at app startup checkbox
     toolsMenu->addSeparator();
     QAction* cleanupTempProfilesAction = toolsMenu->addAction("Clean Temporary Profiles on Startup");
@@ -1787,7 +1819,6 @@ void MainWindow::createMenus() {
         settings.setValue("adBlocker/enabled", checked);
         settings.sync();
     });
-
 
 }
 
@@ -1920,9 +1951,12 @@ void MainWindow::loadSession(const QString& name) {
 
         }
 
-        QWebEnginePage* page = new QWebEnginePage(profile, webView);
-        enableFullScreen(page);
+        page = new MyWebPage(profile, webView);
+        configurePage(page);
+
+
         webView->setPage(page);
+        setupCustomContextMenu(webView, profile);
 
         // Add the tab
         int tabIndex = m_tabWidget->addTab(webView, session.openTabTitles[i]);
@@ -2343,6 +2377,38 @@ QWebEngineProfile* MainWindow::createProfileForTab(int tabIndex, const QString& 
     return profile;
 }
 
+
+
+
+
+void MainWindow::cleanupTabProfile(QWebEngineView* webView) {
+    if (!webView) return;
+
+    // Check if it's a per-tab private profile
+    if (m_tabProfiles.contains(webView)) {
+        QWebEngineProfile* profile = m_tabProfiles[webView];
+        m_tabProfiles.remove(webView);
+
+        bool profileUsedElsewhere = false;
+            for (auto it = m_tabProfiles.constBegin(); it != m_tabProfiles.constEnd(); ++it) {
+                if (it.value() == profile) {
+                    profileUsedElsewhere = true;
+                    break;
+                }
+            }
+            if (!profileUsedElsewhere) {
+                    profile->deleteLater();
+                }
+
+    }
+
+    // Remove named profile mapping (never delete named profiles)
+    if (m_tabNamedProfiles.contains(webView)) {
+        m_tabNamedProfiles.remove(webView);
+    }
+}
+
+/*
 void MainWindow::cleanupTabProfile(QWebEngineView* webView) {
     if (m_tabProfiles.contains(webView)) {
         QWebEngineProfile* profile = m_tabProfiles[webView];
@@ -2363,6 +2429,8 @@ void MainWindow::cleanupTabProfile(QWebEngineView* webView) {
         }
     }
 }
+
+*/
 
 void MainWindow::ensureProfileDirectoriesExist() {
     // Make sure the base profiles directory exists
@@ -3143,7 +3211,7 @@ QToolBar* MainWindow::createToolbar() {
     // Open Copied Link in New Tab action
     toolbar->addSeparator();
     m_openCopiedLinkAction = toolbar->addAction(QIcon(":/resources/icons/link.svg"), "Open Copied Link in New Tab");
-
+    m_openCopiedLinkAction->setVisible(false);
     m_openCopiedLinkAction->setToolTip("Open copied link in a new tab - F11");
     m_openCopiedLinkAction->setShortcut(QKeySequence(Qt::Key_F11));
     m_openCopiedLinkAction->setShortcutContext(Qt::ApplicationShortcut);
@@ -3160,7 +3228,7 @@ QToolBar* MainWindow::createToolbar() {
     });
 
     // URLBar toggle action
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
     m_toggleUrlBarAction = toolbar->addAction(QIcon(":/resources/icons/eye.svg"), "Show URL Bar");
     m_toggleUrlBarAction->setToolTip("Toggle URL Bar Visibility");
 
@@ -4013,7 +4081,7 @@ void MainWindow::connectUrlBar() {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
             // Tab exists, load URL in current tab
             //view->load(QUrl(url));
-            createNewTabWithUrl(url);
+            createNewTabWithUrlFromLink(url,view);
 
         } else {
             // No tabs open, create a new tab with this URL
@@ -4121,6 +4189,7 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
                 displayTitle = displayTitle.left(17) + "...";
             }
             m_tabWidget->setTabText(tabIndex, displayTitle);
+
         }
     });
     // Determine which profile to use
@@ -4142,9 +4211,13 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
 
 
     // Create page with the selected profile
-    QWebEnginePage *page = new QWebEnginePage(profile, webView);
-    enableFullScreen(page);
+    page = new MyWebPage(profile, webView);
+
+    configurePage(page);
+
+
     webView->setPage(page);
+    setupCustomContextMenu(webView, profile);
 
     // Add new tab
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
@@ -4174,6 +4247,7 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
     connect(webView, &QObject::destroyed, this, [this, webView]() {
         cleanupTabProfile(webView);
     });
+
 }
 
 void MainWindow::createNewTab() {
@@ -4194,6 +4268,7 @@ void MainWindow::createNewTab() {
                 displayTitle = displayTitle.left(17) + "...";
             }
             m_tabWidget->setTabText(tabIndex, displayTitle);
+
         }
     });
     // Determine which profile to use
@@ -4214,9 +4289,10 @@ void MainWindow::createNewTab() {
 
 
     // Create page with the selected profile
-    QWebEnginePage *page = new QWebEnginePage(profile, webView);
-    enableFullScreen(page);
+    page = new MyWebPage(profile, webView);
+    configurePage(page);
     webView->setPage(page);
+    setupCustomContextMenu(webView, profile);
 
     // Add new tab
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
@@ -4225,6 +4301,17 @@ void MainWindow::createNewTab() {
     // Load the selected search engine URL
     QUrl searchEngineUrl = m_urlBar->getSearchUrl();
     webView->setUrl(searchEngineUrl);
+
+    connect(webView, &QWebEngineView::iconChanged, this, [this, webView](const QIcon &icon) {
+
+
+        // Update the tab icon
+        int tabIndex = m_tabWidget->indexOf(webView);
+        if (tabIndex != -1) {
+            m_tabWidget->setTabIcon(tabIndex, icon);
+        }
+    });
+
     // Connect to the destroyed signal to clean up the profile
     connect(webView, &QObject::destroyed, this, [this, webView]() {
         cleanupTabProfile(webView);
@@ -4418,7 +4505,7 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
 
 
 
-void MainWindow::injectAdBlockScript(QWebEnginePage *page)
+void MainWindow::injectAdBlockScript(MyWebPage *page)
 {
     if (!page || !m_adBlocker || !m_adBlocker->isEnabled()) return;
 
@@ -4812,14 +4899,19 @@ void MainWindow::configureProfile(QWebEngineProfile *profile)
     profile->setUrlRequestInterceptor(interceptor);
     if (m_adBlocker && m_adBlocker->isEnabled()) {
         profile->setUrlRequestInterceptor(m_adBlocker);
+        //setupVideoAdBlocking(profile);
+        //auto cosmetic = new CosmeticFilterInjector(profile);
+
     }
+
     connect(profile, &QWebEngineProfile::downloadRequested,
-            downloadManager, &DownloadManager::handleDownloadRequest);
+            downloadManager, &DownloadManager::handleDownloadRequest,Qt::UniqueConnection);
+
     configureBrowserSettings(profile);
 
 }
 
-void MainWindow::enableFullScreen(QWebEnginePage *page)
+void MainWindow::configurePage(MyWebPage *page)
 {
     connect(page, &QWebEnginePage::fullScreenRequested,
             this, &MainWindow::handleFullScreenRequest);
@@ -4862,8 +4954,338 @@ void MainWindow::enableFullScreen(QWebEnginePage *page)
             });
             */
 
+    connect(page, &MyWebPage::newTabRequested, this, [this](QWebEngineView *view, QWebEngineProfile *){
+            qDebug() << "newTabRequested received in MainWindow from page:" << sender();
+            createNewTabWithUrlFromLink(view->url().toString(), view);
+        });
+
 }
 
 
+void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*profile*/)
+{
+    QWebEngineView *view = qobject_cast<QWebEngineView*>(sender());
+    if (!view) return;
+
+    QWebEngineContextMenuRequest *request = view->lastContextMenuRequest();
+    if (!request) return;
+
+    QMenu menu;
+
+    // Navigation
+    menu.addAction("Back", view, &QWebEngineView::back);
+    menu.addAction("Forward", view, &QWebEngineView::forward);
+    menu.addAction("Reload", view, &QWebEngineView::reload);
+    menu.addAction("Stop", view, &QWebEngineView::stop);
+    menu.addSeparator();
+
+    // Edit actions
+    QAction *cutAction = menu.addAction("Cut");
+    QAction *copyAction = menu.addAction("Copy");
+    QAction *pasteAction = menu.addAction("Paste");
+    QAction *selectAllAction = menu.addAction("Select All");
+    menu.addSeparator();
+
+    // Link-specific actions (only show if there's a link)
+    bool hasLink = request->linkUrl().isValid();
+    QAction *copyLinkAction = nullptr;
+    QAction *openTabAction = nullptr;
+    QAction *searchAction = nullptr;
+
+    //QAction *openWindowAction = nullptr;
+
+    if (hasLink) {
+        copyLinkAction = menu.addAction("Copy link address");
+        openTabAction = menu.addAction("Open link in new tab");
+        //openWindowAction = menu.addAction("Open link in new window");
+        menu.addSeparator();
+    }
+
+    bool hasSelectedText = !request->selectedText().trimmed().isEmpty();
+
+    if (hasSelectedText) {
+        searchAction = menu.addAction("Search " + m_urlBar->getCurrentEngine());
+        menu.addSeparator();
+
+    }
+
+    // Check if context menu was triggered on media content (image, video, audio)
+    bool hasMediaContent = (request->mediaType() != QWebEngineContextMenuRequest::MediaTypeNone);
+    QAction *copyImageAction = nullptr;
+    QAction *saveImageAction = nullptr;
+
+    if (hasMediaContent && request->mediaType() == QWebEngineContextMenuRequest::MediaTypeImage) {
+        copyImageAction = menu.addAction("Copy image");
+        saveImageAction = menu.addAction("Save image");
+        menu.addSeparator();
+    }
+
+    // Page actions
+    menu.addAction("View page source", [view, this]() {
+        devToolsView->resize(1000, 800);
+        devToolsView->show();
+
+        // Create a page for it using the same profile
+        QWebEnginePage *sourcePage = new QWebEnginePage(view->page()->profile(), devToolsView);
+        devToolsView->setPage(sourcePage);
+
+        // Attach it as the "devtools" page (Qt uses this connection internally)
+        view->page()->setDevToolsPage(sourcePage);
+
+        // Trigger the built-in View Source action
+        view->page()->triggerAction(QWebEnginePage::ViewSource);
+    });
+
+    menu.addAction("Inspect element", [view, this]() {
+            QWebEnginePage *devToolsPage = new QWebEnginePage(view->page()->profile(), devToolsView);
+            devToolsView->setPage(devToolsPage);
+            devToolsView->resize(1000, 800);
+            devToolsView->show();
+
+            // attach devtools to this new page
+            view->page()->setDevToolsPage(devToolsPage);
+
+            // trigger inspect mode
+            view->page()->triggerAction(QWebEnginePage::InspectElement);
+        view->page()->triggerAction(QWebEnginePage::InspectElement);
+    });
+
+    QAction *selected = menu.exec(view->mapToGlobal(pos));
+    if (!selected) {
+        // User canceled the menu, do nothing
+        return;
+    }
+
+    // Handle selections
+    if (selected == cutAction) {
+        view->triggerPageAction(QWebEnginePage::Cut);
+    }
+    else if (selected == copyAction) {
+        view->triggerPageAction(QWebEnginePage::Copy);
+    }
+    else if (selected == pasteAction) {
+        view->triggerPageAction(QWebEnginePage::Paste);
+    }
+    else if (selected == selectAllAction) {
+        view->triggerPageAction(QWebEnginePage::SelectAll);
+    }
+    else if (selected == copyLinkAction && hasLink) {
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(request->linkUrl().toString());
+    }
+    else if (selected == openTabAction && hasLink) {
+        createNewTabWithUrlFromLink(request->linkUrl().toString(), view);
+    }
+    //else if (selected == openWindowAction && hasLink) {
+        // Implement open in new window functionality
+    //    createNewTabWithUrlFromLink(request->linkUrl().toString(), view);
+    //}
+    else if (selected == copyImageAction && hasMediaContent) {
+        view->triggerPageAction(QWebEnginePage::CopyImageToClipboard);
+    }
+
+    else if (selected == saveImageAction && hasMediaContent) {
+        QUrl imageUrl = request->mediaUrl();
+        if (imageUrl.isValid()) {
+            // This will trigger the downloadRequested signal automatically
+            view->page()->download(imageUrl);
+        }
+    }
+
+    if (selected == searchAction) {
+
+        createNewTabWithUrlFromLink(request->selectedText(),view);
+
+    }
+}
+
+void MainWindow::setupCustomContextMenu(QWebEngineView *view, QWebEngineProfile *profile)
+{
+    if (!view) return;
+
+    // Allow custom context menu
+    view->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Connect the signal to the slot
+    connect(view, &QWidget::customContextMenuRequested, this,
+                [this, view, profile](const QPoint &pos){
+                    onWebViewContextMenu(pos, profile);
+                });
+}
 
 
+void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView *originView) {
+    // Determine profile
+    QWebEngineProfile *profile = nullptr;
+
+    if (originView) {
+        profile = originView->page()->profile();  // inherit profile directly
+    } else {
+        profile = m_webProfile; // fallback shared
+    }
+
+    // Configure profile safely
+    configureProfile(profile);
+
+    // Create new web view and page
+    QWebEngineView *webView = new QWebEngineView(m_tabWidget);
+
+    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+           if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
+               if (sender() == currentView) {
+                   m_urlBar->setUrl(url.toString());
+               }
+           }
+       });
+
+    connect(webView, &QWebEngineView::titleChanged, this, [this, webView](const QString &title) {
+        int tabIndex = m_tabWidget->indexOf(webView);
+        if (tabIndex != -1) {
+            QString displayTitle = title.isEmpty() ? "New Tab" : title;
+            if (displayTitle.length() > 20) {
+                displayTitle = displayTitle.left(17) + "...";
+            }
+            m_tabWidget->setTabText(tabIndex, displayTitle);
+
+        }
+    });
+
+    MyWebPage *page = new MyWebPage(profile, webView);
+
+    configurePage(page);
+    webView->setPage(page);
+    setupCustomContextMenu(webView, profile);
+
+    // Keep profile maps in sync for proper cleanup
+    if (originView) {
+        if (m_tabNamedProfiles.contains(originView)) {
+            QString name = m_tabNamedProfiles[originView];
+            m_tabNamedProfiles[webView] = name; // inherit named profile
+        } else if (m_tabProfiles.contains(originView)) {
+            m_tabProfiles[webView] = m_tabProfiles[originView]; // inherit private profile
+        } else {
+            // shared profile → mark as nullptr for cleanup logic
+            //m_tabProfiles[webView] = nullptr;
+        }
+    } else {
+        // No origin → shared profile
+        //m_tabProfiles[webView] = nullptr;
+    }
+
+    // Add tab
+    int tabIndex = m_tabWidget->addTab(webView, "New Tab");
+    showWebViews();
+
+    m_tabWidget->setCurrentIndex(tabIndex);
+
+    // Load the URL
+    //first diff between legit url and search term
+    QString finalUrl;
+    QString processedUrl = url;
+    // Add https:// if no protocol is specified
+    if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://") && !processedUrl.startsWith("file://")) {
+        processedUrl = "https://" + processedUrl;
+    }
+    QUrl testUrl(processedUrl);
+    // Check if it looks like a URL (has dots, no spaces, etc.)
+    if (testUrl.isValid() && processedUrl.contains('.') && !processedUrl.contains(' ')) {
+        finalUrl = processedUrl;
+    } else {
+        // Treat as search term - use URLBar's selected search engine
+        QUrl searchBase = m_urlBar->getSearchUrl();
+        QString searchTerm = QUrl::toPercentEncoding(url);
+        finalUrl = searchBase.toString() + searchTerm;
+    }
+
+    webView->setUrl(QUrl(finalUrl));
+    connect(webView, &QWebEngineView::iconChanged, this, [this, webView](const QIcon &icon) {
+
+
+            // Update the tab icon
+            int tabIndex = m_tabWidget->indexOf(webView);
+            if (tabIndex != -1) {
+                m_tabWidget->setTabIcon(tabIndex, icon);
+            }
+    });
+
+
+    // Ensure proper cleanup on tab destruction
+    connect(webView, &QObject::destroyed, this, [this, webView]() {
+        cleanupTabProfile(webView);
+    });
+
+}
+
+
+void MainWindow::setupVideoAdBlocking(QWebEngineProfile *profile)
+{
+    // Check if scripts already exist to avoid duplicates
+    static bool scriptsInitialized = false;
+    if (scriptsInitialized) {
+        return;
+    }
+    scriptsInitialized = true;
+
+    // YouTube-specific ad blocking
+    QWebEngineScript youtubeScript;
+    youtubeScript.setSourceCode(R"(
+        (function() {
+            function blockYouTubeAds() {
+                // Skip buttons
+                const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern');
+                if (skipBtn) {
+                    skipBtn.click();
+                }
+
+                // Remove ad containers
+                const adContainers = document.querySelectorAll('.video-ads, .ad-container, .ytp-ad-module, .ytp-ad-overlay-container');
+                adContainers.forEach(container => {
+                    container.style.display = 'none';
+                    container.remove();
+                });
+
+                // Block ad markers in progress bar
+                const adMarkers = document.querySelectorAll('.ytp-ad-marker-container');
+                adMarkers.forEach(marker => marker.remove());
+            }
+
+            // Run frequently
+            setInterval(blockYouTubeAds, 500);
+            document.addEventListener('DOMContentLoaded', blockYouTubeAds);
+
+            // MutationObserver for dynamic content
+            const observer = new MutationObserver(blockYouTubeAds);
+            observer.observe(document.body, { childList: true, subtree: true });
+        })();
+    )");
+
+    youtubeScript.setName("YouTube_Ad_Blocker");
+    youtubeScript.setInjectionPoint(QWebEngineScript::DocumentReady);
+    youtubeScript.setWorldId(QWebEngineScript::MainWorld);
+    youtubeScript.setRunsOnSubFrames(true);
+    profile->scripts()->insert(youtubeScript);
+
+    // General video ad blocking
+    QWebEngineScript generalScript;
+    generalScript.setSourceCode(R"(
+        document.addEventListener('DOMContentLoaded', function() {
+            const videos = document.querySelectorAll('video[autoplay]');
+            videos.forEach(video => {
+                if (video.duration <= 60 ||
+                    video.src.includes('ad') ||
+                    video.parentElement.innerHTML.toLowerCase().includes('ad')) {
+                    video.pause();
+                    video.remove();
+                }
+            });
+        });
+    )");
+
+    generalScript.setName("General_Video_Ad_Blocker");
+    generalScript.setInjectionPoint(QWebEngineScript::DocumentReady);
+    generalScript.setWorldId(QWebEngineScript::MainWorld);
+    generalScript.setRunsOnSubFrames(true);
+    profile->scripts()->insert(generalScript);
+
+    qDebug() << "Video ad blocking scripts installed for profile";
+}

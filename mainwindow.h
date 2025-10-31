@@ -40,6 +40,9 @@
 #include "AdBlockScript.h"
 #include<QWebEngineFullScreenRequest>
 #include<QShortcut>
+#include "mywebpage.h"
+#include<memory>
+#include"cosmeticfilterinjector.h"
 
 // Session data structure
 struct SessionData {
@@ -176,6 +179,7 @@ private:
     void setupProfilesCheckbox();
     QWebEngineProfile* createProfileForTab(int tabIndex = -1, const QString& sessionName = QString());
     void cleanupTabProfile(QWebEngineView* webView);
+
     void ensureProfileDirectoriesExist();
     bool copyProfileData(const QString& sourceDir, const QString& destDir);
     void cleanupSessionProfileDirectories(const QString& sessionName);
@@ -290,7 +294,7 @@ private:
     SimpleAdBlocker *m_adBlocker;
 
     //void setupAdBlocker(QWebEngineProfile* profile);
-    void injectAdBlockScript(QWebEnginePage *page);
+    void injectAdBlockScript(MyWebPage *page);
 
 private:
     // Named profiles system
@@ -326,8 +330,19 @@ private slots:
 
 private:
     void configureProfile(QWebEngineProfile* profile);
-    void enableFullScreen(QWebEnginePage* page);
+    void configurePage(MyWebPage* page);
     QAction* m_openCopiedLinkAction;
+
+    //open links in new tab
+    MyWebPage *page = nullptr;
+    void setupCustomContextMenu(QWebEngineView *view, QWebEngineProfile *profile);
+    void setupVideoAdBlocking(QWebEngineProfile *profile);
+
+public slots:
+    void onWebViewContextMenu(const QPoint &pos, QWebEngineProfile *profile);
+    void createNewTabWithUrlFromLink(const QString &url, QWebEngineView *originView);
+private:
+    QWebEngineView *devToolsView = nullptr;
 };
 
 #endif // MAINWINDOW_H
