@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Jasmine
+GenericName=Website & Session Manager
+Comment=Launch sites and sessions with multi-account support and private profiles
+Icon=io.github.alamahant.Jasmine
+Exec=Jasmine
+Terminal=false
+Categories=Network;WebBrowser;Office;Utility;
+Keywords=browser;session;bookmark;multi-account;privacy;profile;launcher;productivity;2fa;download;
+StartupNotify=true
