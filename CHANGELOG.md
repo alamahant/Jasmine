@@ -1,5 +1,15 @@
 # Changelog
 
+## [v1.2.3] - 2025-12-13
+
+### Updated Dependencies
+
+- **Runtime Update**: Updated the base runtime from org.kde.Platform version '6.8' to version '6.9'. This transition was necessary because version 6.8 has reached its End-of-Life (EOL).
+
+- **Base App Update**: Updated the base application from io.qt.qtwebengine.BaseApp version '6.8' to version '6.9' to maintain compatibility with the new platform runtime.
+
+---
+
 ## [v1.2.2] - 2025-10-31
 
 ### Bug Fixes and Improvements

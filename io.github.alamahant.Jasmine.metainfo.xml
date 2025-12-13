@@ -108,6 +108,16 @@
 
   <releases>
 
+<release version="1.2.3" date="2025-12-13">
+  <description>
+    <p>Updated Dependencies</p>
+    <ul>
+      <li>Updated the base runtime from `org.kde.Platform` version `'6.8'` to version `'6.9'` because version 6.8 has reached its End-of-Life (EOL).</li>
+      <li>Updated the base application from `io.qt.qtwebengine.BaseApp` version `'6.8'` to version `'6.9'` to maintain compatibility with the new platform runtime.</li>
+    </ul>
+  </description>
+</release>
+
 <release version="1.2.2" date="2025-10-31">
   <description>
     <p>Bug Fixes and Improvements</p>
