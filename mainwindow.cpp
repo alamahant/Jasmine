@@ -234,7 +234,16 @@ QWidget* MainWindow::createModernDashboard() {
 
     // Create main horizontal splitter
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal);
-    mainSplitter->setHandleWidth(1);
+    mainSplitter->setHandleWidth(3); // was 1
+    mainSplitter->setStyleSheet(R"(
+        QSplitter::handle {
+            background-color: #cccccc;
+            margin: 1px;
+        }
+        QSplitter::handle:hover {
+            background-color: #999999;
+        }
+    )");
     mainSplitter->setChildrenCollapsible(true); // Allow collapsing
     containerLayout->addWidget(mainSplitter, 1);
 
@@ -471,11 +480,11 @@ QFrame* MainWindow::createDetailPanel() {
 
 
     // Set icons
-    m_addButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
-    m_editButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-    m_deleteButton->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
-    m_launchButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
-    m_clearButton->setIcon(style()->standardIcon(QStyle::SP_DialogResetButton));
+    //m_addButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    //m_editButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    //m_deleteButton->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    //m_launchButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    //m_clearButton->setIcon(style()->standardIcon(QStyle::SP_DialogResetButton));
 
     // Set object names for styling
     m_addButton->setObjectName("primaryButton");
@@ -583,7 +592,7 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     card->setFrameShape(QFrame::StyledPanel);
     card->setCursor(Qt::PointingHandCursor);
     card->setObjectName("websiteCard");
-    card->setFixedSize(180, 180); // Square cards
+    card->setFixedSize(200, 200); // Square cards - was 180
     //card->setMinimumSize(180, 180); // Set minimum instead
     //card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
@@ -599,7 +608,7 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
 
     // Create layout
     QVBoxLayout* layout = new QVBoxLayout(card);
-    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setContentsMargins(15, 15, 15, 15); // was 12
 
     // Create a horizontal layout for title and favicon
     QHBoxLayout* titleLayout = new QHBoxLayout();
@@ -700,7 +709,7 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     card->setFrameShape(QFrame::StyledPanel);
     card->setCursor(Qt::PointingHandCursor);
     card->setObjectName("sessionCard");
-    card->setFixedSize(180, 180); // Square cards
+    card->setFixedSize(200, 200); // Square cards - was 180
     card->setCursor(Qt::ArrowCursor);  // Always arrow, never hand
 
     //card->installEventFilter(this);
@@ -714,7 +723,7 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
 
     // Create layout
     QVBoxLayout* layout = new QVBoxLayout(card);
-    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setContentsMargins(15, 15, 15, 15); // was  12
 
     // Title row with icon and name
     QHBoxLayout* titleLayout = new QHBoxLayout();
@@ -722,10 +731,10 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     // Icon display
     QLabel* iconLabel = new QLabel();
     iconLabel->setAlignment(Qt::AlignCenter);
-    iconLabel->setFixedSize(24, 24);
+    iconLabel->setFixedSize(20, 20); // was 24
     iconLabel->setScaledContents(true);
     if (!session.icon.isNull()) {
-        QPixmap pixmap = session.icon.pixmap(24, 24);
+        QPixmap pixmap = session.icon.pixmap(20, 20); // was 24
         iconLabel->setPixmap(pixmap);
     }
     titleLayout->addWidget(iconLabel);
@@ -734,6 +743,12 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     QLabel* nameLabel = new QLabel(sessionName);
     nameLabel->setObjectName("cardTitle");
     nameLabel->setWordWrap(true);
+
+    // OPTION: Smaller font
+    QFont font = nameLabel->font();
+    font.setPointSize(8); // Slightly smaller
+    nameLabel->setFont(font);
+
     titleLayout->addWidget(nameLabel);
     titleLayout->addStretch();
 
@@ -2807,10 +2822,10 @@ QFrame* MainWindow::createSessionDetailPanel() {
 
 
     // Set icons
-    m_sessionUpdateButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
-    m_sessionDeleteButton->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
-    m_sessionLoadButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
-    m_sessionClearButton->setIcon(style()->standardIcon(QStyle::SP_DialogResetButton));
+    //m_sessionUpdateButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    //m_sessionDeleteButton->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    //m_sessionLoadButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    //m_sessionClearButton->setIcon(style()->standardIcon(QStyle::SP_DialogResetButton));
 
     // Set object names for styling
     m_sessionUpdateButton->setObjectName("primaryButton");

@@ -1,5 +1,19 @@
 # Changelog
 
+## [v1.2.4] - 2025-12-21
+
+### Enhancements
+
+- **Card Size Optimization**: Increased website and session card dimensions from 180×180 to 200×200 pixels, providing more space for title text and improving readability.
+
+- **UI Visibility Improvements**: Enhanced splitter handle visibility by increasing width and adding distinct styling, making the draggable divider more apparent and user-friendly.
+
+### Code Improvements
+
+- Performed minor code polishes and improvements.
+
+---
+
 ## [v1.2.3] - 2025-12-13
 
 ### Updated Dependencies

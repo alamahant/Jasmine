@@ -108,6 +108,17 @@
 
   <releases>
 
+<release version="1.2.4" date="2025-12-21">
+  <description>
+    <p>Enhancements</p>
+    <ul>
+      <li>Increased website and session card dimensions from 180×180 to 200×200 pixels for better text space and readability.</li>
+      <li>Enhanced splitter handle visibility by increasing width and adding distinct styling for improved usability.</li>
+      <li>Performed minor code polishes and improvements.</li>
+    </ul>
+  </description>
+</release>
+
 <release version="1.2.3" date="2025-12-13">
   <description>
     <p>Updated Dependencies</p>
