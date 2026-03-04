@@ -1835,6 +1835,39 @@ void MainWindow::createMenus() {
         settings.sync();
     });
 
+    toolsMenu->addSeparator();
+
+    //QAction *disableGpuAction = toolsMenu->addAction("Disable GPU Acceleration");
+    QAction *disableGpuAction = toolsMenu->addAction("Disable GPU Acceleration (NVIDIA Fix)");
+    disableGpuAction->setCheckable(true);
+    disableGpuAction->setToolTip("Fix graphical issues on NVIDIA systems (requires restart)");
+
+    // Load the saved state (defaulting to false/unchecked)
+
+    bool gpuDisabled = settings.value("gpu/disable_acceleration", false).toBool();
+    disableGpuAction->setChecked(gpuDisabled);
+
+    // Connect with triggered signal
+    connect(disableGpuAction, &QAction::triggered, this, [this](bool checked) {
+        QSettings settings;
+        settings.setValue("gpu/disable_acceleration", checked);
+        settings.sync();
+
+        // Show restart notification
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Restart Required");
+            msgBox.setText("This change will take effect after restarting the application.");
+        if (checked) {
+               msgBox.setInformativeText("GPU acceleration has been disabled. "
+                                        "This resolves graphical issues on many NVIDIA systems, "
+                                        "but may slightly reduce performance.");
+           }
+
+           msgBox.setIcon(QMessageBox::Information);
+           msgBox.exec();
+    });
+
+
 }
 
 QStringList MainWindow::getAvailableSessions() {

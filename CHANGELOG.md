@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.2.5] - 2026-03-05
+
+### New Features
+
+- **NVIDIA GPU Workaround**: Added "Disable GPU Acceleration" option in Tools menu for users experiencing graphical issues. When enabled, this setting applies the `--disable-gpu` flag to QtWebEngine, resolving crashes and rendering problems on NVIDIA systems. A restart notification ensures users understand when changes take effect.
+
+### Dependency Updates
+
+- **Flatpak Runtime**: Updated base application to `io.qt.qtwebengine.BaseApp` version 6.10
+- **KDE Platform**: Updated runtime to `org.kde.Platform` version 6.10
+
+---
+
 ## [v1.2.4] - 2025-12-21
 
 ### Enhancements

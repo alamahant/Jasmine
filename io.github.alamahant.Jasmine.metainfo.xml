@@ -6,7 +6,7 @@
 
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-
+  <url type="vcs-browser">https://github.com/alamahant/Jasmine</url>
   <description>
     <p>
       Jasmine is a comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace. Perfect for productivity enthusiasts and multi-account managers.
@@ -107,6 +107,21 @@
   </content_rating>
 
   <releases>
+
+<release version="1.2.5" date="2026-03-04">
+  <description>
+    <p>New Features</p>
+    <ul>
+      <li>Added "Disable GPU Acceleration" option in Tools menu for users experiencing graphical issues on NVIDIA systems. When enabled, applies --disable-gpu flag to QtWebEngine with restart notification.</li>
+    </ul>
+    <p>Dependency Updates</p>
+    <ul>
+      <li>Updated Flatpak base application to io.qt.qtwebengine.BaseApp version 6.10</li>
+      <li>Updated KDE Platform runtime to org.kde.Platform version 6.10</li>
+    </ul>
+  </description>
+</release>
+
 
 <release version="1.2.4" date="2025-12-21">
   <description>

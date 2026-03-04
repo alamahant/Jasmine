@@ -6,8 +6,9 @@
 #include <cstdio>
 //#include"securitymanager.h"
 #include"Constants.h"
+#include<QProcess>
 
-const char* APP_VERSION = "1.2.4";
+const char* APP_VERSION = "1.2.5";
 
 
 int main(int argc, char *argv[])
@@ -28,9 +29,18 @@ int main(int argc, char *argv[])
 #endif
 */
 
+    /*
+    QProcess process;
+       process.start("lspci", QStringList() << "-k");
+       process.waitForFinished();
+       QString output = process.readAllStandardOutput();
 
+       if (output.contains("NVIDIA", Qt::CaseInsensitive)) {
+           // Set environment variable for QWebEngine
+           qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu");
+       }
+*/
 
-    QApplication a(argc, argv);
 #ifdef FLATPAK_BUILD
     QCoreApplication::setApplicationName("Jasmine");
     QCoreApplication::setOrganizationName("");
@@ -38,6 +48,16 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName("Jasmine-local");
     QCoreApplication::setOrganizationName("Jasmine-local");
 #endif
+
+    QSettings settings;
+        if (settings.value("gpu/disable_acceleration", false).toBool()) {
+            qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu");
+        }
+
+    QApplication a(argc, argv);
+
+
+
     MainWindow w;
     // Check password protection before showing window
     if (!w.checkStartupSecurity()) {

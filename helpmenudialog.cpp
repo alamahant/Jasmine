@@ -1407,6 +1407,21 @@ QString HelpMenuDialog::getChangelogContent()
     return QString(
         "<h3>Changelog</h3>"
 
+        "<h4>[v1.2.5] - 2026-03-05</h4>"
+        "<ul>"
+        "<li><b>NVIDIA GPU Workaround:</b> Added \"Disable GPU Acceleration\" option in Tools menu for users experiencing graphical issues. When enabled, this setting applies the <code>--disable-gpu</code> flag to QtWebEngine, resolving crashes and rendering problems on NVIDIA systems. A restart notification ensures users understand when changes take effect.</li>"
+        "<li><b>Flatpak Runtime:</b> Updated base application to <code>io.qt.qtwebengine.BaseApp</code> version 6.10</li>"
+        "<li><b>KDE Platform:</b> Updated runtime to <code>org.kde.Platform</code> version 6.10</li>"
+        "</ul>"
+
+        "<h4>[v1.2.4] - 2025-12-21</h4>"
+        "<ul>"
+        "<li><b>Card Size Optimization:</b> Increased website and session card dimensions from 180×180 to 200×200 pixels, providing more space for title text and improving readability.</li>"
+        "<li><b>UI Visibility Improvements:</b> Enhanced splitter handle visibility by increasing width and adding distinct styling, making the draggable divider more apparent and user-friendly.</li>"
+        "<li><b>Code Improvements:</b> Performed minor code polishes and improvements.</li>"
+        "</ul>"
+
+
         "<h4>[v1.2.2] - 2025-10-31</h4>"
         "<ul>"
         "<li><b>Custom Context Menu Implementation:</b> Subclassed QWebEnginePage and created a fully functional custom context menu with enhanced functionality and improved user experience.</li>"
