@@ -1,5 +1,23 @@
 # Changelog
 
+## [v1.2.6] - 2026-03-08
+
+### New Features
+
+- **Essential Buttons Highlighting**: Added "Highlight Essential Buttons" option in View menu. When enabled, the Dashboard/WebView switcher, Save Session, and Open Selected Website buttons are highlighted with distinct background colors, making core functionality more visible and intuitive for new users. State is persisted across sessions via QSettings.
+
+- **Simplified Storage Paths**: Downloads and screenshots are now saved directly to `~/Documents/Jasmine/Downloads` and `~/Documents/Jasmine/Screenshots` respectively, eliminating deep OSTree nesting and making files easily accessible to users.
+
+### Improvements
+
+- **Profile-Aware Link Handling**: Fixed new tab/window behavior to consistently respect profile selection. Links opened via right-click "Open in new tab" now correctly preserve the calling tab's profile (shared, private, or named), while links that open by left-clicking use the universal shared profile.
+
+- **Centralized Constants Management**: Implemented a dedicated constants file (`Constants.h/cpp`) to manage all application paths and shared variables across classes, ensuring consistency and maintainability.
+
+### Bug Fixes
+
+- **Debugged Duplicate Tabs**: Resolved issue where Gmail --and others-- sign-in links would open two identical tabs. Popup windows are now handled with a dedicated `newPopupRequested` signal and proper profile propagation, eliminating duplicates while preserving profile context.
+
 ## [v1.2.5] - 2026-03-05
 
 ### New Features

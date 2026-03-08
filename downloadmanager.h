@@ -40,7 +40,6 @@ private:
     QList<QWebEngineDownloadRequest*> m_activeDownloads;
     QList<DownloadItem*> m_downloadItems;
     DownloadWindow *m_downloadWindow;
-    QString m_downloadDirectory;
 };
 
 #endif // DOWNLOADMANAGER_H

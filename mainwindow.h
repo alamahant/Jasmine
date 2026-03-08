@@ -44,6 +44,7 @@
 #include<memory>
 #include"cosmeticfilterinjector.h"
 
+
 // Session data structure
 struct SessionData {
     QString name;
@@ -343,6 +344,10 @@ public slots:
     void createNewTabWithUrlFromLink(const QString &url, QWebEngineView *originView);
 private:
     QWebEngineView *devToolsView = nullptr;
+    void highlightButtons(bool highlighted);
+    bool buttonsHighlighted  = false;
+    QToolButton* toggleButton;
+    QAction* highlightButtonsAction;
 };
 
 #endif // MAINWINDOW_H

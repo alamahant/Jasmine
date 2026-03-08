@@ -1,5 +1,6 @@
 #include "mywebpage.h"
 #include <QDebug>
+#include<QTimer>
 
 MyWebPage::MyWebPage(QWebEngineProfile *profile, QObject *parent)
     : QWebEnginePage(profile, parent)
@@ -29,17 +30,20 @@ QWebEnginePage* MyWebPage::createWindow(WebWindowType type) {
 
     // Emit signal to MainWindow for tab insertion
 
-    connect(newPage, &QWebEnginePage::urlChanged, this, [this, newView](const QUrl &url){
+    QWebEngineProfile* callingTabProfile = this->profile();
+    connect(newPage, &QWebEnginePage::urlChanged, this,
+        [this, newView, newPage, callingTabProfile](const QUrl &url){
             if (!url.isEmpty()) {
-                // Call the MainWindow method to open a new tab with this URL
-                emit newTabRequested(newView, this->profile());
-                // Optionally disconnect this lambda to prevent multiple triggers
+
+
+                emit newPopupRequested(newView, this->profile());
+
+                // Disconnect this specific connection
+                disconnect(newPage, &QWebEnginePage::urlChanged, this, nullptr);
             }
         });
 
     //emit newTabRequested(newView, this->profile());
-
-    // Return the new page (matches the signature)
     return newPage;
 }
 

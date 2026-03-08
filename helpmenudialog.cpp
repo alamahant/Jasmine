@@ -174,7 +174,7 @@ QString HelpMenuDialog::getAboutContent() {
                 </p>
             </div>
         </div>
-    )").arg(APP_VERSION);
+    )").arg(JASMINE_CONSTANTS::APP_VERSION);
 }
 
 QString HelpMenuDialog::getFeaturesContent()
@@ -1406,6 +1406,22 @@ QString HelpMenuDialog::getChangelogContent()
 {
     return QString(
         "<h3>Changelog</h3>"
+
+        "<h4>[v1.2.6] - 2026-03-08</h4>"
+        "<ul>"
+        "<li><b>Essential Buttons Highlighting:</b> Added \"Highlight Essential Buttons\" option in View menu. When enabled, the Dashboard/WebView switcher, Save Session, and Open Selected Website buttons are highlighted with distinct background colors, making core functionality more visible and intuitive for new users. State is persisted across sessions via QSettings.</li>"
+        "<li><b>Simplified Storage Paths:</b> Downloads and screenshots are now saved directly to <code>~/Documents/Jasmine/Downloads</code> and <code>~/Documents/Jasmine/Screenshots</code> respectively, eliminating deep OSTree nesting and making files easily accessible to users.</li>"
+        "<li><b>Profile-Aware Link Handling:</b> Fixed new tab/window behavior to consistently respect profile selection. Links opened via right-click \"Open in new tab\" now correctly preserve the calling tab's profile (shared, private, or named), while links that open by left-clicking use the universal shared profile.</li>"
+        "<li><b>Centralized Constants Management:</b> Implemented a dedicated constants file (<code>Constants.h/cpp</code>) to manage all application paths and shared variables across classes, ensuring consistency and maintainability.</li>"
+        "<li><b>Rectified Duplicate Tabs:</b> Resolved issue where Gmail -- and similar  --  sign-in links would open two identical tabs. Popup windows are now handled with a dedicated <code>newPopupRequested</code> signal and proper profile propagation, eliminating duplicates while preserving profile context.</li>"
+        "</ul>"
+
+        "<h4>[v1.2.5] - 2026-03-05</h4>"
+        "<ul>"
+        "<li><b>NVIDIA GPU Workaround:</b> Added \"Disable GPU Acceleration\" option in Tools menu for users experiencing graphical issues. When enabled, this setting applies the <code>--disable-gpu</code> flag to QtWebEngine, resolving crashes and rendering problems on NVIDIA systems. A restart notification ensures users understand when changes take effect.</li>"
+        "<li><b>Flatpak Runtime:</b> Updated base application to <code>io.qt.qtwebengine.BaseApp</code> version 6.10</li>"
+        "<li><b>KDE Platform:</b> Updated runtime to <code>org.kde.Platform</code> version 6.10</li>"
+        "</ul>"
 
         "<h4>[v1.2.5] - 2026-03-05</h4>"
         "<ul>"

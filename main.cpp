@@ -7,8 +7,11 @@
 //#include"securitymanager.h"
 #include"Constants.h"
 #include<QProcess>
+#include<QDir>
+#include<QStandardPaths>
+#include"Constants.h"
 
-const char* APP_VERSION = "1.2.5";
+
 
 
 int main(int argc, char *argv[])
@@ -48,6 +51,12 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName("Jasmine-local");
     QCoreApplication::setOrganizationName("Jasmine-local");
 #endif
+
+    QCoreApplication::setApplicationVersion(JASMINE_CONSTANTS::APP_VERSION);
+
+    QDir().mkpath(JASMINE_CONSTANTS::appDirPath);
+    QDir().mkpath(JASMINE_CONSTANTS::downloadsDirPath);
+    QDir().mkpath(JASMINE_CONSTANTS::screenshotsDirPath);
 
     QSettings settings;
         if (settings.value("gpu/disable_acceleration", false).toBool()) {

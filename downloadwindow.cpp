@@ -7,15 +7,14 @@
 #include<QMessageBox>
 #include <QApplication>
 #include <QClipboard>
+#include<QIcon>
+#include"Constants.h"
 
 DownloadWindow::DownloadWindow(QWidget *parent)
     : QDialog(parent)
 {
-#ifdef FLATPAK_BUILD
-    m_downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads";
-#else
-    m_downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
-#endif
+
+
     setupUI();
     updateEmptyState();
 }
@@ -23,6 +22,7 @@ DownloadWindow::DownloadWindow(QWidget *parent)
 void DownloadWindow::setupUI()
 {
     setWindowTitle("Downloads");
+    setWindowIcon(QIcon(":/resources/jasmine.png"));
     setMinimumSize(500, 400);
 
 #ifdef FLATPAK_BUILD
@@ -119,32 +119,10 @@ void DownloadWindow::onClearFinishedClicked()
 {
     clearFinishedDownloads();
 }
-/*
-void DownloadWindow::onOpenDownloadsFolderClicked()
-{
-    QDir downloadsDir(m_downloadDirectory);
 
-    // Create directory if it doesn't exist
-    if (!downloadsDir.exists()) {
-        downloadsDir.mkpath(".");
-    }
-
-#ifdef FLATPAK_BUILD
-    // Show helpful message for Flathub users
-    QMessageBox::information(this, "Downloads Location",
-                             QString("Your downloads are saved to:\n\n%1\n\n"
-                                     "You can access this folder using your system's file manager.")
-                                 .arg(m_downloadDirectory));
-#else
-    // Open in system file manager
-    QDesktopServices::openUrl(QUrl::fromLocalFile(m_downloadDirectory));
-#endif
-
-}
-*/
 
 void DownloadWindow::onOpenDownloadsFolderClicked(){
-    QDir downloadsDir(m_downloadDirectory);
+    QDir downloadsDir(JASMINE_CONSTANTS::downloadsDirPath);
     // Create directory if it doesn't exist
     if (!downloadsDir.exists()) {
         downloadsDir.mkpath(".");
@@ -155,18 +133,18 @@ void DownloadWindow::onOpenDownloadsFolderClicked(){
     msgBox.setWindowTitle("Downloads Location");
     msgBox.setText(QString("Your downloads are saved to:\n\n%1\n\n"
                            "You can access this folder using your system's file manager.")
-                       .arg(m_downloadDirectory));
+                       .arg(JASMINE_CONSTANTS::downloadsDirPath));
     msgBox.setStandardButtons(QMessageBox::Ok);
     QPushButton *copyButton = msgBox.addButton("Copy Path", QMessageBox::ActionRole);
 
     msgBox.exec();
 
     if (msgBox.clickedButton() == copyButton) {
-        QApplication::clipboard()->setText(m_downloadDirectory);
+        QApplication::clipboard()->setText(JASMINE_CONSTANTS::downloadsDirPath);
     }
 #else
     // Open in system file manager
-    QDesktopServices::openUrl(QUrl::fromLocalFile(m_downloadDirectory));
+    QDesktopServices::openUrl(QUrl::fromLocalFile(JASMINE_CONSTANTS::downloadsDirPath));
 #endif
 }
 

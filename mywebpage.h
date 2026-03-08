@@ -22,8 +22,7 @@ private:
 signals:
     // Emitted when a new tab should be created
     void newTabRequested(QWebEngineView *view, QWebEngineProfile *profile);
-
-    // Forwarded signals
+    void newPopupRequested(QWebEngineView* view, QWebEngineProfile* profile);  // New signal for popups
     void urlChangedExternally(const QUrl &url);
     void titleChangedExternally(const QString &title);
     void loadStartedExternally();

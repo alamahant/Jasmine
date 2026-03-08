@@ -41,6 +41,7 @@
 #include<QWebEngineScript>
 #include<QWebEngineScriptCollection>
 #include"donationdialog.h"
+#include"Constants.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -48,11 +49,13 @@ MainWindow::MainWindow(QWidget *parent)
       devToolsView(new QWebEngineView)
 
 {
-
     setWindowTitle("Jasmine");
     setWindowIcon(QIcon(":/resources/jasmine.png"));
     //this->setFixedSize(1130, 800);
     this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+
+    QSettings settings;
+    buttonsHighlighted = settings.value("buttonsHighlighted", true).toBool();
 
     //resize(1130, 800);
     //this->installEventFilter(this);
@@ -235,6 +238,8 @@ QWidget* MainWindow::createModernDashboard() {
     // Create main horizontal splitter
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal);
     mainSplitter->setHandleWidth(3); // was 1
+
+
     mainSplitter->setStyleSheet(R"(
         QSplitter::handle {
             background-color: #cccccc;
@@ -326,7 +331,7 @@ QWidget* MainWindow::createModernDashboard() {
     mainSplitter->addWidget(detailsStack);
 
     // Set initial sizes (adjust as needed)
-    mainSplitter->setSizes(QList<int>() << 300 << 400);
+    mainSplitter->setSizes(QList<int>() << 400 << 300);
 
     connect(m_leftPanelTabs, &QTabWidget::currentChanged, [this, detailsStack](int index) {
         // Switch the details stack to match the tab
@@ -545,34 +550,19 @@ QWidget* MainWindow::createWebViewContainer() {
         }
     });
 
-    //
-    /*
-    connect(page, &MyWebPage::newTabRequested, this, [this](QWebEngineView *view, QWebEngineProfile *profile){
-        qDebug() << "newtabrequesed signal received\n";
-        // Add the new view as a tab
-        int idx = m_tabWidget->addTab(view, "New Tab");
-        m_tabWidget->setCurrentIndex(idx);
 
-        // Register the profile
-        m_tabProfiles[view] = profile;
-
-        // Optional: connect title updates
-        MyWebPage *newPage = qobject_cast<MyWebPage*>(view->page());
-        if(newPage) {
-            connect(newPage, &MyWebPage::titleChangedExternally, this, [=](const QString &title){
-                int tIdx = m_tabWidget->indexOf(view);
-                if(tIdx != -1) m_tabWidget->setTabText(tIdx, title);
-            });
-        }
-    });
-    */
 
     connect(page, &MyWebPage::newTabRequested, this, [this](QWebEngineView *view, QWebEngineProfile *){
         // Just use your existing method
-        createNewTabWithUrlFromLink(view->url().toString(), view);
+         createNewTabWithUrlFromLink(view->url().toString(), view);
     });
 
-    //
+
+    connect(page, &MyWebPage::newPopupRequested, this, [this](QWebEngineView *view, QWebEngineProfile *){
+            createNewTabWithUrlFromLink(view->url().toString(), view);
+
+        });
+
 
 
     m_tabWidget->setTabsClosable(true);
@@ -1327,7 +1317,7 @@ void MainWindow::onTabCloseRequested(int index) {
     // If no tabs left, go back to dashboard
     if (m_tabWidget->count() == 0) {
         showDashboard();
-        m_toggleViewAction->setText("To WebView");
+        m_toggleViewAction->setText("Tabs: 0");
         setWindowTitle("Jasmine");
     } else {
         QTimer::singleShot(10, this, [this]() {
@@ -1582,6 +1572,24 @@ void MainWindow::createMenus() {
     viewMenu->addSeparator();
     viewMenu->addAction(m_downloadsAction);
     viewMenu->addAction(m_closeAllTabsAction);
+    viewMenu->addSeparator();
+
+    highlightButtonsAction = new QAction(this);
+    highlightButtonsAction->setText("Highlight Essential Buttons");
+
+    highlightButtonsAction->setCheckable(true);
+    highlightButtonsAction->setChecked(buttonsHighlighted);
+
+    connect(highlightButtonsAction, &QAction::triggered, this, [this](bool checked){
+        QSettings settings;
+        settings.setValue("buttonsHighlighted", checked);
+        highlightButtonsAction->setChecked(checked);
+        buttonsHighlighted = checked;
+        highlightButtons(checked);
+
+        settings.sync();
+    });
+    viewMenu->addAction(highlightButtonsAction);
 
     navigateMenu->addAction(m_webBackAction);
     navigateMenu->addAction(m_webForwardAction);
@@ -3096,9 +3104,9 @@ QToolBar* MainWindow::createToolbar() {
     toolbar->addSeparator();
 
     // Add session and website actions - always visible
-    m_addCurrentSessionAction = toolbar->addAction(QIcon(":/resources/icons/save.svg"), "Save Current Session");
+    //m_addCurrentSessionAction = toolbar->addAction(QIcon(":/resources/icons/save.svg"), "Save Current Session");
     m_addWebsiteFromUrlAction = toolbar->addAction(QIcon(":/resources/icons/file-plus.svg"), "Create Website from Current Url");
-    m_addCurrentWebsiteAction = toolbar->addAction(QIcon(":/resources/icons/plus.svg"), "Open Currently Selected Website");
+    //m_addCurrentWebsiteAction = toolbar->addAction(QIcon(":/resources/icons/plus.svg"), "Open Currently Selected Website");
 
     // Add separator
     //toolbar->addSeparator();
@@ -3109,14 +3117,19 @@ QToolBar* MainWindow::createToolbar() {
     m_zoomOutAction = toolbar->addAction(QIcon(":/resources/icons/zoom-out.svg"), "Zoom Out");
     m_zoomOutAction->setVisible(false);
 
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
 
     // Add copy URL action - always visible
     m_copyUrlAction = toolbar->addAction(QIcon(":/resources/icons/copy.svg"), "Copy Tab URL");
 
     // Add separator
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
 
+    m_addCurrentWebsiteAction = toolbar->addAction(QIcon(":/resources/icons/plus.svg"), "Open Currently Selected Website");
+
+    m_addCurrentSessionAction = toolbar->addAction(QIcon(":/resources/icons/save.svg"), "Save Current Session");
+
+    toolbar->addSeparator();
     //m_toggleViewAction = new QAction(QIcon(":/resources/icons/monitor.svg"), "Dashboard");
     //m_toggleViewAction = new QAction(QIcon(":/resources/icons/chevron-right.svg"), "Dashboard");
     m_toggleViewAction = new QAction(QIcon(":/resources/icons/repeat.svg"), "Dashboard");
@@ -3124,12 +3137,16 @@ QToolBar* MainWindow::createToolbar() {
     m_toggleViewAction->setToolTip("Switch between Dashboard and Web View");
 
     // Create a custom tool button that will display both icon and text
-    QToolButton* toggleButton = new QToolButton();
+    toggleButton = new QToolButton();
     toggleButton->setDefaultAction(m_toggleViewAction);
     toggleButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
+
+
     // Add the button to the toolbar
     toolbar->addWidget(toggleButton);
+
+    //toolbar->addSeparator();
 
     // Add tab count label
     m_tabCountLabel = new QLabel(":0", this);
@@ -3139,7 +3156,6 @@ QToolBar* MainWindow::createToolbar() {
     toolbar->addWidget(m_tabCountLabel);
 
     toolbar->addSeparator();
-    //toolbar->addSeparator();
 
     //close tabs
     // Add close all tabs button - always visible
@@ -3161,7 +3177,7 @@ QToolBar* MainWindow::createToolbar() {
         "    border: 2px solid #ccc;"
         "    border-radius: 12px;"
         //"    background-color: #8e8e93;"
-        "    background-color: #808080;"        // Pure gray (equal RGB values)
+        "    background-color: #b0b0b0;"        // Pure gray (equal RGB values)
         "    text-align: center;"
         "    color: #ffffff;"
         "    padding: 4px 8px;"        // Reduced padding
@@ -3328,6 +3344,44 @@ QToolBar* MainWindow::createToolbar() {
 
     // Connect close all tabs action
     connect(m_closeAllTabsAction, &QAction::triggered, [this]() {
+
+        int tabCount = m_tabWidget->count();
+            if (tabCount == 0) return;
+
+            QSettings settings;
+            bool dontShowAgain = settings.value("dontShowCloseAllWarning", false).toBool();
+
+            if (!dontShowAgain) {
+                QMessageBox msgBox(this);
+                msgBox.setWindowTitle("Close All Tabs");
+                msgBox.setText(QString("You are about to close %1 tab(s). Do you want to proceed?").arg(tabCount));
+                msgBox.setIcon(QMessageBox::Question);
+
+                // Create a checkbox
+                QCheckBox* dontShowCheckBox = new QCheckBox("Don't show this again");
+
+                // Add checkbox to message box (using layout)
+                msgBox.setCheckBox(dontShowCheckBox);
+
+                // Add buttons
+                QPushButton* proceedButton = msgBox.addButton("Proceed", QMessageBox::AcceptRole);
+                QPushButton* cancelButton = msgBox.addButton("Cancel", QMessageBox::RejectRole);
+                msgBox.setDefaultButton(cancelButton);
+
+                // Show message box
+                msgBox.exec();
+
+                // Save checkbox state
+                if (dontShowCheckBox->isChecked()) {
+                    settings.setValue("dontShowCloseAllWarning", true);
+                }
+
+                // If user clicked Cancel, return
+                if (msgBox.clickedButton() != proceedButton) {
+                    return;
+                }
+            }
+
         while (m_tabWidget->count() > 0) {
             onTabCloseRequested(0);
         }
@@ -3430,6 +3484,8 @@ QToolBar* MainWindow::createToolbar() {
             }
         }
     });
+    toolbar->addSeparator();
+    highlightButtons(buttonsHighlighted);
 
     return toolbar;
 }
@@ -3837,50 +3893,44 @@ void MainWindow::takeScreenshot(){
     }
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss");
     QString filename = QString("screenshot_%1.png").arg(timestamp);
-#ifdef FLATPAK_BUILD
-    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads";
-#else
-    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
-#endif
-    QDir downloadsDir(downloadDirectory);
-    if (!downloadsDir.exists()) {
-        downloadsDir.mkpath(".");
+
+
+
+    QDir screenshotDir(JASMINE_CONSTANTS::screenshotsDirPath);
+    if (!screenshotDir.exists()) {
+        screenshotDir.mkpath(".");
     }
 
-    QString filepath = downloadsDir.filePath(filename);
+    QString filepath = screenshotDir.filePath(filename);
     if (screenshot.save(filepath)) {
-#ifdef FLATPAK_BUILD
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle("Screenshot");
-        msgBox.setText("Screenshot saved: " + filename);
-        msgBox.setInformativeText("Location: " + downloadsDir.absolutePath());
-        QPushButton *copyButton = msgBox.addButton("Copy Path", QMessageBox::ActionRole);
-        msgBox.addButton(QMessageBox::Ok);
-        msgBox.exec();
+    #ifdef FLATPAK_BUILD
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("Screenshot");
+            msgBox.setText("Screenshot saved: " + filename);
+            msgBox.setInformativeText("Location: " + screenshotDir.absolutePath()); // Fixed: was downloadsDir
+            QPushButton *copyButton = msgBox.addButton("Copy Path", QMessageBox::ActionRole);
+            msgBox.addButton(QMessageBox::Ok);
+            msgBox.exec();
 
-        if (msgBox.clickedButton() == copyButton) {
-            QClipboard *clipboard = QApplication::clipboard();
-            clipboard->setText(downloadsDir.absolutePath());
+            if (msgBox.clickedButton() == copyButton) {
+                QClipboard *clipboard = QApplication::clipboard();
+                clipboard->setText(screenshotDir.absolutePath()); // Fixed: was downloadsDir
+            }
+    #else
+            QMessageBox::information(this, "Screenshot", "Screenshot saved in " + screenshotDir.absolutePath() + " as "  + filename);
+    #endif
+        } else {
+            QMessageBox::warning(this, "Error", "Failed to save screenshot.");
         }
-#else
-        QMessageBox::information(this, "Screenshot", "Screenshot saved in " + downloadsDir.absolutePath() + " as "  + filename);
-#endif
-    } else {
-        QMessageBox::warning(this, "Error", "Failed to save screenshot.");
     }
-}
 
 
 
 void MainWindow::openDownloadsFolder(){
 
-#ifdef FLATPAK_BUILD
-    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads";
-#else
-    QString downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
-#endif
 
-    QDir downloadsDir(downloadDirectory);
+
+    QDir downloadsDir(JASMINE_CONSTANTS::downloadsDirPath);
 
     // Create directory if it doesn't exist
     if (!downloadsDir.exists()) {
@@ -3893,18 +3943,18 @@ void MainWindow::openDownloadsFolder(){
     msgBox.setWindowTitle("Downloads Location");
     msgBox.setText(QString("Your downloads are saved to:\n\n%1\n\n"
                            "You can access this folder using your system's file manager.")
-                       .arg(downloadDirectory));
+                       .arg(JASMINE_CONSTANTS::downloadsDirPath));
     msgBox.setStandardButtons(QMessageBox::Ok);
     QPushButton *copyButton = msgBox.addButton("Copy Path", QMessageBox::ActionRole);
 
     msgBox.exec();
 
     if (msgBox.clickedButton() == copyButton) {
-        QApplication::clipboard()->setText(downloadDirectory);
+        QApplication::clipboard()->setText(JASMINE_CONSTANTS::downloadsDirPath);
     }
 #else
     // Open in system file manager
-    QDesktopServices::openUrl(QUrl::fromLocalFile(downloadDirectory));
+    QDesktopServices::openUrl(QUrl::fromLocalFile(JASMINE_CONSTANTS::downloadsDirPath));
 #endif
 }
 
@@ -3949,6 +3999,8 @@ QString MainWindow::loadDarkTheme(){
         }
         m_addWebsiteFromUrlAction->setIcon(QIcon(":/resources/icons-white/file-plus.svg"));
         m_goHomeAction->setIcon(QIcon(":/resources/icons-white/home.svg"));
+
+        highlightButtons(buttonsHighlighted);
 
         return stylesheet;
     }
@@ -4000,6 +4052,7 @@ QString MainWindow::loadLightTheme(){
         m_addWebsiteFromUrlAction->setIcon(QIcon(":/resources/icons/file-plus.svg"));
         m_goHomeAction->setIcon(QIcon(":/resources/icons/home.svg"));
 
+        highlightButtons(buttonsHighlighted);
 
         return stylesheet;
     }
@@ -4128,8 +4181,8 @@ void MainWindow::connectUrlBar() {
     connect(m_urlBar, &URLBar::urlChanged, this, [this](const QString &url) {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
             // Tab exists, load URL in current tab
-            //view->load(QUrl(url));
-            createNewTabWithUrlFromLink(url,view);
+            view->load(QUrl(url));
+            //createNewTabWithUrlFromLink(url,view);
 
         } else {
             // No tabs open, create a new tab with this URL
@@ -4438,10 +4491,16 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     // profile->setCachePath(QDir::homePath() + "/.myapp/browser_cache");
 
     // Set download path
+
+
+    QString appDirPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/Jasmine";
+
+
+
 #ifdef FLATPAK_BUILD
-    profile->setDownloadPath(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads");
+    profile->setDownloadPath(JASMINE_CONSTANTS::downloadsDirPath);
 #else
-    profile->setDownloadPath(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine");
+    profile->setDownloadPath(JASMINE_CONSTANTS::downloadsDirPath);
 #endif
 
     // === General WebEngine Settings ===
@@ -4881,7 +4940,6 @@ void MainWindow::showProfileManager() {
 
 void MainWindow::handleFullScreenRequest(QWebEngineFullScreenRequest request)
 {
-    qDebug() << "Fullscreen request received:" << request.toggleOn();
 
     QWebEngineView* webView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget());
     if (!webView)
@@ -5003,8 +5061,14 @@ void MainWindow::configurePage(MyWebPage *page)
             */
 
     connect(page, &MyWebPage::newTabRequested, this, [this](QWebEngineView *view, QWebEngineProfile *){
-            qDebug() << "newTabRequested received in MainWindow from page:" << sender();
             createNewTabWithUrlFromLink(view->url().toString(), view);
+        });
+
+
+
+    connect(page, &MyWebPage::newPopupRequested, this, [this](QWebEngineView *view, QWebEngineProfile *){
+            createNewTabWithUrlFromLink(view->url().toString(), view);
+
         });
 
 }
@@ -5044,7 +5108,7 @@ void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*p
 
     if (hasLink) {
         copyLinkAction = menu.addAction("Copy link address");
-        openTabAction = menu.addAction("Open link in new tab");
+        openTabAction = menu.addAction("Open link in new tab(Preserves calling tab's profile)");
         //openWindowAction = menu.addAction("Open link in new window");
         menu.addSeparator();
     }
@@ -5265,6 +5329,8 @@ void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView 
 }
 
 
+
+
 void MainWindow::setupVideoAdBlocking(QWebEngineProfile *profile)
 {
     // Check if scripts already exist to avoid duplicates
@@ -5335,5 +5401,92 @@ void MainWindow::setupVideoAdBlocking(QWebEngineProfile *profile)
     generalScript.setRunsOnSubFrames(true);
     profile->scripts()->insert(generalScript);
 
-    qDebug() << "Video ad blocking scripts installed for profile";
+}
+
+
+void MainWindow::highlightButtons(bool highlighted)
+{
+    if(highlighted) {
+        m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/repeat.svg"));
+
+
+        toggleButton->setStyleSheet(
+                    "QToolButton {"
+                    "   background-color: #b0b0b0;"  /* Darker gray-beige */
+                    "   color: white;"
+                    "   border-radius: 4px;"
+                    "   padding: 4px 8px;"
+                    "   border: none;"
+                    "}"
+                    "QToolButton:hover {"
+                    "   background-color: #a0a0a0;"
+                    "   color: white;"
+                    "}"
+                    );
+
+        m_addCurrentSessionAction->setIcon(QIcon(":/resources/icons-white/save.svg"));
+
+        // Find the button and style it
+        QToolButton* saveButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentSessionAction));
+        if (saveButton) {
+            saveButton->setStyleSheet(
+                        "QToolButton {"
+                        "   background-color: #b0b0b0;"  /* Darker gray-beige */
+                        "   color: white;"
+                        "   border-radius: 4px;"
+                        "   padding: 4px 8px;"
+                        "   border: none;"
+                        "}"
+                        "QToolButton:hover {"
+                        "   background-color: #a0a0a0;"  /* Same darker blue on hover */
+                        "   color: white;"
+                        "}"
+                        );
+        }
+
+        m_addCurrentWebsiteAction->setIcon(QIcon(":/resources/icons-white/plus.svg"));
+
+        // Find the button and style it
+        QToolButton* websiteButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentWebsiteAction));
+        if (websiteButton) {
+            //websiteButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);  // Show text beside icon
+            websiteButton->setStyleSheet(
+                        "QToolButton {"
+                        "   background-color: #b0b0b0;"  /* Darker gray-beige */
+                        "   color: white;"
+                        "   border-radius: 4px;"
+                        "   padding: 4px 8px;"
+                        "   border: none;"
+                        "}"
+                        "QToolButton:hover {"
+                        "   background-color: #a0a0a0;"
+                        "   color: white;"
+                        "}"
+                        );
+        }
+    }else{
+        if(!m_isDarkTheme) m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
+
+        toggleButton->setStyleSheet("");
+
+
+        if(!m_isDarkTheme) m_addCurrentSessionAction->setIcon(QIcon(":/resources/icons/save.svg"));
+
+        // Find the button and style it
+        QToolButton* saveButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentSessionAction));
+        if (saveButton) {
+            saveButton->setStyleSheet("");
+        }
+
+        if(!m_isDarkTheme) m_addCurrentWebsiteAction->setIcon(QIcon(":/resources/icons/plus.svg"));
+
+        // Find the button and style it
+        QToolButton* websiteButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentWebsiteAction));
+        if (websiteButton) {
+            //websiteButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);  // Show text beside icon
+            websiteButton->setStyleSheet("");
+                        }
+
+    }
+
 }

@@ -47,6 +47,8 @@ qt_add_executable(Jasmine
     donationdialog.cpp donationdialog.h
     donationdialog.cpp donationdialog.h
     donationdialog.cpp donationdialog.h
+    Constants.cpp
+
 
 )
 

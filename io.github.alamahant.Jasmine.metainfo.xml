@@ -108,7 +108,26 @@
 
   <releases>
 
-<release version="1.2.5" date="2026-03-04">
+  <release version="1.2.6" date="2026-03-08">
+    <description>
+      <p>New Features</p>
+      <ul>
+        <li>Added "Highlight Essential Buttons" option in View menu. Dashboard/WebView switcher, Save Session, and Open Selected Website buttons are now highlightable with distinct background colors for improved usability. State persists across sessions via QSettings.</li>
+        <li>Downloads and screenshots now save directly to ~/Documents/Jasmine/Downloads and ~/Documents/Jasmine/Screenshots respectively, eliminating deep OSTree nesting.</li>
+      </ul>
+      <p>Improvements</p>
+      <ul>
+        <li>Fixed new tab/window behavior to respect profile selection. Right-click "Open in new tab" preserves calling tab's profile (shared, private, or named) while left-clicking on links uses universal shared profile.</li>
+        <li>Implemented centralized constants file (Constants.h/cpp) to manage all application paths and shared variables across classes.</li>
+      </ul>
+      <p>Bug Fixes</p>
+      <ul>
+        <li>Resolved duplicate tab issue. Left-clicking on links emits a  dedicated newPopupRequested signal without two or more tabs opening.This was a known bug.</li>
+      </ul>
+    </description>
+  </release>
+
+<release version="1.2.5" date="2026-03-05">
   <description>
     <p>New Features</p>
     <ul>

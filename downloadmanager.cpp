@@ -5,6 +5,7 @@
 #include <QUrl>
 #include "downloaditem.h"
 #include <QApplication>
+#include"Constants.h"
 
 
 DownloadManager::DownloadManager(QObject *parent)
@@ -34,14 +35,9 @@ DownloadManager::~DownloadManager()
 
 void DownloadManager::setupDownloadDirectory()
 {
-#ifdef FLATPAK_BUILD
-    m_downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/Downloads";
-#else
-    m_downloadDirectory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/Jasmine";
-#endif
     QDir dir;
-    if (!dir.exists(m_downloadDirectory)) {
-        dir.mkpath(m_downloadDirectory);
+    if (!dir.exists(JASMINE_CONSTANTS::downloadsDirPath)) {
+        dir.mkpath(JASMINE_CONSTANTS::downloadsDirPath);
     }
 }
 
@@ -117,7 +113,7 @@ void DownloadManager::onDownloadProgress()
 
 QString DownloadManager::getDownloadPath(const QString &fileName)
 {
-    QString basePath = m_downloadDirectory + "/" + fileName;
+    QString basePath = JASMINE_CONSTANTS::downloadsDirPath + "/" + fileName;
     QString finalPath = basePath;
 
     // Handle duplicate filenames
@@ -125,7 +121,7 @@ QString DownloadManager::getDownloadPath(const QString &fileName)
     while (QFile::exists(finalPath)) {
         QFileInfo info(basePath);
         finalPath = QString("%1/%2 (%3).%4")
-                        .arg(m_downloadDirectory)
+                        .arg(JASMINE_CONSTANTS::downloadsDirPath)
                         .arg(info.baseName())
                         .arg(counter)
                         .arg(info.suffix());
