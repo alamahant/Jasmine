@@ -2,6 +2,9 @@
 
 ![Jasmine Screenshot](screenshots/Jasmine-Main.png)
 
+Available in Flathub:
+https://flathub.org/en/apps/search?q=alamahant
+
 **Website & Session Manager**
 
 A comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace.
