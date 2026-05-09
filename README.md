@@ -6,8 +6,13 @@
 
 A comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace.
 
-Available in Flathub:
-https://flathub.org/en/apps/search?q=alamahant
+**Download**
+
+| Platform | Where to Get It |
+| :--- | :--- |
+| **Linux** | [Flathub](https://flathub.org/en/apps/search?q=alamahant) |
+| **Windows and Mac** | [Buy on Gumroad](https://jnanadhakini.gumroad.com/) - Pre-compiled binary, no compilation needed |
+
 
 ---
 
