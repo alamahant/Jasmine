@@ -235,6 +235,11 @@ void URLBar::onSearchEngineChanged(const QString &text) {
     emit searchEngineChanged(text);
 }
 
+QLineEdit *URLBar::urlInput() const
+{
+    return m_urlInput;
+}
+
 QUrl URLBar::getSearchUrl() const {
     QString currentEngine = m_searchEngineCombo->currentText();
 

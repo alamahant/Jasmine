@@ -108,6 +108,22 @@
 
   <releases>
 
+  <release version="1.2.7" date="2026-05-16">
+    <description>
+      <p>New Feature: Ad-Free Video Player</p>
+      <ul>
+        <li>Added standalone ad-free video player for YouTube, Vimeo, Dailymotion, Rumble, and Odysee. Since QWebEngine doesn't support ad-block extensions and the built-in blocker cannot block YouTube ads, this provides an excellent way to watch videos without interruptions.</li>
+        <li>Uses yt-dlp backend to extract direct stream URLs, bypassing ad injection points. Native QMediaPlayer rendering with hardware acceleration.</li>
+        <li>Full video controls: play/pause, stop, volume, progress slider, fullscreen toggle, aspect ratio options, and right-click context menu. Auto-hide interface on click for maximized viewing.</li>
+        <li>One-click "Stream" button in video toolbar loads current page URL into player. Player state and volume level persist across sessions via QSettings.</li>
+      </ul>
+      <p>Bug Fixes</p>
+      <ul>
+        <li>Fixed orphaned yt-dlp processes when clearing URLs or closing player. Proper resource cleanup implemented.</li>
+      </ul>
+    </description>
+  </release>
+
   <release version="1.2.6" date="2026-03-08">
     <description>
       <p>New Features</p>

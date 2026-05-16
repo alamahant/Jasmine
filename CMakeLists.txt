@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Qt6 components (WebEngine is provided by BaseApp)
-find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets Svg)
+find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets Svg Multimedia MultimediaWidgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 set(QT_VERSION_MAJOR 6)
 
@@ -48,6 +48,8 @@ qt_add_executable(Jasmine
     donationdialog.cpp donationdialog.h
     donationdialog.cpp donationdialog.h
     Constants.cpp
+    extensionmanager.cpp extensionmanager.h
+    adfreeplayerdialog.cpp adfreeplayerdialog.h
 
 
 )
@@ -61,7 +63,8 @@ target_link_libraries(Jasmine PRIVATE
     Qt6::Widgets
     Qt6::WebEngineWidgets
     Qt6::Svg
-
+    Qt6::Multimedia
+    Qt6::MultimediaWidgets
 )
 target_link_libraries(Jasmine PRIVATE Qt6::Core)
 

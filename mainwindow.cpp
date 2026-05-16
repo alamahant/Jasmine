@@ -46,13 +46,14 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       page(nullptr),
-      devToolsView(new QWebEngineView)
-
+      devToolsView(new QWebEngineView),
+      player(new AdFreePlayerDialog(this))
 {
     setWindowTitle("Jasmine");
     setWindowIcon(QIcon(":/resources/jasmine.png"));
     //this->setFixedSize(1130, 800);
     this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
+
 
     QSettings settings;
     buttonsHighlighted = settings.value("buttonsHighlighted", true).toBool();
@@ -126,6 +127,8 @@ MainWindow::MainWindow(QWidget *parent)
     //
     // Setup web profile
     m_webProfile = new QWebEngineProfile("WebsiteManager", this);
+
+    //m_extManager = new ExtensionManager(m_webProfile,this);
 
     interceptor = new RequestInterceptor(this);
     m_adBlocker = new SimpleAdBlocker(this);
@@ -204,6 +207,23 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     statusBar()->showMessage("Ready");
+
+    //testing extensions
+    //QString extensionPath = "/home/dharma/.local/share/Alamahant/Jasmine-extensions/storage/Extensions/uBOLite_2026.301.2014.chromium_XWsHZP";
+       // Or your AdGuard path
+    //QString extensionPath = "/home/dharma/shared/downloads/adguard/";
+    //QString extensionPath = "/home/dharma/.local/share/Alamahant/Jasmine-extensions/storage/Extensions/addguard_YSc6qX/";
+    //qDebug() << "Loading extension from:" << extensionPath;
+       //m_extManager->loadFromFolder(extensionPath);
+
+    connect(player, &AdFreePlayerDialog::requestCurrentUrl, this, [this]() {
+        if(m_urlBar){
+        QString currentUrl = m_urlBar->urlInput()->text();
+        if (!currentUrl.isEmpty()) {
+            player->setUrl(currentUrl);
+        }
+        }
+    });
 
 
 }
@@ -3485,6 +3505,25 @@ QToolBar* MainWindow::createToolbar() {
         }
     });
     toolbar->addSeparator();
+    streamButton = new QPushButton("Stream", this);
+    streamButton->setIcon(QIcon(":/resources/icons/rss.svg"));
+    streamButton->setToolTip("Open Ad-Free Player\n\n"
+                             "1. Click to open the ad-free video player dialog\n"
+                             "2. In the player, click 'Get URL' to fetch the current URL from the address bar\n"
+                             "3. Works with YouTube, Vimeo, Dailymotion, Rumble, and Odysee\n"
+                             "4. Plays videos without any ads - yt-dlp extracts the direct stream URL");
+    streamButton->setCheckable(true);
+    streamButton->setChecked(false);
+    connect(streamButton, &QPushButton::clicked, this, [this](bool checked){
+        if(checked){
+            player->show();
+            player->raise();
+        }else{
+            player->hide();
+        }
+    });
+    toolbar->addWidget(streamButton);
+
     highlightButtons(buttonsHighlighted);
 
     return toolbar;
@@ -3976,6 +4015,8 @@ QString MainWindow::loadDarkTheme(){
         m_copyUrlAction->setIcon(QIcon(":/resources/icons-white/copy.svg"));
         m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/repeat.svg"));
         m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons-white/link.svg"));
+        streamButton->setIcon(QIcon(":/resources/icons-white/rss.svg"));
+
         /*
         if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
             m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/chevron-right.svg"));
@@ -4028,6 +4069,7 @@ QString MainWindow::loadLightTheme(){
         m_copyUrlAction->setIcon(QIcon(":/resources/icons/copy.svg"));
         m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
         m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons/link.svg"));
+        streamButton->setIcon(QIcon(":/resources/icons/rss.svg"));
 
         /*
         if (m_stackedWidget->currentWidget() == m_dashboardWidget) {

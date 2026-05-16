@@ -19,6 +19,8 @@ public:
 
     QString getCurrentEngine() const;
 
+    QLineEdit *urlInput() const;
+
 signals:
     void urlChanged(const QString &url);
     void backRequested();

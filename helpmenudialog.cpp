@@ -131,6 +131,7 @@ QString HelpMenuDialog::getShortcutsContent()
 
 
 
+
 QString HelpMenuDialog::getAboutContent() {
     return QString(R"(
         <div style="text-align: center; font-family: Arial, sans-serif;">
@@ -145,27 +146,33 @@ QString HelpMenuDialog::getAboutContent() {
                 <p style="margin: 5px 0;"><strong>Built with:</strong> Qt Framework</p>
                 <p style="margin: 5px 0;"><strong>Platform:</strong> Cross-platform</p>
             </div>
-<div style="margin: 30px 0;">
-    <h4 style="color: #2c3e50;">Key Features</h4>
-    <p style="text-align: left; margin: 10px 20px;">
-        • Smart bookmarking with favicons and metadata<br>
-        • Multi-tab session management<br>
-        • Private profile isolation for multi-account support<br>
-        • Built-in download manager and screenshot capture<br>
-        • 2FA integration and login reference storage
-    </p>
-    <p>Available for Linux, Windows, Macos and Flatpak.</p>
-    <p><a href="https://github.com/alamahant/Asteria/releases/latest" style="color: #3498db; text-decoration: none; font-weight: bold;">
-        https://github.com/alamahant/Jasmine/releases/latest
-    </a></p>
-</div>
+            <div style="margin: 30px 0;">
+                <h4 style="color: #2c3e50;">Key Features</h4>
+                <p style="text-align: left; margin: 10px 20px;">
+                    • Smart bookmarking with favicons and metadata<br>
+                    • Multi-tab session management<br>
+                    • Private profile isolation for multi-account support<br>
+                    • Built-in download manager and screenshot capture<br>
+                    • 2FA integration and login reference storage
+                </p>
+
+                <p><strong style="color: #27ae60;">✓ Free for Linux on Flathub</strong></p>
+
+                <p><strong>Check out my other Windows & macOS apps:</strong><br>
+                <a href="https://jnanadhakini.gumroad.com" style="color: #3498db; text-decoration: none; font-weight: bold;">
+                → https://jnanadhakini.gumroad.com</a></p>
+
+                <p><strong>Source Code & Linux Version:</strong><br>
+                <a href="https://github.com/alamahant/Jasmine/releases/latest" style="color: #3498db; text-decoration: none;">
+                → https://github.com/alamahant/Jasmine/releases/latest</a></p>
+            </div>
             <hr style="margin: 30px 0; border: 1px solid #bdc3c7;">
             <div style="margin: 20px 0;">
                 <p style="margin: 5px 0; color: #7f8c8d;">
                     <strong>Copyright © 2025 Alamahant</strong>
                 </p>
                 <p style="margin: 5px 0; font-size: 12px; color: #95a5a6;">
-                    All rights reserved. This software is provided as-is without warranty.
+                    This software is open source (GPL-3.0). Linux version free on Flathub.
                 </p>
             </div>
             <div style="margin: 20px 0;">
@@ -1406,6 +1413,15 @@ QString HelpMenuDialog::getChangelogContent()
 {
     return QString(
         "<h3>Changelog</h3>"
+
+        "<h4>[v1.2.7] - 2026-05-16</h4>"
+        "<ul>"
+        "<li><b>Ad-Free Video Player:</b> Added standalone ad-free player for YouTube, Vimeo, Dailymotion, Rumble, and Odysee. Since QWebEngine doesn't support ad-block extensions and the built-in blocker cannot block YouTube ads, this provides an excellent way to watch videos without interruptions.</li>"
+        "<li><b>yt-dlp Integration:</b> Uses yt-dlp backend to extract direct stream URLs, bypassing ad injection points. Native QMediaPlayer rendering with hardware acceleration.</li>"
+        "<li><b>Full Video Controls:</b> Includes play/pause, stop, volume slider, progress bar, fullscreen toggle, aspect ratio options, and right-click context menu. Auto-hide interface on click for maximized viewing.</li>"
+        "<li><b>One-Click Streaming:</b> \"Stream\" button in main toolbar loads current page URL into player. Player state and volume level persist across sessions via QSettings.</li>"
+        "<li><b>Process Cleanup Fix:</b> Fixed orphaned yt-dlp processes when clearing URLs or closing the player. Proper resource cleanup implemented.</li>"
+        "</ul>"
 
         "<h4>[v1.2.6] - 2026-03-08</h4>"
         "<ul>"

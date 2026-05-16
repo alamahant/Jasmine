@@ -75,5 +75,11 @@
         <file>resources/icons-white/repeat.svg</file>
         <file>resources/icons/link.svg</file>
         <file>resources/icons-white/link.svg</file>
+        <file>resources/icons-white/minimize-2.svg</file>
+        <file>resources/icons-white/pause.svg</file>
+        <file>resources/icons-white/square.svg</file>
+        <file>resources/icons-white/maximize-2.svg</file>
+        <file>resources/icons/rss.svg</file>
+        <file>resources/icons-white/rss.svg</file>
     </qresource>
 </RCC>

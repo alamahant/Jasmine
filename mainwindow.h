@@ -43,7 +43,8 @@
 #include "mywebpage.h"
 #include<memory>
 #include"cosmeticfilterinjector.h"
-
+#include"extensionmanager.h"
+#include"adfreeplayerdialog.h"
 
 // Session data structure
 struct SessionData {
@@ -348,6 +349,10 @@ private:
     bool buttonsHighlighted  = false;
     QToolButton* toggleButton;
     QAction* highlightButtonsAction;
+    //extensions
+    //ExtensionManager* m_extManager = nullptr;
+    AdFreePlayerDialog* player = nullptr;
+    QPushButton* streamButton;
 };
 
 #endif // MAINWINDOW_H

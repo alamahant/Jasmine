@@ -1,5 +1,25 @@
 # Changelog
 
+## [v1.2.7] - 2026-05-16
+
+### New Feature: Ad-Free Video Player
+
+**Why this matters:** The built-in ad blocker cannot block YouTube ads, and QWebEngine doesn't support extensions like AdBlock Plus. This feature provides an excellent way to watch YouTube, Vimeo, Dailymotion, Rumble, and Odysee without any video ads.
+
+**How it works:**
+- Uses yt-dlp backend to extract direct stream URLs, bypassing ad injection points
+- Native QMediaPlayer rendering with hardware acceleration
+- Full video controls: play/pause, volume, progress slider, fullscreen, aspect ratio options
+- One-click "Stream" button in toolbar loads current page URL into player
+- Right-click context menu for quick access to all controls
+- Auto-hide interface on click for maximized viewing
+- Player state persisted across sessions via QSettings
+
+**Technical improvements:**
+- Proper process cleanup prevents orphaned yt-dlp processes
+- Volume level remembered when muting/unmuting
+- Graceful timeout handling for stream extraction
+
 ## [v1.2.6] - 2026-03-08
 
 ### New Features
@@ -17,6 +37,8 @@
 ### Bug Fixes
 
 - **Debugged Duplicate Tabs**: Resolved issue where Gmail --and others-- sign-in links would open two identical tabs. Popup windows are now handled with a dedicated `newPopupRequested` signal and proper profile propagation, eliminating duplicates while preserving profile context.
+
+---
 
 ## [v1.2.5] - 2026-03-05
 
