@@ -108,6 +108,16 @@
 
   <releases>
 
+<release version="1.2.8" date="2026-05-17">
+    <description>
+      <p>Flatpak: Added missing yt-dlp module</p>
+      <ul>
+        <li>Module downloads yt-dlp binary from official GitHub releases to application directory with executable permissions.</li>
+        <li>Flatpak version now works out of the box with no external dependencies.</li>
+      </ul>
+    </description>
+</release>
+
   <release version="1.2.7" date="2026-05-16">
     <description>
       <p>New Feature: Ad-Free Video Player</p>

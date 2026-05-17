@@ -1,5 +1,26 @@
 # Changelog
 
+### [v1.2.8] - 2026-05-17
+
+**Added yt-dlp to Flatpak manifest:**
+- yt-dlp now bundled directly in the Flatpak package
+- No manual installation required for Flatpak users
+- Module downloads yt-dlp binary from official GitHub releases
+- Installed to `/app/bin/yt-dlp` with executable permissions
+- Works out of the box with no external dependencies
+
+**Flatpak manifest changes:**
+```yaml
+- name: yt-dlp
+  buildsystem: simple
+  build-commands:
+    - install -D yt-dlp /app/bin/yt-dlp
+    - chmod +x /app/bin/yt-dlp
+  sources:
+    - type: file
+      url: https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp_linux
+
+
 ## [v1.2.7] - 2026-05-16
 
 ### New Feature: Ad-Free Video Player
