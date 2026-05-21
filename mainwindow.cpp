@@ -6292,7 +6292,7 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
 
 QString MainWindow::getRadioStationsFilePath()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/radiostations.dat";
+    return JASMINE_CONSTANTS::appDirPath + "/radiostations.dat";
 }
 
 void MainWindow::saveRadioStations()
