@@ -7,6 +7,7 @@
 #include<QMessageBox>
 #include<QTimer>
 #include<QRegularExpression>
+#include<QProgressDialog>
 
 AdFreePlayerDialog::AdFreePlayerDialog(QWidget *parent)
     : QDialog(parent)
@@ -16,9 +17,11 @@ AdFreePlayerDialog::AdFreePlayerDialog(QWidget *parent)
     , m_isPlaying(false)
 {
     setWindowFlags(Qt::Window | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
-    setWindowTitle("Jasmine - Ad-Free Player");
+    setWindowTitle("Jasmine - Media Player");
     setMinimumSize(800, 450);
     setupUI();
+    connect(m_player, &QMediaPlayer::mediaStatusChanged,
+            this, &AdFreePlayerDialog::onMediaStatusChanged);
 }
 
 AdFreePlayerDialog::~AdFreePlayerDialog()
@@ -53,11 +56,17 @@ void AdFreePlayerDialog::setupUI()
     topLayout->setContentsMargins(10, 5, 10, 5);
 
     m_getUrlButton = new QPushButton("Get URL", topBar);
+    m_getUrlButton->setToolTip("Navigato to any youtube -- or other -- video and click to stream ad-free");
     m_getUrlButton->setFixedWidth(160);
 
-    m_urlDisplay = new QLabel("No URL loaded", topBar);
+    //m_urlDisplay = new QLabel("No URL loaded", topBar);
+    m_urlDisplay = new QLineEdit(topBar);
+    m_urlDisplay->setText("No URL loaded");
+    m_urlDisplay->setReadOnly(true);
     m_urlDisplay->setStyleSheet("color: white; padding: 5px; background-color: rgba(0, 0, 0, 100); border-radius: 3px;");
     m_urlDisplay->setMinimumWidth(300);
+    m_urlDisplay->setToolTip("Current URL");
+
 
     m_clearButton = new QPushButton("✖", topBar);  // Small clear button
     m_clearButton->setFixedSize(30, 30);
@@ -83,6 +92,7 @@ void AdFreePlayerDialog::setupUI()
     connect(m_volumeSlider, &QSlider::valueChanged, this, &AdFreePlayerDialog::onVolumeChanged);
     connect(m_progressSlider, &QSlider::sliderMoved, this, &AdFreePlayerDialog::onProgressSliderMoved);
     connect(m_fullscreenButton, &QPushButton::clicked, this, &AdFreePlayerDialog::toggleFullscreen);
+    connect(m_player, &QMediaPlayer::mediaStatusChanged, this, &AdFreePlayerDialog::onMediaStatusChanged);
 }
 
 void AdFreePlayerDialog::createVideoToolbar()
@@ -184,6 +194,7 @@ void AdFreePlayerDialog::createVideoToolbar()
     m_videoToolbar->setStyleSheet(toolbarStyle);
 }
 
+/*
 void AdFreePlayerDialog::setUrl(const QString &url)
 {
     m_currentUrl = url;
@@ -191,9 +202,22 @@ void AdFreePlayerDialog::setUrl(const QString &url)
     m_urlDisplay->setStyleSheet("color: white; padding: 5px; background-color: rgba(0, 0, 0, 100); border-radius: 3px;");
     extractStreamUrl();
 }
+*/
+
+void AdFreePlayerDialog::setUrl(const QString &url)
+{
+
+    m_currentUrl = url;
+    m_urlDisplay->setText(url);
+    m_urlDisplay->setToolTip(url);
+    m_urlDisplay->setStyleSheet("color: white; padding: 5px; background-color: rgba(0, 0, 0, 100); border-radius: 3px;");
+    extractStreamUrl();
+
+}
 
 void AdFreePlayerDialog::onGetUrlClicked()
 {
+    setWindowTitle("Jasmine - Media Player");
     // Check if a URL is already loaded
     if (!m_currentUrl.isEmpty()) {
         QMessageBox::StandardButton reply = QMessageBox::question(
@@ -296,7 +320,6 @@ void AdFreePlayerDialog::extractStreamUrl()
     connect(m_ytProcess, &QProcess::readyReadStandardOutput, this, [this]() {
         m_outputBuffer.append(m_ytProcess->readAllStandardOutput());
         QString output = QString::fromUtf8(m_outputBuffer);
-        qDebug() << "URL " << output;
 
     });
 
@@ -310,7 +333,6 @@ void AdFreePlayerDialog::extractStreamUrl()
         }
 
         QString output = QString::fromUtf8(m_outputBuffer);
-        qDebug() << "URL " << output;
 
         QStringList lines = output.split('\n');
 
@@ -323,7 +345,6 @@ void AdFreePlayerDialog::extractStreamUrl()
             }
         }
 
-        qDebug() << "URL " << streamUrl;
 
         if (!streamUrl.isEmpty()) {
             playStreamWithUrl(streamUrl);
@@ -472,6 +493,7 @@ void AdFreePlayerDialog::onStop()
         m_playButton->setToolTip("Play");
         m_progressSlider->setValue(0);
         m_timeLabel->setText("00:00 / 00:00");
+        emit mediaStopped();
     }
 }
 
@@ -503,6 +525,8 @@ QString AdFreePlayerDialog::truncateUrl(const QString &url, int maxChars)
     if (url.length() <= maxChars) return url;
     return url.left(maxChars - 3) + "...";
 }
+
+
 
 void AdFreePlayerDialog::showContextMenu(const QPoint &pos)
 {
@@ -591,11 +615,12 @@ void AdFreePlayerDialog::closeEvent(QCloseEvent *event)
 {
     // Stop playback
     if (m_player) {
-        m_player->stop();
+        //m_player->stop();
     }
 
-    // Just hide the dialog, don't delete it
+
     hide();
+    emit dialogClosed();
     event->accept();
 }
 
@@ -667,3 +692,28 @@ void AdFreePlayerDialog::onClearClicked()
 
     //statusBar()->showMessage("Cleared", 2000); // If you have status bar, or just ignore
 }
+
+// for radio
+
+void AdFreePlayerDialog::stop()
+{
+    onStop();
+}
+
+void AdFreePlayerDialog::play()
+{
+    playStream();
+}
+
+void AdFreePlayerDialog::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
+{
+    if (status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::BufferedMedia) {
+        emit mediaLoaded();
+    } else if (status == QMediaPlayer::InvalidMedia) {
+        emit mediaFailed(m_player->errorString());
+    }
+    if (status == QMediaPlayer::EndOfMedia) {
+        emit mediaStopped();
+    }
+}
+

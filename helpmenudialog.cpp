@@ -229,6 +229,23 @@ QString HelpMenuDialog::getFeaturesContent()
                 <p>Monitor site usage with visit counts and last-accessed timestamps.</p>
             </div>
 
+            <h2 style="color: #2ecc71; border-bottom: 2px solid #2ecc71; padding-bottom: 5px;">📻 Radio Stations & IPTV</h2>
+            <div style="margin: 20px 0;">
+            <h3 style="color: #e67e22;">🎵 Radio Stations Tab</h3>
+            <p>Browse, search, and add internet radio stations from thousands of options. Search by name or country, preview streams before adding, and save your favorites. Station icons are cached locally for faster loading.</p>
+            <h3 style="color: #e67e22;">📺 IPTV Tab</h3>
+            <p>Import M3U playlists from URL or local file, browse channels by category, and add them to your collection. Supports large playlists with background parsing to keep the interface responsive. Preview channels before adding.</p>
+            <h3 style="color: #e67e22;">🎮 Common Features</h3>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+            <li>Square card grid layout with play, stop, and delete controls</li>
+            <li>Detail panel for editing station or channel information</li>
+            <li>Generate custom icons using random SVG generator</li>
+            <li>Purple border indicator shows what is currently playing</li>
+            <li>System tray notifications on playback start</li>
+            <li>Persistent storage with automatic save and load</li>
+            </ul>
+            </div>
+
             <h2 style="color: #9b59b6; border-bottom: 2px solid #9b59b6; padding-bottom: 5px;">🎯 Perfect For</h2>
             <ul style="margin: 15px 0; padding-left: 20px;">
                 <li>Managing multiple accounts on the same service with isolated sessions</li>
@@ -304,6 +321,10 @@ QString HelpMenuDialog::getFeaturesContent()
 QString HelpMenuDialog::getInstructionsContent()
 {
     return R"(
+
+
+
+
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #2c3e50;">
             <h1 style="color: #e74c3c; text-align: center; margin-bottom: 20px;">📋 How to Use Jasmine</h1>
 
@@ -339,6 +360,29 @@ QString HelpMenuDialog::getInstructionsContent()
 
                 <p><strong>Key Point:</strong> You can launch the SAME website multiple times with different toggle settings!</p>
             </div>
+
+<h2 style="color: #2ecc71; border-bottom: 2px solid #2ecc71; padding-bottom: 5px;">📻 Radio Stations & IPTV</h2>
+<div style="margin: 20px 0;">
+<h3 style="color: #e67e22;">🎵 Radio Stations Tab</h3>
+<p>Browse, search, and add internet radio stations from thousands of options. Search by name or country, preview streams before adding, and save your favorites. Station icons are cached locally for faster loading.</p>
+<h3 style="color: #e67e22;">📺 IPTV Tab</h3>
+<p>Import M3U playlists from URL or local file, browse channels by category, and add them to your collection. Supports large playlists with background parsing to keep the interface responsive. Preview channels before adding.</p>
+<p>Sample playlists to get started:</p>
+<ul>
+<li>IPTV-Org (Global channels, categorized): https://iptv-org.github.io/iptv/index.m3u</li>
+<li>Free-TV (Curated, quality-focused channels): https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8</li>
+</ul>
+<p>You can also search the internet for "free m3u playlist" or "iptv m3u" to find more sources.</p>
+<h3 style="color: #e67e22;">🎮 Common Features</h3>
+<ul>
+<li>Square card grid layout with play, stop, and delete controls</li>
+<li>Detail panel for editing station or channel information</li>
+<li>Generate custom icons using random SVG generator</li>
+<li>Purple border indicator shows what is currently playing</li>
+<li>System tray notifications on playback start</li>
+<li>Persistent storage with automatic save and load</li>
+</ul>
+</div>
 
             <h2 style="color: #9b59b6; border-bottom: 2px solid #9b59b6; padding-bottom: 5px;">📧 Example: Multiple Gmail Accounts</h2>
 
@@ -421,6 +465,9 @@ QString HelpMenuDialog::getInstructionsContent()
                     <li>Single account services you don't need isolated</li>
                 </ul>
             </div>
+
+
+
 
             <h2 style="color: #e74c3c; border-bottom: 2px solid #e74c3c; padding-bottom: 5px;">💾 Step 3: Save or Don't Save</h2>
 
@@ -1413,6 +1460,17 @@ QString HelpMenuDialog::getChangelogContent()
 {
     return QString(
         "<h3>Changelog</h3>"
+
+        "<h4>[v1.2.9] - 2026-05-21</h4>"
+        "<ul>"
+        "<li><b>Radio Stations Tab:</b> Browse, search, and add internet radio stations. Search by name or country, preview streams, and save your favorites.</li>"
+        "<li><b>IPTV Tab:</b> Import M3U playlists from URL or local file, browse channels, and add them to your collection.</li>"
+        "<li><b>Local Icon Caching:</b> Radio and IPTV stations save icons locally for faster loading and offline access.</li>"
+        "<li><b>Global Card Search:</b> Added magnifying glass button in toolbar to filter cards across all tabs.</li>"
+        "<li><b>Dark Theme Improvements:</b> Better dark theme support for all dialogs including radio and IPTV windows.</li>"
+        "<li><b>Performance:</b> Optimized loading of large IPTV playlists (over 10,000 channels).</li>"
+        "<li><b>Bug Fixes:</b> Fixed button states when stopping playback, fixed duplicate detection when adding stations or channels.</li>"
+        "</ul>"
 
         "<h4>[v1.2.7] - 2026-05-16</h4>"
         "<ul>"

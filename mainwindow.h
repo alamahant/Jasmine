@@ -45,6 +45,11 @@
 #include"cosmeticfilterinjector.h"
 #include"extensionmanager.h"
 #include"adfreeplayerdialog.h"
+#include"radiostation.h"
+#include"searchradiostationsdialog.h"
+#include<QSystemTrayIcon>
+#include"iptvchannel.h"
+#include"searchiptvdialog.h"
 
 // Session data structure
 struct SessionData {
@@ -97,6 +102,7 @@ private slots:
 private:
 
     // UI Components
+    QStackedWidget* detailsStack = nullptr;
     QStackedWidget* m_stackedWidget;
     QWidget* m_dashboardWidget;
     QWidget* m_webViewContainer;
@@ -353,6 +359,115 @@ private:
     //ExtensionManager* m_extManager = nullptr;
     AdFreePlayerDialog* player = nullptr;
     QPushButton* streamButton;
+
+
+    //radio
+    private:
+        void createRadioTab();
+        void updateRadioGrid();  // Renamed from populateRadioGrid (matches website/session pattern)
+        void saveRadioStations();
+        void loadRadioStations();
+
+        // Radio tab components
+        QScrollArea* m_radioScrollArea;
+        QWidget* m_radioContainer;
+        QGridLayout* m_radioGrid;
+        QMap<int, QFrame*> m_radioCards;  // For card highlighting
+
+
+        QVector<RadioStation> m_radioStations;
+        int m_currentRadioIndex;
+
+        // Radio details panel widgets
+        QLabel* m_radioIconLabel;
+        QLineEdit* m_radioNameEdit;
+        QLineEdit* m_radioStreamUrlEdit;
+        QLineEdit* m_radioCountryEdit;
+        QLineEdit* m_radioGenreEdit;
+        QLineEdit* m_radioBitrateEdit;
+        QLineEdit* m_radioCodecEdit;
+        QTextEdit* m_radioCommentsEdit;
+
+        QPushButton* m_radioPlayButton;
+        QPushButton* m_radioStopButton;
+        QPushButton* m_radioUpdateButton;
+        QPushButton* m_radioDeleteButton;
+        QPushButton* m_radioClearButton;
+
+        QFrame* createRadioDetailPanel();
+        QFrame* createRadioCard(const RadioStation& station, int index);
+        QString getRadioStationsFilePath();
+    private slots:
+        void onRadioStationSelected(int index);
+        void onRadioPlayClicked();
+        void onRadioStopClicked();
+        void onRadioUpdateClicked();
+        void onRadioDeleteClicked();
+        void onRadioClearClicked();
+        void onRadioAddClicked();
+        void onAddRadioStationFromDialog(const RadioStation &station);
+        void searchCards(const QString& text);
+
+private:
+    SearchRadioStationsDialog* radioSearchDialog = nullptr;
+    QPushButton* m_radioGenerateIconButton;
+    void showStreamLoadingDialog();
+    QSystemTrayIcon* m_trayIcon;
+    QLineEdit* m_searchLineEdit;
+    QAction* searchAction;
+
+/////////////// IPTV
+private:
+
+    // IPTV tab components
+    void createIPTVTab();
+    void updateIPTVGrid();
+    void saveIPTVChannels();
+    void loadIPTVChannels();
+
+
+    QFrame* createIPTVCard(const IPTVChannel& channel, int index);
+    QFrame* createIPTVDetailPanel();
+
+    // IPTV data
+    QVector<IPTVChannel> m_iptvChannels;
+    QMap<int, QFrame*> m_iptvCards;
+    int m_currentIPTVIndex;
+
+    // IPTV widgets
+    QScrollArea* m_iptvScrollArea;
+    QWidget* m_iptvContainer;
+    QGridLayout* m_iptvGrid;
+    QLabel* m_iptvIconLabel;
+    QLineEdit* m_iptvNameEdit;
+    QLineEdit* m_iptvStreamUrlEdit;
+    QLineEdit* m_iptvCategoryEdit;
+    QLineEdit* m_iptvCountryEdit;
+    QTextEdit* m_iptvCommentsEdit;
+    QPushButton* m_iptvPlayButton;
+    QPushButton* m_iptvStopButton;
+    QPushButton* m_iptvAddButton;
+    QPushButton* m_iptvUpdateButton;
+    QPushButton* m_iptvDeleteButton;
+    QPushButton* m_iptvClearButton;
+    QPushButton* m_iptvGenerateIconButton;
+    QString getIPTVChannelsFilePath();
+
+private slots:
+    void onIPTVStationSelected(int index);
+    void onIPTVPlayClicked();
+    void onIPTVStopClicked();
+    void onIPTVAddClicked();
+    void onIPTVUpdateClicked();
+    void onIPTVDeleteClicked();
+    void onIPTVClearClicked();
+    void onAddIPTVChannelsFromDialog(const QVector<IPTVChannel> &channels);
+
+private:
+    SearchIPTVDialog* searchIPTVDialog = nullptr;
+    void relayoutCards(QGridLayout* grid, const QMap<int, QFrame*>& cards, const QVector<bool>& visible);
+    void downloadIPTVIconIfNeeded(int index);
+    void sortAllCards();
 };
 
 #endif // MAINWINDOW_H

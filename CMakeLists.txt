@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Qt6 components (WebEngine is provided by BaseApp)
-find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets Svg Multimedia MultimediaWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets Svg Multimedia MultimediaWidgets OpenGL OpenGLWidgets)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 set(QT_VERSION_MAJOR 6)
 
@@ -50,6 +50,11 @@ qt_add_executable(Jasmine
     Constants.cpp
     extensionmanager.cpp extensionmanager.h
     adfreeplayerdialog.cpp adfreeplayerdialog.h
+    radiostation.h
+    searchradiostationsdialog.cpp searchradiostationsdialog.h
+    radiobrowserapi.cpp radiobrowserapi.h
+    iptvchannel.h
+    searchiptvdialog.cpp searchiptvdialog.h
 
 
 )
@@ -65,6 +70,8 @@ target_link_libraries(Jasmine PRIVATE
     Qt6::Svg
     Qt6::Multimedia
     Qt6::MultimediaWidgets
+    Qt6::OpenGL
+    Qt6::OpenGLWidgets
 )
 target_link_libraries(Jasmine PRIVATE Qt6::Core)
 

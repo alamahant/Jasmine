@@ -323,3 +323,127 @@ QInputDialog QLineEdit:focus {
     border: 2px solid #2196F3;
 }
 
+
+/* Radio cards */
+#radioCard {
+    background-color: white;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#radioCard:hover {
+    background-color: #f0f7ff;
+}
+
+#radioCard[selected="true"] {
+    background-color: #e3f2fd;
+    border: 2px solid #2196F3;
+}
+
+/* Radio card elements */
+#radioCard #cardTitle {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+#radioCard #cardInfo {
+    color: #757575;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+/* Radio details panel */
+#radioDetailsPanel {
+    background-color: #faf8f5;
+    border: 1px solid #d6c8b5;
+    border-radius: 8px;
+}
+
+#radioIconPreview {
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background-color: #faf8f5;
+}
+
+#radioNameLabel, #radioStreamUrlLabel, #radioCountryLabel,
+#radioBitrateLabel, #radioCodecLabel, #radioVotesLabel {
+    color: #333;
+    font-size: 14px;
+}
+
+/* Now playing indicator (progress spinner) */
+QProgressIndicator {
+    background: transparent;
+}
+
+QProgressIndicator[playing="true"] {
+    border: 2px solid #2196F3;
+    border-top: 2px solid transparent;
+    border-radius: 10px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#emptyMessageLabel {
+    color: #757575;
+    font-size: 16px;
+    font-style: italic;
+    background-color: transparent;
+}
+
+#radioCard[playing="true"] {
+    border: 2px solid #aa66ff;
+    background-color: rgba(170, 102, 255, 0.1);
+}
+
+/* IPTV cards */
+#iptvCard {
+    background-color: white;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#iptvCard:hover {
+    background-color: #f0f7ff;
+}
+
+#iptvCard[selected="true"] {
+    background-color: #e3f2fd;
+    border: 2px solid #2196F3;
+}
+
+#iptvCard[playing="true"] {
+    border: 2px solid #aa66ff;
+    background-color: rgba(170, 102, 255, 0.1);
+}
+
+/* IPTV card elements */
+#iptvCard #cardTitle {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+#iptvCard #cardInfo {
+    color: #757575;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+/* IPTV details panel */
+#iptvDetailsPanel {
+    background-color: #faf8f5;
+    border: 1px solid #d6c8b5;
+    border-radius: 8px;
+}
+
+#iptvIconPreview {
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background-color: #faf8f5;
+}

@@ -81,5 +81,9 @@
         <file>resources/icons-white/maximize-2.svg</file>
         <file>resources/icons/rss.svg</file>
         <file>resources/icons-white/rss.svg</file>
+        <file>resources/icons/radio.svg</file>
+        <file>resources/icons-white/radio.svg</file>
+        <file>resources/icons/tv.svg</file>
+        <file>resources/icons-white/tv.svg</file>
     </qresource>
 </RCC>

@@ -42,12 +42,17 @@
 #include<QWebEngineScriptCollection>
 #include"donationdialog.h"
 #include"Constants.h"
+#include<QPainter>
+#include<QSystemTrayIcon>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       page(nullptr),
       devToolsView(new QWebEngineView),
-      player(new AdFreePlayerDialog(this))
+      player(new AdFreePlayerDialog(this)),
+      radioSearchDialog(new SearchRadioStationsDialog(this)),
+      searchIPTVDialog(new SearchIPTVDialog(this))
+
 {
     setWindowTitle("Jasmine");
     setWindowIcon(QIcon(":/resources/jasmine.png"));
@@ -213,18 +218,74 @@ MainWindow::MainWindow(QWidget *parent)
        // Or your AdGuard path
     //QString extensionPath = "/home/dharma/shared/downloads/adguard/";
     //QString extensionPath = "/home/dharma/.local/share/Alamahant/Jasmine-extensions/storage/Extensions/addguard_YSc6qX/";
-    //qDebug() << "Loading extension from:" << extensionPath;
        //m_extManager->loadFromFolder(extensionPath);
 
     connect(player, &AdFreePlayerDialog::requestCurrentUrl, this, [this]() {
         if(m_urlBar){
         QString currentUrl = m_urlBar->urlInput()->text();
         if (!currentUrl.isEmpty()) {
+            //showStreamLoadingDialog();
             player->setUrl(currentUrl);
         }
         }
     });
 
+    /*
+    connect(player, &AdFreePlayerDialog::mediaLoaded, [this]() {
+        // Player started playing
+        m_radioPlayButton->setEnabled(false);
+        m_radioStopButton->setEnabled(true);
+        m_iptvPlayButton->setEnabled(false);
+        m_iptvStopButton->setEnabled(true);
+    });
+
+    */
+
+    connect(player, &AdFreePlayerDialog::mediaStopped, [this]() {
+        // Player stopped
+        m_radioPlayButton->setEnabled(true);
+        m_radioStopButton->setEnabled(false);
+        m_iptvPlayButton->setEnabled(true);
+        m_iptvStopButton->setEnabled(false);
+
+        // Clear all playing indicators
+        for (QFrame* card : m_radioCards) {
+            card->setProperty("playing", false);
+            card->style()->unpolish(card);
+            card->style()->polish(card);
+        }
+        for (QFrame* card : m_iptvCards) {
+            card->setProperty("playing", false);
+            card->style()->unpolish(card);
+            card->style()->polish(card);
+        }
+    });
+
+    connect(player, &AdFreePlayerDialog::dialogClosed, [this]() {
+        streamButton->setChecked(false);
+    });
+
+    connect(radioSearchDialog, &SearchRadioStationsDialog::stationSelected,
+            this, &MainWindow::onAddRadioStationFromDialog);
+
+    connect(searchIPTVDialog, &SearchIPTVDialog::channelsSelected,
+            this, &MainWindow::onAddIPTVChannelsFromDialog);
+
+    connect(searchIPTVDialog, &SearchIPTVDialog::previewChannel,
+            [this](const QString &streamUrl, const QString &name) {
+                player->setUrl(streamUrl);
+                player->setWindowTitle(QString("Preview: %1").arg(name));
+                player->play();
+                player->show();
+            });
+
+
+    //sortAllCards(); // maybe dangerous needs further testing
+
+    m_trayIcon = new QSystemTrayIcon(this);
+    m_trayIcon->setIcon(QIcon(":/resources/jasmine.png"));
+    m_trayIcon->setToolTip("Jasmine Browser");
+    m_trayIcon->show();
 
 }
 
@@ -243,6 +304,8 @@ MainWindow::~MainWindow() {
         delete downloadManager;
         downloadManager = nullptr;
     }
+
+    if(m_trayIcon) delete m_trayIcon;
 
 }
 
@@ -318,7 +381,7 @@ QWidget* MainWindow::createModernDashboard() {
     m_leftPanelTabs->tabBar()->setTabToolTip(1, "Sessions");
 
     // Create a stacked widget for the details panels
-    QStackedWidget* detailsStack = new QStackedWidget();
+    detailsStack = new QStackedWidget();
 
     // Create website details panel
     m_detailsPanel = createDetailPanel();
@@ -353,29 +416,39 @@ QWidget* MainWindow::createModernDashboard() {
     // Set initial sizes (adjust as needed)
     mainSplitter->setSizes(QList<int>() << 400 << 300);
 
-    connect(m_leftPanelTabs, &QTabWidget::currentChanged, [this, detailsStack](int index) {
+    connect(m_leftPanelTabs, &QTabWidget::currentChanged, [this](int index) {
         // Switch the details stack to match the tab
-        detailsStack->setCurrentIndex(index);
+        if (index >= 0 && index < detailsStack->count()) {
+            detailsStack->setCurrentIndex(index);
+        }
 
         // Restore selection based on the active tab
         if (index == 0) { // Websites tab
             if (m_currentWebsiteIndex >= 0 && m_currentWebsiteIndex < m_model->rowCount()) {
-                // Reselect the previously selected website
                 QModelIndex modelIndex = m_model->index(m_currentWebsiteIndex, 0);
                 onWebsiteSelected(modelIndex);
             } else if (m_model->rowCount() > 0) {
-                // Select the first website if none was previously selected
                 QModelIndex firstIndex = m_model->index(0, 0);
                 onWebsiteSelected(firstIndex);
             }
         } else if (index == 1) { // Sessions tab
             if (!m_currentSessionName.isEmpty() && m_sessions.contains(m_currentSessionName)) {
-                // Reselect the previously selected session
                 onSessionSelected(m_currentSessionName);
             } else if (!m_sessions.isEmpty()) {
-                // Select the first session if none was previously selected
                 QString firstName = m_sessions.keys().first();
                 onSessionSelected(firstName);
+            }
+        } else if (index == 2) { // Radio tab
+            if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
+                onRadioStationSelected(m_currentRadioIndex);
+            } else if (!m_radioStations.isEmpty()) {
+                onRadioStationSelected(0);
+            }
+        } else if (index == 3) { // IPTV tab
+            if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
+                onIPTVStationSelected(m_currentIPTVIndex);
+            } else if (!m_iptvChannels.isEmpty()) {
+                onIPTVStationSelected(0);
             }
         }
     });
@@ -383,6 +456,21 @@ QWidget* MainWindow::createModernDashboard() {
     // Create a hidden list view for backward compatibility
     m_websiteList = new QListView();
     m_websiteList->setVisible(false);
+
+    createRadioTab();
+    loadRadioStations();
+    if (!m_radioStations.isEmpty()) {
+        onRadioStationSelected(0);
+    }
+    updateRadioGrid();
+
+    // iptv
+    createIPTVTab();
+    loadIPTVChannels();
+    if (!m_iptvChannels.isEmpty()) {
+        onIPTVStationSelected(0);
+    }
+    updateIPTVGrid();
 
     return dashboard;
 
@@ -1895,6 +1983,38 @@ void MainWindow::createMenus() {
            msgBox.exec();
     });
 
+    toolsMenu->addSeparator();
+    QAction *openRadiosAction = toolsMenu->addAction("Browse Radio Stations");
+    connect(openRadiosAction, &QAction::triggered, this, [this](){
+
+        if(radioSearchDialog)  radioSearchDialog->show();
+
+    });
+
+    QAction *updateServersAction = toolsMenu->addAction("Refresh Radio Browser API Servers");
+    connect(updateServersAction, &QAction::triggered, [this]() {
+
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this,
+            "Confirm Refresh",
+            "Refresh Radio Browser API servers?\n\nThis will discover available servers again.\nOnly needed if current servers are failing.",
+            QMessageBox::Yes | QMessageBox::No
+        );
+
+        if (reply == QMessageBox::Yes) {
+            if (radioSearchDialog && radioSearchDialog->api()) {
+                radioSearchDialog->api()->refreshServers();
+                statusBar()->showMessage("Radio Browser servers updated.", 3000);
+            }
+        }
+    });
+    toolsMenu->addSeparator();
+    QAction *browseIPTVAction = new QAction("Browse IPTV Channels...", this);
+    connect(browseIPTVAction, &QAction::triggered, this, [this](){
+        if(searchIPTVDialog)  searchIPTVDialog->show();
+
+    });
+    toolsMenu->addAction(browseIPTVAction);
 
 }
 
@@ -2716,6 +2836,18 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
             onSessionSelected(sessionName);
             return true;
         }
+        // Handle radio card clicks
+        if (obj->property("radioIndex").isValid()) {
+            int index = obj->property("radioIndex").toInt();
+            onRadioStationSelected(index);
+            return true;
+        }
+
+        if (obj->property("iptvIndex").isValid()) {
+            int index = obj->property("iptvIndex").toInt();
+            onIPTVStationSelected(index);
+            return true;
+        }
     }
 
     // Block maximize attempts in dashboard mode
@@ -3149,7 +3281,7 @@ QToolBar* MainWindow::createToolbar() {
 
     m_addCurrentSessionAction = toolbar->addAction(QIcon(":/resources/icons/save.svg"), "Save Current Session");
 
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
     //m_toggleViewAction = new QAction(QIcon(":/resources/icons/monitor.svg"), "Dashboard");
     //m_toggleViewAction = new QAction(QIcon(":/resources/icons/chevron-right.svg"), "Dashboard");
     m_toggleViewAction = new QAction(QIcon(":/resources/icons/repeat.svg"), "Dashboard");
@@ -3268,13 +3400,13 @@ QToolBar* MainWindow::createToolbar() {
     }
     });
 
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
     m_downloadsAction = toolbar->addAction(QIcon(":/resources/icons/download.svg"), "Downloads");
     m_downloadsAction->setToolTip("Show Downloads");
     m_originalDownloadIcon = m_downloadsAction->icon(); // Store current icon
 
     //screenshot
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
     m_screenshotAction = toolbar->addAction(QIcon(":/resources/icons/camera.svg"), "Screenshot");
     m_screenshotAction->setToolTip("Take Screenshot of Current Tab");
 
@@ -3287,13 +3419,13 @@ QToolBar* MainWindow::createToolbar() {
     m_openDownloadsFolderAction->setToolTip("Open Downloads Folder");
     m_openDownloadsFolderAction->setVisible(false);
     //2FA
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
     m_open2faManagerAction = toolbar->addAction(QIcon(":/resources/icons/shield.svg"), "2FAManager");
     m_open2faManagerAction->setToolTip("Open 2FA Manager");
     connect(m_open2faManagerAction, &QAction::triggered, this, &MainWindow::on_Open2faManager);
 
     // Open Copied Link in New Tab action
-    toolbar->addSeparator();
+    //toolbar->addSeparator();
     m_openCopiedLinkAction = toolbar->addAction(QIcon(":/resources/icons/link.svg"), "Open Copied Link in New Tab");
     m_openCopiedLinkAction->setVisible(false);
     m_openCopiedLinkAction->setToolTip("Open copied link in a new tab - F11");
@@ -3504,8 +3636,9 @@ QToolBar* MainWindow::createToolbar() {
             }
         }
     });
-    toolbar->addSeparator();
-    streamButton = new QPushButton("Stream", this);
+    //toolbar->addSeparator();
+    //search
+    streamButton = new QPushButton(this);
     streamButton->setIcon(QIcon(":/resources/icons/rss.svg"));
     streamButton->setToolTip("Open Ad-Free Player\n\n"
                              "1. Click to open the ad-free video player dialog\n"
@@ -3514,6 +3647,7 @@ QToolBar* MainWindow::createToolbar() {
                              "4. Plays videos without any ads - yt-dlp extracts the direct stream URL");
     streamButton->setCheckable(true);
     streamButton->setChecked(false);
+
     connect(streamButton, &QPushButton::clicked, this, [this](bool checked){
         if(checked){
             player->show();
@@ -3523,6 +3657,33 @@ QToolBar* MainWindow::createToolbar() {
         }
     });
     toolbar->addWidget(streamButton);
+
+    searchAction = new QAction(this);
+    searchAction->setCheckable(true);
+    searchAction->setChecked(false);
+    searchAction->setIcon(QIcon(":/resources/icons/search.svg"));
+    searchAction->setToolTip("Enable/Disable the search field");
+    connect(searchAction, &QAction::toggled, [this](bool checked) {
+
+        m_searchLineEdit->setEnabled(checked);
+
+    });
+
+    // Create hidden line edit
+    m_searchLineEdit = new QLineEdit();
+    m_searchLineEdit->setObjectName("searchLineEdit");
+    m_searchLineEdit->setMaximumWidth(80);
+
+    m_searchLineEdit->setPlaceholderText("Search");
+    m_searchLineEdit->setToolTip("Search Cards");
+
+    m_searchLineEdit->setEnabled(false);
+    connect(m_searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchCards);
+
+    // Add to toolbar
+    toolbar->addAction(searchAction);
+    toolbar->addWidget(m_searchLineEdit);
+
 
     highlightButtons(buttonsHighlighted);
 
@@ -4016,6 +4177,7 @@ QString MainWindow::loadDarkTheme(){
         m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/repeat.svg"));
         m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons-white/link.svg"));
         streamButton->setIcon(QIcon(":/resources/icons-white/rss.svg"));
+        searchAction->setIcon(QIcon(":/resources/icons-white/search.svg"));
 
         /*
         if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
@@ -4031,6 +4193,9 @@ QString MainWindow::loadDarkTheme(){
         m_openDownloadsFolderAction->setIcon(QIcon(":/resources/icons-white/folder.svg"));
         m_leftPanelTabs->setTabIcon(0, createRotatedIcon(":/resources/icons-white/globe.svg"));
         m_leftPanelTabs->setTabIcon(1, createRotatedIcon(":/resources/icons-white/bookmark.svg"));
+        m_leftPanelTabs->setTabIcon(2, createRotatedIcon(":/resources/icons-white/radio.svg"));
+        m_leftPanelTabs->setTabIcon(3, createRotatedIcon(":/resources/icons-white/tv.svg"));
+
         m_open2faManagerAction->setIcon(QIcon(":/resources/icons-white/shield.svg"));
         m_usernameEyeButton->setIcon(QIcon(":/resources/icons-white/eye.svg"));
         m_passwordEyeButton->setIcon(QIcon(":/resources/icons-white/eye.svg"));
@@ -4070,6 +4235,7 @@ QString MainWindow::loadLightTheme(){
         m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
         m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons/link.svg"));
         streamButton->setIcon(QIcon(":/resources/icons/rss.svg"));
+        searchAction->setIcon(QIcon(":/resources/icons/search.svg"));
 
         /*
         if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
@@ -4084,6 +4250,9 @@ QString MainWindow::loadLightTheme(){
         m_openDownloadsFolderAction->setIcon(QIcon(":/resources/icons/folder.svg"));
         m_leftPanelTabs->setTabIcon(0, createRotatedIcon(":/resources/icons/globe.svg"));
         m_leftPanelTabs->setTabIcon(1, createRotatedIcon(":/resources/icons/bookmark.svg"));
+        m_leftPanelTabs->setTabIcon(2, createRotatedIcon(":/resources/icons/radio.svg"));
+        m_leftPanelTabs->setTabIcon(3, createRotatedIcon(":/resources/icons/tv.svg"));
+
         m_open2faManagerAction->setIcon(QIcon(":/resources/icons/shield.svg"));
         m_usernameEyeButton->setIcon(QIcon(":/resources/icons/eye.svg"));
         m_passwordEyeButton->setIcon(QIcon(":/resources/icons/eye.svg"));
@@ -5531,4 +5700,1607 @@ void MainWindow::highlightButtons(bool highlighted)
 
     }
 
+}
+
+
+///////radio
+void MainWindow::createRadioTab()
+{
+    m_radioScrollArea = new QScrollArea();
+    m_radioScrollArea->setWidgetResizable(true);
+    m_radioScrollArea->setFrameShape(QFrame::NoFrame);
+    m_radioContainer = new QWidget();
+    m_radioGrid = new QGridLayout(m_radioContainer);
+    m_radioGrid->setSpacing(12);
+    m_radioGrid->setContentsMargins(16, 16, 16, 16);
+    m_radioGrid->setSizeConstraint(QLayout::SetFixedSize);
+    for (int i = 0; i < 3; ++i) {
+        m_radioGrid->setColumnStretch(i, 0);
+    }
+    m_radioScrollArea->setWidget(m_radioContainer);
+
+    m_leftPanelTabs->addTab(m_radioScrollArea, createRotatedIcon(":/resources/icons/radio.svg"), QString());
+    m_leftPanelTabs->tabBar()->setTabToolTip(2, "Radio");
+
+    QFrame* radioDetailsPanel = createRadioDetailPanel();
+    radioDetailsPanel->setMinimumWidth(200);
+    detailsStack->addWidget(radioDetailsPanel);  // Index 2
+
+    // Load saved stations
+    //loadRadioStations();
+
+    // Update grid if there are stations
+    if (!m_radioStations.isEmpty()) {
+        //updateRadioGrid();
+    }
+}
+
+QFrame* MainWindow::createRadioDetailPanel() {
+    QFrame* panel = new QFrame();
+    panel->setFrameShape(QFrame::StyledPanel);
+    panel->setObjectName("radioDetailsPanel");
+
+    QVBoxLayout* layout = new QVBoxLayout(panel);
+    layout->setContentsMargins(16, 16, 16, 16);
+
+    // Title
+    QLabel* titleLabel = new QLabel("Radio Station");
+    titleLabel->setObjectName("detailsPanelTitle");
+    layout->addWidget(titleLabel);
+
+    // Form layout for station details
+    QFormLayout* formLayout = new QFormLayout();
+    formLayout->setSpacing(12);
+    formLayout->setLabelAlignment(Qt::AlignRight);
+
+    // Station icon with generate button
+    QHBoxLayout* iconLayout = new QHBoxLayout();
+
+    // Station icon (display only, like website favicon)
+    m_radioIconLabel = new QLabel();
+    m_radioIconLabel->setFixedSize(64, 64);
+    m_radioIconLabel->setAlignment(Qt::AlignCenter);
+    m_radioIconLabel->setFrameShape(QFrame::StyledPanel);
+    m_radioIconLabel->setObjectName("radioIconPreview");
+    m_radioIconLabel->setScaledContents(true);
+
+
+    m_radioGenerateIconButton = new QPushButton();
+    m_radioGenerateIconButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    m_radioGenerateIconButton->setFixedSize(24, 24);
+    m_radioGenerateIconButton->setToolTip("Generate icon from station name");
+
+    iconLayout->addWidget(m_radioIconLabel);
+    iconLayout->addWidget(m_radioGenerateIconButton);
+    iconLayout->addStretch();
+
+    formLayout->addRow("Icon:", iconLayout);
+
+    formLayout->addRow("Icon:", iconLayout);
+
+    // Station name - QLineEdit (editable)
+    m_radioNameEdit = new QLineEdit();
+    m_radioNameEdit->setPlaceholderText("Station name");
+    formLayout->addRow("Name:", m_radioNameEdit);
+
+    // Stream URL - QLineEdit (editable)
+    m_radioStreamUrlEdit = new QLineEdit();
+    m_radioStreamUrlEdit->setPlaceholderText("Stream URL");
+    formLayout->addRow("Stream URL:", m_radioStreamUrlEdit);
+
+    // Country - QLineEdit (editable)
+    m_radioCountryEdit = new QLineEdit();
+    m_radioCountryEdit->setPlaceholderText("Country code (e.g., GR)");
+    formLayout->addRow("Country:", m_radioCountryEdit);
+
+    // Genre - QLineEdit (editable)
+    m_radioGenreEdit = new QLineEdit();
+    m_radioGenreEdit->setPlaceholderText("Genre (e.g., Rock, News, Pop)");
+    formLayout->addRow("Genre:", m_radioGenreEdit);
+
+    // Bitrate - QLineEdit (editable)
+    m_radioBitrateEdit = new QLineEdit();
+    m_radioBitrateEdit->setPlaceholderText("Bitrate in kbps");
+    formLayout->addRow("Bitrate:", m_radioBitrateEdit);
+
+    // Codec - QLineEdit (editable)
+    m_radioCodecEdit = new QLineEdit();
+    m_radioCodecEdit->setPlaceholderText("Codec (MP3, AAC, etc.)");
+    formLayout->addRow("Codec:", m_radioCodecEdit);
+
+    // Comments - QTextEdit (like website panel)
+    m_radioCommentsEdit = new QTextEdit();
+    m_radioCommentsEdit->setPlaceholderText("Optional comments about this station");
+    m_radioCommentsEdit->setMinimumHeight(80);
+    formLayout->addRow("Comments:", m_radioCommentsEdit);
+
+    layout->addLayout(formLayout);
+
+    // Control buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setSpacing(8);
+    buttonLayout->addStretch();
+    // Add Update and Delete buttons (like website panel)
+
+    QPushButton* m_radioAddButton = new QPushButton("Add");
+    m_radioAddButton->setToolTip("Add new  station");
+    m_radioAddButton->setObjectName("primaryButton");
+
+    m_radioUpdateButton = new QPushButton("Update");
+    m_radioUpdateButton->setToolTip("Update station details");
+    m_radioUpdateButton->setObjectName("secondaryButton");
+
+    m_radioDeleteButton = new QPushButton("Delete");
+    m_radioDeleteButton->setToolTip("Delete this station");
+    m_radioDeleteButton->setObjectName("secondaryButton");
+
+    m_radioClearButton = new QPushButton("Clear");
+    m_radioClearButton->setToolTip("Clear form");
+    m_radioClearButton->setObjectName("secondaryButton");
+
+    buttonLayout->addWidget(m_radioAddButton);
+    buttonLayout->addWidget(m_radioUpdateButton);
+    buttonLayout->addWidget(m_radioDeleteButton);
+    buttonLayout->addWidget(m_radioClearButton);
+    buttonLayout->addStretch();
+
+    layout->addSpacing(16);
+    layout->addLayout(buttonLayout);
+    layout->addStretch();
+
+
+    QHBoxLayout* buttonLayoutX = new QHBoxLayout();
+    buttonLayoutX->setSpacing(8);
+    buttonLayoutX->addStretch();
+    m_radioPlayButton = new QPushButton("Play");
+    m_radioPlayButton->setToolTip("Play this radio station");
+    m_radioPlayButton->setObjectName("primaryButton");
+
+    m_radioStopButton = new QPushButton("Stop");
+    m_radioStopButton->setToolTip("Stop playback");
+    m_radioStopButton->setObjectName("secondaryButton");
+    m_radioStopButton->setEnabled(false);
+
+    buttonLayoutX->addWidget(m_radioPlayButton);
+    buttonLayoutX->addWidget(m_radioStopButton);
+    buttonLayoutX->addStretch();
+
+    layout->addSpacing(16);
+    layout->addLayout(buttonLayoutX);
+    layout->addStretch();
+
+    // Connect signals
+    connect(m_radioPlayButton, &QPushButton::clicked, this, &MainWindow::onRadioPlayClicked);
+    connect(m_radioStopButton, &QPushButton::clicked, this, &MainWindow::onRadioStopClicked);
+    connect(m_radioUpdateButton, &QPushButton::clicked, this, &MainWindow::onRadioUpdateClicked);
+    connect(m_radioDeleteButton, &QPushButton::clicked, this, &MainWindow::onRadioDeleteClicked);
+    connect(m_radioClearButton, &QPushButton::clicked, this, &MainWindow::onRadioClearClicked);
+    connect(m_radioAddButton, &QPushButton::clicked, this, &MainWindow::onRadioAddClicked);
+
+
+    connect(m_radioGenerateIconButton, &QPushButton::clicked, [this]() {
+        if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
+            QString stationName = m_radioStations[m_currentRadioIndex].name;
+            // Generate a simple colored icon with first letter
+
+            QIcon newIcon = generateRandomSvgIcon();
+            QPixmap pixmap = newIcon.pixmap(64, 64);
+            m_radioIconLabel->setPixmap(pixmap);
+
+            // Save the generated icon
+            QString iconPath = JASMINE_CONSTANTS::iconDir + "/" +
+                              m_radioStations[m_currentRadioIndex].stationuuid + "_generated.png";
+            pixmap.save(iconPath);
+
+            // Update station with local path
+            m_radioStations[m_currentRadioIndex].iconUrl = iconPath;
+            saveRadioStations();
+            updateRadioGrid();
+        }
+    });
+
+    return panel;
+}
+
+
+
+// Slots for radio playback
+
+
+void MainWindow::onRadioUpdateClicked()
+{
+    if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
+        // Update the station with values from form
+        m_radioStations[m_currentRadioIndex].name = m_radioNameEdit->text().trimmed();
+        m_radioStations[m_currentRadioIndex].streamUrl = m_radioStreamUrlEdit->text().trimmed();
+        m_radioStations[m_currentRadioIndex].countrycode = m_radioCountryEdit->text().trimmed();
+        m_radioStations[m_currentRadioIndex].genre = m_radioGenreEdit->text().trimmed();
+        m_radioStations[m_currentRadioIndex].bitrate = m_radioBitrateEdit->text().trimmed().toInt();
+        m_radioStations[m_currentRadioIndex].codec = m_radioCodecEdit->text().trimmed();
+        m_radioStations[m_currentRadioIndex].comments = m_radioCommentsEdit->toPlainText().trimmed();
+
+        saveRadioStations();
+        updateRadioGrid();
+
+        statusBar()->showMessage("Radio station updated.", 3000);
+    }
+}
+
+void MainWindow::onRadioDeleteClicked()
+{
+    if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
+        m_radioStations.removeAt(m_currentRadioIndex);
+        saveRadioStations();
+        updateRadioGrid();
+
+        if (m_radioStations.isEmpty()) {
+            m_radioNameEdit->clear();
+            m_radioStreamUrlEdit->clear();
+            m_radioCountryEdit->clear();
+            m_radioBitrateEdit->clear();
+            m_radioCodecEdit->clear();
+            m_radioCommentsEdit->clear();
+            m_radioIconLabel->clear();
+            m_currentRadioIndex = -1;
+        } else {
+            onRadioStationSelected(0);
+        }
+
+        statusBar()->showMessage("Radio station deleted.", 3000);
+    }
+}
+
+void MainWindow::onRadioClearClicked()
+{
+    // Clear all input fields
+    m_radioNameEdit->clear();
+    m_radioStreamUrlEdit->clear();
+    m_radioCountryEdit->clear();
+    m_radioBitrateEdit->clear();
+    m_radioCodecEdit->clear();
+    m_radioCommentsEdit->clear();
+
+    // Clear the icon display
+    m_radioIconLabel->clear();
+    m_radioIconLabel->setText("No Icon");
+
+    // Reset the selected index (no station selected)
+    m_currentRadioIndex = -1;
+
+    // Remove highlight from all cards
+    for (auto card : m_radioCards) {
+        highlightCard(card, false);
+    }
+
+    // Clear any status messages
+    statusBar()->showMessage("Form cleared.", 2000);
+}
+
+void MainWindow::onRadioAddClicked()
+{
+    // Get data from the detail panel line edits
+    QString name = m_radioNameEdit->text().trimmed();
+    QString streamUrl = m_radioStreamUrlEdit->text().trimmed();
+    QString country = m_radioCountryEdit->text().trimmed();
+    QString genre = m_radioGenreEdit->text().trimmed();
+    int bitrate = m_radioBitrateEdit->text().trimmed().toInt();
+    QString codec = m_radioCodecEdit->text().trimmed();
+    QString comments = m_radioCommentsEdit->toPlainText().trimmed();
+
+    // Validate required fields
+    if (name.isEmpty()) {
+        QMessageBox::warning(this, "Invalid Name", "Please enter a station name.");
+        return;
+    }
+    if (streamUrl.isEmpty()) {
+        QMessageBox::warning(this, "Invalid URL", "Please enter a stream URL.");
+        return;
+    }
+
+    // Create new station
+    RadioStation newStation;
+    newStation.stationuuid = QUuid::createUuid().toString();
+    newStation.name = name;
+    newStation.streamUrl = streamUrl;
+    newStation.countrycode = country;
+    newStation.genre = genre;
+    newStation.bitrate = bitrate;
+    newStation.codec = codec;
+    newStation.comments = comments;
+    newStation.votes = 0;
+    newStation.isPlaying = false;
+    newStation.iconUrl = "";  // Will be set later if needed
+
+    // Add to vector
+    m_radioStations.append(newStation);
+
+    // Save to disk
+    saveRadioStations();
+
+    // Update the grid (this will call createRadioCard for ALL stations, including the new one)
+    updateRadioGrid();
+
+    // Clear the form
+    onRadioClearClicked();
+
+    // Select the newly added station
+    onRadioStationSelected(m_radioStations.size() - 1);
+
+    statusBar()->showMessage("Radio station added successfully.", 3000);
+}
+
+void MainWindow::onRadioPlayClicked() {
+    if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
+
+        for (QFrame* card : m_radioCards) {
+            card->setProperty("playing", false);
+            card->style()->unpolish(card);
+            card->style()->polish(card);
+        }
+
+        const RadioStation& station = m_radioStations[m_currentRadioIndex];
+        if (!station.streamUrl.isEmpty()) {
+            showStreamLoadingDialog();
+            player->setUrl(station.streamUrl);
+            player->setWindowTitle(QString("Playing: %1").arg(station.name));
+            player->play();
+
+
+            // Add playing property to current card
+            if (m_radioCards.contains(m_currentRadioIndex)) {
+                m_radioCards[m_currentRadioIndex]->setProperty("playing", true);
+                m_radioCards[m_currentRadioIndex]->style()->unpolish(m_radioCards[m_currentRadioIndex]);
+                m_radioCards[m_currentRadioIndex]->style()->polish(m_radioCards[m_currentRadioIndex]);
+            }
+
+            player->show();
+            statusBar()->showMessage(QString("Now Playing: %1 - %2").arg(station.name), 0);
+            m_radioPlayButton->setEnabled(false);
+            m_radioStopButton->setEnabled(true);
+        }
+    }
+}
+
+void MainWindow::onRadioStopClicked() {
+    player->stop();  // Now public
+    m_radioPlayButton->setEnabled(true);
+    m_radioStopButton->setEnabled(false);
+    statusBar()->showMessage(QString());
+
+    for (QFrame* card : m_radioCards) {
+        card->setProperty("playing", false);
+        card->style()->unpolish(card);
+        card->style()->polish(card);
+    }
+
+}
+
+
+void MainWindow::onRadioStationSelected(int index) {
+    if (index < 0 || index >= m_radioStations.size()) return;
+
+    m_currentRadioIndex = index;
+    const RadioStation& station = m_radioStations[index];
+
+    m_radioNameEdit->setText(station.name);
+    m_radioStreamUrlEdit->setText(station.streamUrl);
+    m_radioCountryEdit->setText(station.countrycode);
+    m_radioGenreEdit->setText(station.genre);
+    m_radioBitrateEdit->setText(QString::number(station.bitrate));
+    m_radioCodecEdit->setText(station.codec);
+    m_radioCommentsEdit->setPlainText(station.comments);
+
+
+    // Load icon from local path
+    if (!station.iconUrl.isEmpty() && QFile::exists(station.iconUrl)) {
+        QPixmap pixmap(station.iconUrl);
+        if (!pixmap.isNull()) {
+            m_radioIconLabel->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            m_radioIconLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(64, 64));
+        }
+    } else {
+        m_radioIconLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(64, 64));
+    }
+    // Highlight the selected card (like website does)
+    for (int i = 0; i < m_radioCards.size(); ++i) {
+        highlightCard(m_radioCards[i], i == index);
+    }
+}
+
+void MainWindow::updateRadioGrid()
+{
+    // Clear existing cards
+    QLayoutItem* item;
+    while ((item = m_radioGrid->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            item->widget()->deleteLater();
+        }
+        delete item;
+    }
+    m_radioCards.clear();
+
+    // If no stations, show a message
+    if (m_radioStations.isEmpty()) {
+        QLabel* emptyLabel = new QLabel("No radio stations added yet.\n\nUse Tools → Browse Radio Stations to add some.");
+        emptyLabel->setAlignment(Qt::AlignCenter);
+        emptyLabel->setWordWrap(true);
+        emptyLabel->setMinimumHeight(400);
+        emptyLabel->setObjectName("emptyMessageLabel");
+        m_radioGrid->addWidget(emptyLabel, 0, 0, 1, 3);
+        return;
+    }
+
+    // Add radio cards
+    int row = 0;
+    int col = 0;
+    int maxCols = 3;
+
+    for (int i = 0; i < m_radioStations.size(); ++i) {
+        QFrame* card = createRadioCard(m_radioStations[i], i);
+        m_radioGrid->addWidget(card, row, col);
+        m_radioCards[i] = card;
+
+        col++;
+        if (col >= maxCols) {
+            col = 0;
+            row++;
+        }
+    }
+
+    // Add stretch at the end
+    m_radioGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
+
+    // Restore selection if there was one
+    if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
+        // Card map has been rebuilt, need to re-highlight
+        for (int i = 0; i < m_radioCards.size(); ++i) {
+            highlightCard(m_radioCards[i], i == m_currentRadioIndex);
+        }
+    } else if (!m_radioStations.isEmpty()) {
+        // No selection, select first
+        onRadioStationSelected(0);
+    }
+}
+
+QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
+{
+    QFrame* card = new QFrame();
+    card->setObjectName(QString("radioCard_%1").arg(index));
+    card->setProperty("radioIndex", index);
+    card->setFrameShape(QFrame::StyledPanel);
+    card->setObjectName("radioCard");
+    card->setFixedSize(200, 200);
+    card->setCursor(Qt::ArrowCursor);
+    // Add shadow effect
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(10);
+    shadow->setColor(QColor(0, 0, 0, 30));
+    shadow->setOffset(0, 2);
+    card->setGraphicsEffect(shadow);
+
+    // Create layout
+    QVBoxLayout* layout = new QVBoxLayout(card);
+    layout->setContentsMargins(15, 15, 15, 15);
+
+    // Create a horizontal layout for title and icon
+    QHBoxLayout* titleLayout = new QHBoxLayout();
+
+    // Add icon (default radio icon for now)
+    QLabel* iconLabel = new QLabel();
+    iconLabel->setFixedSize(16, 16);
+    //iconLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(16, 16));
+
+    if (!station.iconUrl.isEmpty() && QFile::exists(station.iconUrl)) {
+        QPixmap pixmap(station.iconUrl);
+        if (!pixmap.isNull()) {
+            iconLabel->setPixmap(pixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            iconLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(16, 16));
+        }
+    } else {
+        iconLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(16, 16));
+    }
+
+    titleLayout->addWidget(iconLabel);
+
+    // Title (station name)
+    QLabel* titleLabel = new QLabel(station.name);
+    titleLabel->setObjectName("cardTitle");
+    titleLabel->setWordWrap(true);
+
+    titleLayout->addWidget(titleLabel, 1);
+
+    layout->addLayout(titleLayout);
+
+    // Info line (country + bitrate)
+    QLabel* infoLabel = new QLabel(QString("%1 · %2").arg(station.countrycode, station.genre));
+    infoLabel->setObjectName("cardInfo");
+    infoLabel->setWordWrap(true);
+    layout->addWidget(infoLabel);
+
+    // Add action buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setContentsMargins(0, 8, 0, 0);
+
+    // Play button
+    QPushButton* playBtn = new QPushButton();
+    playBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    playBtn->setToolTip("Play Station");
+    playBtn->setFlat(true);
+    playBtn->setCursor(Qt::PointingHandCursor);
+    playBtn->setObjectName("cardButton");
+
+    // Stop button
+    QPushButton* stopBtn = new QPushButton();
+    stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+    stopBtn->setToolTip("Stop Station");
+    stopBtn->setFlat(true);
+    stopBtn->setCursor(Qt::PointingHandCursor);
+    stopBtn->setObjectName("cardButton");
+
+    // Delete button
+    QPushButton* deleteBtn = new QPushButton();
+    deleteBtn->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    deleteBtn->setToolTip("Delete Station");
+    deleteBtn->setFlat(true);
+    deleteBtn->setCursor(Qt::PointingHandCursor);
+    deleteBtn->setObjectName("cardButton");
+
+    buttonLayout->addWidget(playBtn);
+    buttonLayout->addWidget(stopBtn);
+    buttonLayout->addWidget(deleteBtn);
+    buttonLayout->addStretch();
+    layout->addLayout(buttonLayout);
+
+    // Connect button signals
+    connect(playBtn, &QPushButton::clicked, [this, index]() {
+        onRadioStationSelected(index);
+        onRadioPlayClicked();
+    });
+
+    connect(stopBtn, &QPushButton::clicked, [this, index]() {
+        onRadioStationSelected(index);
+        onRadioStopClicked();
+    });
+
+    connect(deleteBtn, &QPushButton::clicked, [this, index]() {
+        if (index >= 0 && index < m_radioStations.size()) {
+            m_radioStations.removeAt(index);
+            saveRadioStations();
+            updateRadioGrid();
+            if (m_radioStations.isEmpty()) {
+                // Clear detail panel
+                m_radioNameEdit->clear();
+                m_radioStreamUrlEdit->clear();
+                m_radioCountryEdit->clear();
+                m_radioBitrateEdit->clear();
+                m_radioCodecEdit->clear();
+                m_radioCommentsEdit->clear();
+                m_radioIconLabel->clear();
+            }
+        }
+    });
+
+    // Connect card click (for selection without playing)
+    card->installEventFilter(this);
+    card->setProperty("radioIndex", index);
+
+    return card;
+}
+
+
+QString MainWindow::getRadioStationsFilePath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/radiostations.dat";
+}
+
+void MainWindow::saveRadioStations()
+{
+    QString filePath = getRadioStationsFilePath();
+    QFile file(filePath);
+
+    if (file.open(QIODevice::WriteOnly)) {
+        QDataStream out(&file);
+        out.setVersion(QDataStream::Qt_6_0);
+
+        // Write the count first
+        out << quint32(m_radioStations.size());
+
+        // Write each station individually
+        for (const RadioStation &station : m_radioStations) {
+            out << station.stationuuid;
+            out << station.name;
+            out << station.streamUrl;
+            out << station.iconUrl;
+            out << station.countrycode;
+            out << station.genre;
+            out << station.bitrate;
+            out << station.codec;
+            out << station.votes;
+            out << station.comments;
+            out << station.isPlaying;
+        }
+
+        file.close();
+    }
+}
+
+void MainWindow::loadRadioStations()
+{
+    QString filePath = getRadioStationsFilePath();
+    QFile file(filePath);
+
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QDataStream in(&file);
+        in.setVersion(QDataStream::Qt_6_0);
+
+        // Read the count
+        quint32 count;
+        in >> count;
+
+        // Clear existing stations
+        m_radioStations.clear();
+
+        // Read each station
+        for (quint32 i = 0; i < count; ++i) {
+            RadioStation station;
+            in >> station.stationuuid;
+            in >> station.name;
+            in >> station.streamUrl;
+            in >> station.iconUrl;
+            in >> station.countrycode;
+            in >> station.genre;
+            in >> station.bitrate;
+            in >> station.codec;
+            in >> station.votes;
+            in >> station.comments;
+            in >> station.isPlaying;
+            m_radioStations.append(station);
+        }
+
+        file.close();
+    }
+    if (!m_radioStations.isEmpty()) {
+        onRadioStationSelected(0);
+    }
+}
+
+void MainWindow::onAddRadioStationFromDialog(const RadioStation &station)
+{
+
+
+    // Check if station already exists (by stationuuid)
+    for (const auto &existing : m_radioStations) {
+        if (existing.stationuuid == station.stationuuid) {
+            statusBar()->showMessage("Station already exists in your collection.", 3000);
+            return;
+        }
+    }
+
+    // Add the station
+    m_radioStations.append(station);
+
+    // Save to disk
+    saveRadioStations();
+
+    // Update the grid
+    updateRadioGrid();
+
+    // Switch to radio tab (index 2)
+    if (m_leftPanelTabs && m_leftPanelTabs->count() > 2) {
+        m_leftPanelTabs->setCurrentIndex(2);
+    }
+
+
+    // Select the newly added station
+    onRadioStationSelected(m_radioStations.size() - 1);
+
+    statusBar()->showMessage(QString("Added: %1").arg(station.name), 3000);
+}
+
+
+/*
+void MainWindow::searchCards(const QString& text)
+{
+    int currentTab = m_leftPanelTabs->currentIndex();
+
+    if (currentTab == 0) {
+        // Website cards
+        for (int i = 0; i < m_websiteCards.size(); ++i) {
+            QFrame* card = m_websiteCards[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+        }
+    } else if (currentTab == 1) {
+        // Session cards
+        for (int i = 0; i < m_sessionCards.size(); ++i) {
+            QFrame* card = m_sessionCards.values()[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+        }
+    } else if (currentTab == 2) {
+        // Radio cards
+        for (int i = 0; i < m_radioCards.size(); ++i) {
+            QFrame* card = m_radioCards[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+        }
+    } else if (currentTab == 3) {
+        // IPTV cards
+        for (int i = 0; i < m_iptvCards.size(); ++i) {
+            QFrame* card = m_iptvCards[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+        }
+    }
+}
+*/
+
+void MainWindow::searchCards(const QString& text)
+{
+    int currentTab = m_leftPanelTabs->currentIndex();
+
+    if (currentTab == 0) {
+        // Website cards
+        QVector<bool> visible(m_websiteCards.size(), false);
+        for (int i = 0; i < m_websiteCards.size(); ++i) {
+            QFrame* card = m_websiteCards[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+            visible[i] = matches;
+        }
+        relayoutCards(m_websitesGrid, m_websiteCards, visible);
+
+    } else if (currentTab == 1) {
+        // Session cards
+        QVector<bool> visible(m_sessionCards.size(), false);
+        QList<QFrame*> sessionCardList = m_sessionCards.values();
+
+        // Create a temporary map with indices
+        QMap<int, QFrame*> tempMap;
+        for (int i = 0; i < sessionCardList.size(); ++i) {
+            tempMap[i] = sessionCardList[i];
+        }
+
+        for (int i = 0; i < sessionCardList.size(); ++i) {
+            QFrame* card = sessionCardList[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+            visible[i] = matches;
+        }
+            relayoutCards(m_sessionsGrid, tempMap, visible);
+    } else if (currentTab == 2) {
+        // Radio cards
+        QVector<bool> visible(m_radioCards.size(), false);
+        for (int i = 0; i < m_radioCards.size(); ++i) {
+            QFrame* card = m_radioCards[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+            visible[i] = matches;
+        }
+        relayoutCards(m_radioGrid, m_radioCards, visible);
+
+    } else if (currentTab == 3) {
+        // IPTV cards
+        QVector<bool> visible(m_iptvCards.size(), false);
+        for (int i = 0; i < m_iptvCards.size(); ++i) {
+            QFrame* card = m_iptvCards[i];
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+            card->setVisible(matches);
+            visible[i] = matches;
+        }
+        relayoutCards(m_iptvGrid, m_iptvCards, visible);
+    }
+}
+
+void MainWindow::showStreamLoadingDialog()
+{
+
+    m_trayIcon->showMessage("Jasmine Radio and IPTV",
+                         "Connecting to stream... Please wait.",
+                         QSystemTrayIcon::Information,
+                         3000);
+
+    }
+
+//////////////////////////// IPTV
+
+void MainWindow::createIPTVTab()
+{
+    m_iptvScrollArea = new QScrollArea();
+    m_iptvScrollArea->setWidgetResizable(true);
+    m_iptvScrollArea->setFrameShape(QFrame::NoFrame);
+    m_iptvContainer = new QWidget();
+    m_iptvGrid = new QGridLayout(m_iptvContainer);
+    m_iptvGrid->setSpacing(12);
+    m_iptvGrid->setContentsMargins(16, 16, 16, 16);
+    m_iptvGrid->setSizeConstraint(QLayout::SetFixedSize);
+    for (int i = 0; i < 3; ++i) {
+        m_iptvGrid->setColumnStretch(i, 0);
+    }
+    m_iptvScrollArea->setWidget(m_iptvContainer);
+
+    m_leftPanelTabs->addTab(m_iptvScrollArea, createRotatedIcon(":/resources/icons/tv.svg"), QString());
+    m_leftPanelTabs->tabBar()->setTabToolTip(3, "IPTV");
+
+    QFrame* iptvDetailsPanel = createIPTVDetailPanel();
+    iptvDetailsPanel->setMinimumWidth(200);
+    detailsStack->addWidget(iptvDetailsPanel);
+
+    loadIPTVChannels();
+
+    if (!m_iptvChannels.isEmpty()) {
+        updateIPTVGrid();
+        onIPTVStationSelected(0);
+    }
+}
+
+QFrame* MainWindow::createIPTVDetailPanel()
+{
+    QFrame* panel = new QFrame();
+    panel->setFrameShape(QFrame::StyledPanel);
+    panel->setObjectName("iptvDetailsPanel");
+
+    QVBoxLayout* layout = new QVBoxLayout(panel);
+    layout->setContentsMargins(16, 16, 16, 16);
+
+    QLabel* titleLabel = new QLabel("IPTV Channel");
+    titleLabel->setObjectName("detailsPanelTitle");
+    layout->addWidget(titleLabel);
+
+    QFormLayout* formLayout = new QFormLayout();
+    formLayout->setSpacing(12);
+    formLayout->setLabelAlignment(Qt::AlignRight);
+
+    // Icon with generate button
+    QHBoxLayout* iconLayout = new QHBoxLayout();
+    m_iptvIconLabel = new QLabel();
+    m_iptvIconLabel->setFixedSize(64, 64);
+    m_iptvIconLabel->setAlignment(Qt::AlignCenter);
+    m_iptvIconLabel->setFrameShape(QFrame::StyledPanel);
+    m_iptvIconLabel->setObjectName("iptvIconPreview");
+    m_iptvIconLabel->setScaledContents(true);
+
+    m_iptvGenerateIconButton = new QPushButton();
+    m_iptvGenerateIconButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    m_iptvGenerateIconButton->setFixedSize(24, 24);
+    m_iptvGenerateIconButton->setToolTip("Generate icon from channel name");
+
+    iconLayout->addWidget(m_iptvIconLabel);
+    iconLayout->addWidget(m_iptvGenerateIconButton);
+    iconLayout->addStretch();
+    formLayout->addRow("Icon:", iconLayout);
+
+    // Editable fields
+    m_iptvNameEdit = new QLineEdit();
+    m_iptvNameEdit->setPlaceholderText("Channel name");
+    formLayout->addRow("Name:", m_iptvNameEdit);
+
+    m_iptvStreamUrlEdit = new QLineEdit();
+    m_iptvStreamUrlEdit->setPlaceholderText("Stream URL (.m3u8)");
+    formLayout->addRow("Stream URL:", m_iptvStreamUrlEdit);
+
+    m_iptvCategoryEdit = new QLineEdit();
+    m_iptvCategoryEdit->setPlaceholderText("Category (News, Sports, etc.)");
+    formLayout->addRow("Category:", m_iptvCategoryEdit);
+
+    m_iptvCountryEdit = new QLineEdit();
+    m_iptvCountryEdit->setPlaceholderText("Country code (e.g., US, GR)");
+    formLayout->addRow("Country:", m_iptvCountryEdit);
+
+    m_iptvCommentsEdit = new QTextEdit();
+    m_iptvCommentsEdit->setPlaceholderText("Optional comments");
+    m_iptvCommentsEdit->setMinimumHeight(80);
+    formLayout->addRow("Comments:", m_iptvCommentsEdit);
+
+    layout->addLayout(formLayout);
+
+    // Buttons row 1: Play, Stop
+    QHBoxLayout* buttonLayout1 = new QHBoxLayout();
+    buttonLayout1->setSpacing(8);
+    m_iptvPlayButton = new QPushButton("Play");
+    m_iptvPlayButton->setObjectName("primaryButton");
+    m_iptvStopButton = new QPushButton("Stop");
+    m_iptvStopButton->setObjectName("secondaryButton");
+    m_iptvStopButton->setEnabled(false);
+    buttonLayout1->addStretch();
+    buttonLayout1->addWidget(m_iptvPlayButton);
+    buttonLayout1->addWidget(m_iptvStopButton);
+    buttonLayout1->addStretch();
+    //layout->addLayout(buttonLayout1);
+
+    // Buttons row 2: Add, Update, Delete, Clear
+    QHBoxLayout* buttonLayout2 = new QHBoxLayout();
+    buttonLayout2->setSpacing(8);
+    m_iptvAddButton = new QPushButton("Add");
+    m_iptvAddButton->setObjectName("primaryButton");
+    m_iptvUpdateButton = new QPushButton("Update");
+    m_iptvUpdateButton->setObjectName("secondaryButton");
+    m_iptvDeleteButton = new QPushButton("Delete");
+    m_iptvDeleteButton->setObjectName("secondaryButton");
+    m_iptvClearButton = new QPushButton("Clear");
+    m_iptvClearButton->setObjectName("secondaryButton");
+    buttonLayout2->addStretch();
+    buttonLayout2->addWidget(m_iptvAddButton);
+    buttonLayout2->addWidget(m_iptvUpdateButton);
+    buttonLayout2->addWidget(m_iptvDeleteButton);
+    buttonLayout2->addWidget(m_iptvClearButton);
+    buttonLayout2->addStretch();
+    layout->addLayout(buttonLayout2);
+    layout->addLayout(buttonLayout1);
+
+    layout->addStretch();
+
+    // Connect signals
+    connect(m_iptvPlayButton, &QPushButton::clicked, this, &MainWindow::onIPTVPlayClicked);
+    connect(m_iptvStopButton, &QPushButton::clicked, this, &MainWindow::onIPTVStopClicked);
+    connect(m_iptvAddButton, &QPushButton::clicked, this, &MainWindow::onIPTVAddClicked);
+    connect(m_iptvUpdateButton, &QPushButton::clicked, this, &MainWindow::onIPTVUpdateClicked);
+    connect(m_iptvDeleteButton, &QPushButton::clicked, this, &MainWindow::onIPTVDeleteClicked);
+    connect(m_iptvClearButton, &QPushButton::clicked, this, &MainWindow::onIPTVClearClicked);
+    connect(m_iptvGenerateIconButton, &QPushButton::clicked, [this]() {
+        if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
+            QIcon newIcon = generateRandomSvgIcon();
+            QPixmap pixmap = newIcon.pixmap(64, 64);
+            m_iptvIconLabel->setPixmap(pixmap);
+
+            QString iconPath = JASMINE_CONSTANTS::iconDir + "/" +
+                              m_iptvChannels[m_currentIPTVIndex].channelId + "_iptv.png";
+            pixmap.save(iconPath);
+            m_iptvChannels[m_currentIPTVIndex].localLogoPath = iconPath;
+            saveIPTVChannels();
+            updateIPTVGrid();
+        }
+    });
+
+    return panel;
+}
+
+QFrame* MainWindow::createIPTVCard(const IPTVChannel& channel, int index)
+{
+    QFrame* card = new QFrame();
+    card->setObjectName(QString("iptvCard_%1").arg(index));
+    card->setProperty("iptvIndex", index);
+    card->setFrameShape(QFrame::StyledPanel);
+    card->setObjectName("iptvCard");
+    card->setFixedSize(200, 200);
+    card->setCursor(Qt::ArrowCursor);
+    card->installEventFilter(this);
+
+    // Shadow effect
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(10);
+    shadow->setColor(QColor(0, 0, 0, 30));
+    shadow->setOffset(0, 2);
+    card->setGraphicsEffect(shadow);
+
+    QVBoxLayout* layout = new QVBoxLayout(card);
+    layout->setContentsMargins(15, 15, 15, 15);
+
+    // Title row with icon
+    QHBoxLayout* titleLayout = new QHBoxLayout();
+    QLabel* iconLabel = new QLabel();
+    iconLabel->setFixedSize(16, 16);
+
+    if (!channel.localLogoPath.isEmpty() && QFile::exists(channel.localLogoPath)) {
+        QPixmap pixmap(channel.localLogoPath);
+        if (!pixmap.isNull()) {
+            iconLabel->setPixmap(pixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            iconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(16, 16));
+        }
+    } else if (!channel.logoUrl.isEmpty()) {
+        iconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(16, 16));
+    } else {
+        iconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(16, 16));
+    }
+    titleLayout->addWidget(iconLabel);
+
+    // Channel name
+    QLabel* titleLabel = new QLabel(channel.name);
+    titleLabel->setObjectName("cardTitle");
+    titleLabel->setWordWrap(true);
+    titleLayout->addWidget(titleLabel, 1);
+    layout->addLayout(titleLayout);
+
+    // Info line (category + country)
+    QString infoText = channel.category;
+    if (!channel.country.isEmpty()) {
+        infoText += (infoText.isEmpty() ? "" : " · ") + channel.country;
+    }
+    if (infoText.isEmpty()) infoText = "No category";
+    QLabel* infoLabel = new QLabel(infoText);
+    infoLabel->setObjectName("cardInfo");
+    infoLabel->setWordWrap(true);
+    layout->addWidget(infoLabel);
+
+    // Action buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setContentsMargins(0, 8, 0, 0);
+
+    QPushButton* playBtn = new QPushButton();
+    playBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    playBtn->setToolTip("Play Channel");
+    playBtn->setFlat(true);
+    playBtn->setCursor(Qt::PointingHandCursor);
+    playBtn->setObjectName("cardButton");
+
+    QPushButton* stopBtn = new QPushButton();
+    stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+    stopBtn->setToolTip("Stop Channel");
+    stopBtn->setFlat(true);
+    stopBtn->setCursor(Qt::PointingHandCursor);
+    stopBtn->setObjectName("cardButton");
+
+    QPushButton* deleteBtn = new QPushButton();
+    deleteBtn->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
+    deleteBtn->setToolTip("Delete Channel");
+    deleteBtn->setFlat(true);
+    deleteBtn->setCursor(Qt::PointingHandCursor);
+    deleteBtn->setObjectName("cardButton");
+
+    buttonLayout->addWidget(playBtn);
+    buttonLayout->addWidget(stopBtn);
+    buttonLayout->addWidget(deleteBtn);
+    buttonLayout->addStretch();
+    layout->addLayout(buttonLayout);
+
+    // Connect signals
+    connect(playBtn, &QPushButton::clicked, [this, index]() {
+        onIPTVStationSelected(index);
+        onIPTVPlayClicked();
+    });
+
+    connect(stopBtn, &QPushButton::clicked, [this, index]() {
+        onIPTVStationSelected(index);
+        onIPTVStopClicked();
+    });
+
+    connect(deleteBtn, &QPushButton::clicked, [this, index]() {
+        onIPTVStationSelected(index);
+        onIPTVDeleteClicked();
+    });
+
+    card->setProperty("iptvIndex", index);
+
+    return card;
+}
+
+void MainWindow::updateIPTVGrid()
+{
+    // Clear existing cards
+    QLayoutItem* item;
+    while ((item = m_iptvGrid->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            item->widget()->deleteLater();
+        }
+        delete item;
+    }
+    m_iptvCards.clear();
+
+    // If no channels, show message
+    if (m_iptvChannels.isEmpty()) {
+        QLabel* emptyLabel = new QLabel("No IPTV channels added yet.\n\nUse Tools → Browse IPTV Channels to add some.");
+        emptyLabel->setAlignment(Qt::AlignCenter);
+        emptyLabel->setWordWrap(true);
+        emptyLabel->setMinimumHeight(400);
+        emptyLabel->setObjectName("emptyMessageLabel");
+        m_iptvGrid->addWidget(emptyLabel, 0, 0, 1, 3);
+        return;
+    }
+
+    // Add cards
+    int row = 0;
+    int col = 0;
+    int maxCols = 3;
+
+    for (int i = 0; i < m_iptvChannels.size(); ++i) {
+        QFrame* card = createIPTVCard(m_iptvChannels[i], i);
+        m_iptvGrid->addWidget(card, row, col);
+        m_iptvCards[i] = card;
+
+        col++;
+        if (col >= maxCols) {
+            col = 0;
+            row++;
+        }
+    }
+
+    // Add stretch
+    m_iptvGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
+
+    // Restore selection
+    if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
+        for (int i = 0; i < m_iptvCards.size(); ++i) {
+            highlightCard(m_iptvCards[i], i == m_currentIPTVIndex);
+        }
+    } else if (!m_iptvChannels.isEmpty()) {
+        onIPTVStationSelected(0);
+    }
+}
+
+QString MainWindow::getIPTVChannelsFilePath()
+{
+    return JASMINE_CONSTANTS::appDirPath + "/iptvchannels.dat";
+}
+
+void MainWindow::saveIPTVChannels()
+{
+    QString filePath = getIPTVChannelsFilePath();
+    QFile file(filePath);
+
+    if (file.open(QIODevice::WriteOnly)) {
+        QDataStream out(&file);
+        out.setVersion(QDataStream::Qt_6_0);
+        out << quint32(m_iptvChannels.size());
+
+        for (const IPTVChannel& channel : m_iptvChannels) {
+            out << channel.channelId;
+            out << channel.name;
+            out << channel.streamUrl;
+            out << channel.logoUrl;
+            out << channel.category;
+            out << channel.country;
+            out << channel.referrer;
+            out << channel.userAgent;
+            out << channel.comments;
+            out << channel.localLogoPath;
+        }
+        file.close();
+    }
+}
+
+void MainWindow::loadIPTVChannels()
+{
+    QString filePath = getIPTVChannelsFilePath();
+    QFile file(filePath);
+
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QDataStream in(&file);
+        in.setVersion(QDataStream::Qt_6_0);
+
+        quint32 count;
+        in >> count;
+        m_iptvChannels.clear();
+
+        for (quint32 i = 0; i < count; ++i) {
+            IPTVChannel channel;
+            in >> channel.channelId;
+            in >> channel.name;
+            in >> channel.streamUrl;
+            in >> channel.logoUrl;
+            in >> channel.category;
+            in >> channel.country;
+            in >> channel.referrer;
+            in >> channel.userAgent;
+            in >> channel.comments;
+            in >> channel.localLogoPath;
+            channel.isPlaying = false;
+            m_iptvChannels.append(channel);
+        }
+        file.close();
+    }
+}
+
+////// slot functions
+/*
+void MainWindow::onIPTVStationSelected(int index)
+{
+    if (index < 0 || index >= m_iptvChannels.size()) return;
+
+    m_currentIPTVIndex = index;
+    const IPTVChannel& channel = m_iptvChannels[index];
+
+    m_iptvNameEdit->setText(channel.name);
+    m_iptvStreamUrlEdit->setText(channel.streamUrl);
+    m_iptvCategoryEdit->setText(channel.category);
+    m_iptvCountryEdit->setText(channel.country);
+    m_iptvCommentsEdit->setPlainText(channel.comments);
+
+    // Load icon
+    if (!channel.localLogoPath.isEmpty() && QFile::exists(channel.localLogoPath)) {
+        QPixmap pixmap(channel.localLogoPath);
+        if (!pixmap.isNull()) {
+            m_iptvIconLabel->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
+        }
+    } else {
+        m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
+    }
+
+    // Highlight selected card
+    for (int i = 0; i < m_iptvCards.size(); ++i) {
+        highlightCard(m_iptvCards[i], i == index);
+    }
+}
+*/
+
+void MainWindow::onIPTVStationSelected(int index)
+{
+    if (index < 0 || index >= m_iptvChannels.size()) return;
+
+    m_currentIPTVIndex = index;
+    IPTVChannel& channel = m_iptvChannels[index];  // Note: non-const reference
+
+    m_iptvNameEdit->setText(channel.name);
+    m_iptvStreamUrlEdit->setText(channel.streamUrl);
+    m_iptvCategoryEdit->setText(channel.category);
+    m_iptvCountryEdit->setText(channel.country);
+    m_iptvCommentsEdit->setPlainText(channel.comments);
+
+    // Check if we have a valid local icon (either from download or user-generated)
+    bool hasLocalIcon = !channel.localLogoPath.isEmpty() && QFile::exists(channel.localLogoPath);
+
+    if (hasLocalIcon) {
+        QPixmap pixmap(channel.localLogoPath);
+        if (!pixmap.isNull()) {
+            m_iptvIconLabel->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            // Local path exists but file is corrupted - use default
+            m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
+            // Only download if there's a URL and no user-generated icon exists
+            if (!channel.logoUrl.isEmpty() && channel.localLogoPath.isEmpty()) {
+                downloadIPTVIconIfNeeded(index);
+            }
+        }
+    } else {
+        // No local icon - show default
+        m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
+
+        // Only download if there's a logoUrl AND user hasn't generated a custom icon
+        // (localLogoPath empty means no user-generated icon yet)
+        if (!channel.logoUrl.isEmpty() && channel.localLogoPath.isEmpty()) {
+            downloadIPTVIconIfNeeded(index);
+        }
+    }
+
+    // Highlight selected card
+    for (int i = 0; i < m_iptvCards.size(); ++i) {
+        highlightCard(m_iptvCards[i], i == index);
+    }
+}
+
+void MainWindow::onIPTVAddClicked()
+{
+    QString name = m_iptvNameEdit->text().trimmed();
+    QString streamUrl = m_iptvStreamUrlEdit->text().trimmed();
+    QString category = m_iptvCategoryEdit->text().trimmed();
+    QString country = m_iptvCountryEdit->text().trimmed();
+    QString comments = m_iptvCommentsEdit->toPlainText().trimmed();
+
+    if (name.isEmpty()) {
+        QMessageBox::warning(this, "Invalid Name", "Please enter a channel name.");
+        return;
+    }
+    if (streamUrl.isEmpty()) {
+        QMessageBox::warning(this, "Invalid URL", "Please enter a stream URL.");
+        return;
+    }
+
+    IPTVChannel newChannel;
+    newChannel.channelId = QUuid::createUuid().toString();
+    newChannel.name = name;
+    newChannel.streamUrl = streamUrl;
+    newChannel.category = category;
+    newChannel.country = country;
+    newChannel.comments = comments;
+    newChannel.isPlaying = false;
+
+    m_iptvChannels.append(newChannel);
+    saveIPTVChannels();
+    updateIPTVGrid();
+    onIPTVClearClicked();
+    onIPTVStationSelected(m_iptvChannels.size() - 1);
+    statusBar()->showMessage("IPTV channel added successfully.", 3000);
+}
+
+void MainWindow::onIPTVUpdateClicked()
+{
+    if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
+        m_iptvChannels[m_currentIPTVIndex].name = m_iptvNameEdit->text().trimmed();
+        m_iptvChannels[m_currentIPTVIndex].streamUrl = m_iptvStreamUrlEdit->text().trimmed();
+        m_iptvChannels[m_currentIPTVIndex].category = m_iptvCategoryEdit->text().trimmed();
+        m_iptvChannels[m_currentIPTVIndex].country = m_iptvCountryEdit->text().trimmed();
+        m_iptvChannels[m_currentIPTVIndex].comments = m_iptvCommentsEdit->toPlainText().trimmed();
+
+        saveIPTVChannels();
+        updateIPTVGrid();
+        onIPTVStationSelected(m_currentIPTVIndex);
+        statusBar()->showMessage("IPTV channel updated.", 3000);
+    }
+}
+
+void MainWindow::onIPTVDeleteClicked()
+{
+    if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
+        // Delete local icon file
+        QString iconPath = m_iptvChannels[m_currentIPTVIndex].localLogoPath;
+        if (!iconPath.isEmpty() && QFile::exists(iconPath)) {
+            QFile::remove(iconPath);
+        }
+
+        m_iptvChannels.removeAt(m_currentIPTVIndex);
+        saveIPTVChannels();
+        updateIPTVGrid();
+
+        if (m_iptvChannels.isEmpty()) {
+            onIPTVClearClicked();
+            m_currentIPTVIndex = -1;
+        } else {
+            onIPTVStationSelected(0);
+        }
+        statusBar()->showMessage("IPTV channel deleted.", 3000);
+    }
+}
+
+void MainWindow::onIPTVClearClicked()
+{
+    m_iptvNameEdit->clear();
+    m_iptvStreamUrlEdit->clear();
+    m_iptvCategoryEdit->clear();
+    m_iptvCountryEdit->clear();
+    m_iptvCommentsEdit->clear();
+    m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
+    m_currentIPTVIndex = -1;
+
+    for (auto card : m_iptvCards) {
+        highlightCard(card, false);
+    }
+    statusBar()->showMessage("Form cleared.", 2000);
+}
+
+void MainWindow::onIPTVPlayClicked()
+{
+    if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
+
+        for (QFrame* card : m_iptvCards) {
+                    card->setProperty("playing", false);
+                    card->style()->unpolish(card);
+                    card->style()->polish(card);
+                }
+
+        IPTVChannel& channel = m_iptvChannels[m_currentIPTVIndex];
+        if (!channel.streamUrl.isEmpty()) {
+            showStreamLoadingDialog();
+            player->setUrl(channel.streamUrl);
+            player->setWindowTitle(QString("Playing: %1").arg(channel.name));
+            player->play();
+
+            // Add playing property to current card ONLY
+            if (m_iptvCards.contains(m_currentIPTVIndex)) {
+                m_iptvCards[m_currentIPTVIndex]->setProperty("playing", true);
+                m_iptvCards[m_currentIPTVIndex]->style()->unpolish(m_iptvCards[m_currentIPTVIndex]);
+                m_iptvCards[m_currentIPTVIndex]->style()->polish(m_iptvCards[m_currentIPTVIndex]);
+            }
+
+            player->show();
+            statusBar()->showMessage(QString("Now Playing: %1 - %2").arg(channel.name, channel.category), 0);
+            m_iptvPlayButton->setEnabled(false);
+            m_iptvStopButton->setEnabled(true);
+
+        }
+    }
+}
+
+void MainWindow::onIPTVStopClicked()
+{
+    player->stop();
+    m_iptvPlayButton->setEnabled(true);
+    m_iptvStopButton->setEnabled(false);
+    statusBar()->showMessage(QString());
+
+    for (QFrame* card : m_iptvCards) {
+        card->setProperty("playing", false);
+        card->style()->unpolish(card);
+        card->style()->polish(card);
+    }
+
+}
+
+void MainWindow::onAddIPTVChannelsFromDialog(const QVector<IPTVChannel>& channels)
+{
+    int addedCount = 0;
+    for (const IPTVChannel& channel : channels) {
+        // Check for duplicates by name
+        bool exists = false;
+        for (const auto& existing : m_iptvChannels) {
+            if (existing.name == channel.name && existing.streamUrl == channel.streamUrl) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            m_iptvChannels.append(channel);
+            addedCount++;
+        }
+    }
+
+    if (addedCount > 0) {
+        saveIPTVChannels();
+        updateIPTVGrid();
+        if (m_leftPanelTabs->count() > 3) {
+            m_leftPanelTabs->setCurrentIndex(3);
+        }
+        onIPTVStationSelected(m_iptvChannels.size() - 1);
+        statusBar()->showMessage(QString("Added %1 IPTV channel(s).").arg(addedCount), 3000);
+    }
+}
+
+void MainWindow::relayoutCards(QGridLayout* grid, const QMap<int, QFrame*>& cards, const QVector<bool>& visible)
+{
+    // Remove all widgets from grid
+    QLayoutItem* item;
+    while ((item = grid->takeAt(0)) != nullptr) {
+        // Don't delete widgets, just remove from layout
+        delete item;
+    }
+
+    // Add back only visible cards in order
+    int row = 0;
+    int col = 0;
+    int maxCols = 3;
+
+    for (int i = 0; i < cards.size(); ++i) {
+        if (visible[i]) {
+            grid->addWidget(cards[i], row, col);
+            col++;
+            if (col >= maxCols) {
+                col = 0;
+                row++;
+            }
+        }
+    }
+
+    // Add stretch at the end
+    grid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
+}
+
+void MainWindow::downloadIPTVIconIfNeeded(int index)
+{
+    if (index < 0 || index >= m_iptvChannels.size()) return;
+
+    IPTVChannel& channel = m_iptvChannels[index];
+
+    // Don't download if there's already a local icon
+    if (!channel.localLogoPath.isEmpty() && QFile::exists(channel.localLogoPath)) {
+        return;
+    }
+
+    // Don't download if no URL to download from
+    if (channel.logoUrl.isEmpty()) {
+        return;
+    }
+
+    // Download the icon
+    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    QNetworkReply *reply = nam->get(QNetworkRequest(QUrl(channel.logoUrl)));
+
+    connect(reply, &QNetworkReply::finished, [this, reply, nam, index]() {
+
+
+        if (reply->error() == QNetworkReply::NoError) {
+            QString iconPath = JASMINE_CONSTANTS::iconDir + "/iptv_" +
+                              m_iptvChannels[index].channelId + ".png";
+
+            QFile file(iconPath);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(reply->readAll());
+                file.close();
+
+                m_iptvChannels[index].localLogoPath = iconPath;
+                saveIPTVChannels();
+
+                // Update UI if this channel is still selected
+                if (m_currentIPTVIndex == index) {
+                    QPixmap pixmap(iconPath);
+                    if (!pixmap.isNull()) {
+                        m_iptvIconLabel->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                    }
+                }
+
+                // Update the card
+                if (m_iptvCards.contains(index)) {
+                    QLabel* iconLabel = m_iptvCards[index]->findChild<QLabel*>();
+                    if (iconLabel) {
+                        QPixmap pixmap(iconPath);
+                        if (!pixmap.isNull()) {
+                            iconLabel->setPixmap(pixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                        }
+                    }
+                }
+            }
+        }
+        reply->deleteLater();
+        nam->deleteLater();
+    });
+}
+
+void MainWindow::sortAllCards()
+{
+    // Helper lambda to sort cards by title
+    auto sortCards = [](QMap<int, QFrame*> cards, QGridLayout* grid) {
+        // Collect card data with their titles
+        QVector<QPair<QString, QFrame*>> cardList;
+        for (auto it = cards.begin(); it != cards.end(); ++it) {
+            QFrame* card = it.value();
+            QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+            QString title = titleLabel ? titleLabel->text() : "";
+            cardList.append({title, card});
+        }
+
+        // Sort alphabetically by title
+        std::sort(cardList.begin(), cardList.end(),
+            [](const QPair<QString, QFrame*>& a, const QPair<QString, QFrame*>& b) {
+                return a.first.compare(b.first, Qt::CaseInsensitive) < 0;
+            });
+
+        // Remove all widgets from grid
+        QLayoutItem* item;
+        while ((item = grid->takeAt(0)) != nullptr) {
+            delete item;
+        }
+
+        // Add cards back in sorted order
+        int row = 0;
+        int col = 0;
+        int maxCols = 3;
+        for (const auto& pair : cardList) {
+            grid->addWidget(pair.second, row, col);
+            col++;
+            if (col >= maxCols) {
+                col = 0;
+                row++;
+            }
+        }
+
+        // Add stretch at the end
+        grid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
+    };
+
+    // Sort website cards
+    if (!m_websiteCards.isEmpty()) {
+        sortCards(m_websiteCards, m_websitesGrid);
+    }
+
+    /*
+    // Sort session cards (convert QMap<QString, QFrame*> to indexed map)
+    if (!m_sessionCards.isEmpty()) {
+        QMap<int, QFrame*> indexedSessionCards;
+        QList<QFrame*> sessionList = m_sessionCards.values();
+        for (int i = 0; i < sessionList.size(); ++i) {
+            indexedSessionCards[i] = sessionList[i];
+        }
+        sortCards(indexedSessionCards, m_sessionsGrid);
+
+        // Rebuild m_sessionCards with sorted order (optional)
+        QMap<QString, QFrame*> newSessionCards;
+        for (int i = 0; i < sessionList.size(); ++i) {
+            QFrame* card = sessionList[i];
+            QString name = card->property("sessionName").toString();
+            newSessionCards[name] = card;
+        }
+        m_sessionCards = newSessionCards;
+    }
+    */
+
+
+    // Sort radio cards
+    if (!m_radioCards.isEmpty()) {
+        sortCards(m_radioCards, m_radioGrid);
+    }
+
+    // Sort IPTV cards
+    if (!m_iptvCards.isEmpty()) {
+        sortCards(m_iptvCards, m_iptvGrid);
+    }
 }

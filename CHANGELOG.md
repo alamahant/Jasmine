@@ -1,5 +1,65 @@
 # Changelog
 
+## [v1.2.9] - 2026-05-21
+
+### New Features: Radio Stations & IPTV
+
+**Radio Stations Tab:**
+- Complete radio station manager with grid-based cards (200x200)
+- Manual add via detail panel (Name, URL, Country, Genre, Bitrate, Codec, Comments)
+- Browse/search via Radio Browser API (name, country, or browse all)
+- Local filtering of search results
+- Download and cache station icons locally
+- Save/load stations using QDataStream
+- Play/Stop using existing AdFreePlayerDialog
+- Purple border playing indicator
+- System tray notification on playback start
+- Non-modal browse dialog for batch adding
+
+**IPTV Tab:**
+- Complete IPTV channel manager following same pattern as Radio
+- Add channels manually or import M3U playlists (remote URL or local file)
+- Background parsing with QFuture (handles 10,000+ channels without UI freeze)
+- Select channels via checkboxes, add multiple at once
+- Optional preview playback before adding
+- Automatic icon download on channel selection
+- Manual icon generation via random SVG generator
+- Category-based organization (from group-title)
+
+**Both Radio & IPTV Share:**
+- 3-column grid layout with square cards
+- Play/Stop/Delete buttons on each card
+- Detail panel with editable fields
+- Search cards across all tabs via magnifying glass button
+- Persistent storage with automatic save/load
+- Dark theme support
+
+**AdFreePlayerDialog Improvements:**
+- Added `mediaStopped`, `mediaLoaded`, `mediaFailed`, `dialogClosed` signals
+- URL display now uses QLineEdit (scrollable, selectable)
+- Close event properly hides dialog without deleting
+
+**Radio Browser API:**
+- Server discovery via DNS lookup, cached in QSettings
+- Manual refresh option in Tools menu
+
+**M3U Parser:**
+- Parses channel name, logo URL, category, resolution
+- Remote URL and local file support
+
+**UI Enhancements:**
+- Search magnifying glass in toolbar
+- Empty state messages for tabs
+- Dark theme styling for all dialogs
+
+**Bug Fixes:**
+- Fixed player button state sync
+- Fixed memory cleanup
+- Added duplicate detection
+- Fixed card selection highlighting
+
+---
+
 ### [v1.2.8] - 2026-05-17
 
 **Added yt-dlp to Flatpak manifest:**
@@ -21,6 +81,8 @@
       url: https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp_linux
 
 
+--- 
+
 ## [v1.2.7] - 2026-05-16
 
 ### New Feature: Ad-Free Video Player
@@ -40,6 +102,8 @@
 - Proper process cleanup prevents orphaned yt-dlp processes
 - Volume level remembered when muting/unmuting
 - Graceful timeout handling for stream extraction
+
+---
 
 ## [v1.2.6] - 2026-03-08
 

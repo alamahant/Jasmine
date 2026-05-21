@@ -8,6 +8,7 @@
 #include <QSlider>
 #include <QLabel>
 #include <QPushButton>
+#include<QLineEdit>
 
 class AdFreePlayerDialog : public QDialog
 {
@@ -23,7 +24,10 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 signals:
     void requestCurrentUrl();
-
+    void mediaLoaded();
+    void mediaFailed(const QString &error);
+    void dialogClosed();
+    void mediaStopped();
 private slots:
     void onGetUrlClicked();
     void playStream();
@@ -36,6 +40,7 @@ private slots:
     void toggleFullscreen();
     void showContextMenu(const QPoint &pos);
     void onClearClicked();
+    void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
 private:
     void setupUI();
     void createVideoToolbar();
@@ -49,7 +54,9 @@ private:
 
     // UI elements
     QPushButton *m_getUrlButton;
-    QLabel *m_urlDisplay;
+    //QLabel *m_urlDisplay;
+    QLineEdit *m_urlDisplay;
+
     QWidget *m_videoToolbar;
     QPushButton *m_playButton;
     QPushButton *m_stopButton;
@@ -64,6 +71,12 @@ private:
     QPushButton *m_clearButton;
     void playStreamWithUrl(const QString &streamUrl);
     QByteArray m_outputBuffer;
+    void showStreamLoadingDialog();
+
+    //NEEDED FOR RADIO
+public:
+    void stop();
+    void play();
 };
 
 #endif

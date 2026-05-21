@@ -542,3 +542,394 @@ QComboBox QAbstractItemView::item:hover {
 }
 
 
+/* Radio cards - Dark Theme */
+#radioCard {
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#radioCard:hover {
+    background-color: #2a2a2a;
+}
+
+#radioCard[selected="true"] {
+    background-color: #1a365d;
+    border: 2px solid #0078d4;
+}
+
+/* Radio card elements */
+#radioCard #cardTitle {
+    font-weight: bold;
+    font-size: 16px;
+    color: #ffffff;
+}
+
+#radioCard #cardInfo {
+    color: #b0b0b0;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+#radioCard QPushButton {
+    background-color: transparent;
+    border: none;
+    padding: 4px;
+    color: #ffffff;
+}
+
+#radioCard QPushButton:hover {
+    background-color: #3d3d3d;
+    border-radius: 4px;
+}
+
+/* Make all child widgets transparent so card background shows */
+#radioCard QLabel,
+#radioCard QPushButton,
+#radioCard QHBoxLayout,
+#radioCard QVBoxLayout {
+    background-color: transparent;
+}
+
+/* Radio details panel - Dark Theme */
+#radioDetailsPanel {
+    background-color: #1e1e1e;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    margin: 2px;
+}
+
+#radioDetailsPanel QLabel {
+    color: #ffffff;
+}
+
+#radioDetailsPanel #detailsPanelTitle {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    color: #ffffff;
+}
+
+/* Radio form elements */
+#radioDetailsPanel QLineEdit, 
+#radioDetailsPanel QTextEdit {
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+#radioDetailsPanel QLineEdit:focus, 
+#radioDetailsPanel QTextEdit:focus {
+    border: 2px solid #0078d4;
+}
+
+#radioDetailsPanel QPushButton#primaryButton {
+    background-color: #0078d4;
+    color: white;
+    border-radius: 4px;
+    padding: 8px 16px;
+    border: none;
+}
+
+#radioDetailsPanel QPushButton#primaryButton:hover {
+    background-color: #106ebe;
+}
+
+#radioDetailsPanel QPushButton#secondaryButton {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #ffffff;
+}
+
+#radioDetailsPanel QPushButton#secondaryButton:hover {
+    background-color: #3d3d3d;
+}
+
+/* Radio icon preview */
+#radioIconPreview {
+    border: 2px solid #404040;
+    border-radius: 8px;
+    background-color: #2d2d2d;
+}
+
+/* Empty message label */
+#emptyMessageLabel {
+    color: #b0b0b0;
+    font-size: 16px;
+    font-style: italic;
+    background-color: transparent;
+}
+
+/* Search line edit */
+QLineEdit#searchLineEdit {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+QLineEdit#searchLineEdit:focus {
+    border: 2px solid #0078d4;
+}
+
+QLineEdit#searchLineEdit::placeholder {
+    color: #808080;
+}
+
+#radioCard[playing="true"] {
+    border: 2px solid #aa66ff;
+    background-color: rgba(170, 102, 255, 0.1);
+}
+
+
+/* Dark theme for AdFreePlayerDialog and SearchRadioStationsDialog */
+AdFreePlayerDialog, SearchRadioStationsDialog {
+    background-color: #1e1e1e;
+}
+AdFreePlayerDialog QLabel, SearchRadioStationsDialog QLabel,
+AdFreePlayerDialog QGroupBox, SearchRadioStationsDialog QGroupBox {
+    color: #ffffff;
+}
+AdFreePlayerDialog QPushButton, SearchRadioStationsDialog QPushButton {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #ffffff;
+}
+AdFreePlayerDialog QPushButton:hover, SearchRadioStationsDialog QPushButton:hover {
+    background-color: #3d3d3d;
+}
+AdFreePlayerDialog QSlider::groove:horizontal {
+    height: 4px;
+    background: #404040;
+    border-radius: 2px;
+}
+AdFreePlayerDialog QSlider::handle:horizontal {
+    background: #0078d4;
+    width: 12px;
+    height: 12px;
+    margin: -4px 0;
+    border-radius: 6px;
+}
+AdFreePlayerDialog QSlider::sub-page:horizontal {
+    background: #0078d4;
+    border-radius: 2px;
+}
+SearchRadioStationsDialog QTableWidget {
+    background-color: #2d2d2d;
+    alternate-background-color: #353535;
+    color: #ffffff;
+    selection-background-color: #1a365d;
+}
+SearchRadioStationsDialog QLineEdit {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 4px;
+}
+SearchRadioStationsDialog QLineEdit:focus {
+    border: 2px solid #0078d4;
+}
+
+
+/* IPTV cards - Dark Theme (EXACTLY LIKE RADIO) */
+#iptvCard {
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#iptvCard:hover {
+    background-color: #2a2a2a;
+}
+
+#iptvCard[selected="true"] {
+    background-color: #1a365d;
+    border: 2px solid #0078d4;
+}
+
+/* IPTV card elements */
+#iptvCard #cardTitle {
+    font-weight: bold;
+    font-size: 16px;
+    color: #ffffff;
+}
+
+#iptvCard #cardInfo {
+    color: #b0b0b0;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+#iptvCard QPushButton {
+    background-color: transparent;
+    border: none;
+    padding: 4px;
+    color: #ffffff;
+}
+
+#iptvCard QPushButton:hover {
+    background-color: #3d3d3d;
+    border-radius: 4px;
+}
+
+/* Make all child widgets transparent so card background shows */
+#iptvCard QLabel,
+#iptvCard QPushButton,
+#iptvCard QHBoxLayout,
+#iptvCard QVBoxLayout {
+    background-color: transparent;
+}
+
+/* IPTV details panel - Dark Theme */
+#iptvDetailsPanel {
+    background-color: #1e1e1e;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    margin: 2px;
+}
+
+#iptvDetailsPanel QLabel {
+    color: #ffffff;
+}
+
+#iptvDetailsPanel #detailsPanelTitle {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    color: #ffffff;
+}
+
+/* IPTV form elements */
+#iptvDetailsPanel QLineEdit, 
+#iptvDetailsPanel QTextEdit {
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+#iptvDetailsPanel QLineEdit:focus, 
+#iptvDetailsPanel QTextEdit:focus {
+    border: 2px solid #0078d4;
+}
+
+#iptvDetailsPanel QPushButton#primaryButton {
+    background-color: #0078d4;
+    color: white;
+    border-radius: 4px;
+    padding: 8px 16px;
+    border: none;
+}
+
+#iptvDetailsPanel QPushButton#primaryButton:hover {
+    background-color: #106ebe;
+}
+
+#iptvDetailsPanel QPushButton#secondaryButton {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #ffffff;
+}
+
+#iptvDetailsPanel QPushButton#secondaryButton:hover {
+    background-color: #3d3d3d;
+}
+
+/* IPTV icon preview */
+#iptvIconPreview {
+    border: 2px solid #404040;
+    border-radius: 8px;
+    background-color: #2d2d2d;
+}
+
+/* IPTV playing indicator - using purple like radio */
+#iptvCard[playing="true"] {
+    border: 2px solid #aa66ff;
+    background-color: rgba(170, 102, 255, 0.1);
+}
+
+/* SearchIPTVDialog dark theme */
+SearchIPTVDialog QTableWidget {
+    background-color: #2d2d2d;
+    alternate-background-color: #353535;
+    color: #ffffff;
+    selection-background-color: #1a365d;
+}
+
+SearchIPTVDialog QLineEdit {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+SearchIPTVDialog QLineEdit:focus {
+    border: 2px solid #0078d4;
+}
+
+SearchIPTVDialog QPushButton {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #ffffff;
+}
+
+SearchIPTVDialog QPushButton:hover {
+    background-color: #3d3d3d;
+}
+
+SearchIPTVDialog QPushButton#primaryButton {
+    background-color: #0078d4;
+    color: white;
+}
+
+SearchIPTVDialog QPushButton#primaryButton:hover {
+    background-color: #106ebe;
+}
+
+SearchIPTVDialog QGroupBox {
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+SearchIPTVDialog QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+}
+
+SearchIPTVDialog QTabWidget::pane {
+    border: 1px solid #404040;
+    background-color: #1e1e1e;
+}
+
+SearchIPTVDialog QTabBar::tab {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    padding: 6px 12px;
+}
+
+SearchIPTVDialog QTabBar::tab:selected {
+    background-color: #0078d4;
+}
+
+SearchIPTVDialog QTabBar::tab:hover:!selected {
+    background-color: #3d3d3d;
+}

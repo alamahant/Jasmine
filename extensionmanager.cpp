@@ -121,7 +121,6 @@ bool ExtensionManager::loadFromZip(const QString &zipPath)
 {
     if (!m_initialized || !m_extManager) return false;
 
-    qDebug() << "Installing extension from zip:" << zipPath;
     // installExtension takes QString path [citation:3][citation:9]
     m_extManager->installExtension(zipPath);
     return true;
@@ -131,7 +130,6 @@ bool ExtensionManager::loadFromFolder(const QString &folderPath)
 {
     if (!m_initialized || !m_extManager) return false;
 
-    qDebug() << "Loading extension from folder:" << folderPath;
     // For unpacked extensions, use installExtension (it handles both) [citation:1]
     m_extManager->installExtension(folderPath);
     return true;
@@ -141,7 +139,6 @@ void ExtensionManager::loadPreinstalled(const QString &directory)
 {
     QDir extensionsDir(directory);
     if (!extensionsDir.exists()) {
-        qDebug() << "Preinstalled extensions directory not found:" << directory;
         return;
     }
 

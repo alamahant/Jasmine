@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
     QDir().mkpath(JASMINE_CONSTANTS::appDirPath);
     QDir().mkpath(JASMINE_CONSTANTS::downloadsDirPath);
     QDir().mkpath(JASMINE_CONSTANTS::screenshotsDirPath);
+    QDir().mkpath(JASMINE_CONSTANTS::iconDir);
+    QDir().mkpath(JASMINE_CONSTANTS::iptvDir);
 
     QSettings settings;
         if (settings.value("gpu/disable_acceleration", false).toBool()) {
