@@ -933,3 +933,211 @@ SearchIPTVDialog QTabBar::tab:selected {
 SearchIPTVDialog QTabBar::tab:hover:!selected {
     background-color: #3d3d3d;
 }
+
+/* Podcast cards - Dark Theme */
+#podcastCard {
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#podcastCard:hover {
+    background-color: #2a2a2a;
+}
+
+#podcastCard[selected="true"] {
+    background-color: #1a365d;
+    border: 2px solid #0078d4;
+}
+
+/* Podcast card elements */
+#podcastCard #cardTitle {
+    font-weight: bold;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+#podcastCard #cardInfo {
+    color: #b0b0b0;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+#podcastCard QPushButton {
+    background-color: transparent;
+    border: none;
+    padding: 4px;
+    color: #ffffff;
+}
+
+#podcastCard QPushButton:hover {
+    background-color: #3d3d3d;
+    border-radius: 4px;
+}
+
+/* Make all child widgets transparent so card background shows */
+#podcastCard QLabel,
+#podcastCard QPushButton,
+#podcastCard QHBoxLayout,
+#podcastCard QVBoxLayout {
+    background-color: transparent;
+}
+
+/* Podcast details panel - Dark Theme */
+#podcastDetailsPanel {
+    background-color: #1e1e1e;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    margin: 2px;
+}
+
+#podcastDetailsPanel QLabel {
+    color: #ffffff;
+}
+
+#podcastDetailsPanel #detailsPanelTitle {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    color: #ffffff;
+}
+
+#podcastDetailsPanel #detailsPanelSubtitle {
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    color: #b0b0b0;
+}
+
+/* Podcast form elements */
+#podcastDetailsPanel QLineEdit, 
+#podcastDetailsPanel QTextEdit,
+#podcastDetailsPanel QListWidget {
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+#podcastDetailsPanel QLineEdit:focus, 
+#podcastDetailsPanel QTextEdit:focus {
+    border: 2px solid #0078d4;
+}
+
+#podcastDetailsPanel QPushButton#primaryButton {
+    background-color: #0078d4;
+    color: white;
+    border-radius: 4px;
+    padding: 8px 16px;
+    border: none;
+}
+
+#podcastDetailsPanel QPushButton#primaryButton:hover {
+    background-color: #106ebe;
+}
+
+#podcastDetailsPanel QPushButton#secondaryButton {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #ffffff;
+}
+
+#podcastDetailsPanel QPushButton#secondaryButton:hover {
+    background-color: #3d3d3d;
+}
+
+/* Podcast artwork preview */
+#podcastArtworkPreview {
+    border: 2px solid #404040;
+    border-radius: 8px;
+    background-color: #2d2d2d;
+}
+
+/* SearchPodcastDialog dark theme */
+SearchPodcastDialog QTableWidget {
+    background-color: #2d2d2d;
+    alternate-background-color: #353535;
+    color: #ffffff;
+    selection-background-color: #1a365d;
+}
+
+SearchPodcastDialog QLineEdit {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+SearchPodcastDialog QLineEdit:focus {
+    border: 2px solid #0078d4;
+}
+
+SearchPodcastDialog QPushButton {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #ffffff;
+}
+
+SearchPodcastDialog QPushButton:hover {
+    background-color: #3d3d3d;
+}
+
+SearchPodcastDialog QPushButton#primaryButton {
+    background-color: #0078d4;
+    color: white;
+}
+
+SearchPodcastDialog QPushButton#primaryButton:hover {
+    background-color: #106ebe;
+}
+
+SearchPodcastDialog QGroupBox {
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+SearchPodcastDialog QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+}
+
+#podcastCard[playing="true"] {
+    border: 2px solid #aa66ff;
+    background-color: rgba(170, 102, 255, 0.1);
+}
+
+
+/* Podcast episode list */
+QListWidget {
+    background-color: #2d2d2d;
+    alternate-background-color: #353535;
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    outline: none;
+}
+
+QListWidget::item {
+    padding: 4px;
+    color: #ffffff;
+}
+
+QListWidget::item:selected {
+    background-color: #1a365d;
+    color: #ffffff;
+}
+
+QListWidget::item:hover:!selected {
+    background-color: #3d3d3d;
+}

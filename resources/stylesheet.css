@@ -447,3 +447,50 @@ QProgressIndicator[playing="true"] {
     border-radius: 8px;
     background-color: #faf8f5;
 }
+
+/* Podcast cards */
+#podcastCard {
+    background-color: white;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#podcastCard:hover {
+    background-color: #f0f7ff;
+}
+
+#podcastCard[selected="true"] {
+    background-color: #e3f2fd;
+    border: 2px solid #2196F3;
+}
+
+/* Podcast card elements */
+#podcastCard #cardTitle {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+#podcastCard #cardInfo {
+    color: #757575;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+/* Podcast details panel */
+#podcastDetailsPanel {
+    background-color: #faf8f5;
+    border: 1px solid #d6c8b5;
+    border-radius: 8px;
+}
+
+#podcastArtworkPreview {
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background-color: #faf8f5;
+}
+
+#podcastCard[playing="true"] {
+    border: 2px solid #aa66ff;
+    background-color: rgba(170, 102, 255, 0.1);
+}

@@ -44,6 +44,7 @@
 #include"Constants.h"
 #include<QPainter>
 #include<QSystemTrayIcon>
+#include<QFileDialog>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -51,7 +52,8 @@ MainWindow::MainWindow(QWidget *parent)
       devToolsView(new QWebEngineView),
       player(new AdFreePlayerDialog(this)),
       radioSearchDialog(new SearchRadioStationsDialog(this)),
-      searchIPTVDialog(new SearchIPTVDialog(this))
+      searchIPTVDialog(new SearchIPTVDialog(this)),
+      searchPodcastdialog(new SearchPodcastDialog(this))
 
 {
     setWindowTitle("Jasmine");
@@ -224,7 +226,7 @@ MainWindow::MainWindow(QWidget *parent)
         if(m_urlBar){
         QString currentUrl = m_urlBar->urlInput()->text();
         if (!currentUrl.isEmpty()) {
-            //showStreamLoadingDialog();
+            showStreamLoadingDialog(7000);
             player->setUrl(currentUrl);
         }
         }
@@ -268,17 +270,24 @@ MainWindow::MainWindow(QWidget *parent)
     connect(radioSearchDialog, &SearchRadioStationsDialog::stationSelected,
             this, &MainWindow::onAddRadioStationFromDialog);
 
+    connect(radioSearchDialog, &SearchRadioStationsDialog::showNotification, this, [this](int duration){
+        showStreamLoadingDialog(duration);
+    });
     connect(searchIPTVDialog, &SearchIPTVDialog::channelsSelected,
             this, &MainWindow::onAddIPTVChannelsFromDialog);
 
     connect(searchIPTVDialog, &SearchIPTVDialog::previewChannel,
             [this](const QString &streamUrl, const QString &name) {
+                showStreamLoadingDialog(7000);
                 player->setUrl(streamUrl);
                 player->setWindowTitle(QString("Preview: %1").arg(name));
                 player->play();
                 player->show();
             });
 
+
+    connect(searchPodcastdialog, &SearchPodcastDialog::podcastSelected,
+            this, &MainWindow::onAddPodcastFromDialog);
 
     //sortAllCards(); // maybe dangerous needs further testing
 
@@ -450,6 +459,12 @@ QWidget* MainWindow::createModernDashboard() {
             } else if (!m_iptvChannels.isEmpty()) {
                 onIPTVStationSelected(0);
             }
+        } else if (index == 4) { // Podcast tab
+            if (m_currentPodcastIndex >= 0 && m_currentPodcastIndex < m_podcastShows.size()) {
+                onPodcastShowSelected(m_currentPodcastIndex);
+            } else if (!m_podcastShows.isEmpty()) {
+                onPodcastShowSelected(0);
+            }
         }
     });
 
@@ -457,6 +472,7 @@ QWidget* MainWindow::createModernDashboard() {
     m_websiteList = new QListView();
     m_websiteList->setVisible(false);
 
+    // radio
     createRadioTab();
     loadRadioStations();
     if (!m_radioStations.isEmpty()) {
@@ -471,6 +487,13 @@ QWidget* MainWindow::createModernDashboard() {
         onIPTVStationSelected(0);
     }
     updateIPTVGrid();
+    // podcast
+    createPodcastTab();
+    loadPodcasts();
+    if (!m_podcastShows.isEmpty()) {
+        onPodcastShowSelected(0);
+    }
+    updatePodcastGrid();
 
     return dashboard;
 
@@ -2016,6 +2039,25 @@ void MainWindow::createMenus() {
     });
     toolsMenu->addAction(browseIPTVAction);
 
+    toolsMenu->addSeparator();
+    QAction *browsePodcastsAction = new QAction("Browse Podcasts...", this);
+    connect(browsePodcastsAction, &QAction::triggered, this, [this](){
+        if(searchPodcastdialog)  searchPodcastdialog->show();
+
+    });
+    toolsMenu->addAction(browsePodcastsAction);
+
+    QAction *importPodcastsAction = new QAction("Import Podcast Subscriptions...", this);
+    connect(importPodcastsAction, &QAction::triggered, this, &MainWindow::importPodcastSubscriptions);
+    toolsMenu->addAction(importPodcastsAction);
+
+    QAction *exportPodcastsAction = new QAction("Export Podcast Subscriptions...", this);
+    connect(exportPodcastsAction, &QAction::triggered, this, &MainWindow::exportPodcastSubscriptions);
+    toolsMenu->addAction(exportPodcastsAction);
+
+    QAction *refreshAllPodcastsAction = new QAction("Refresh All Podcasts", this);
+    connect(refreshAllPodcastsAction, &QAction::triggered, this, &MainWindow::refreshAllPodcasts);
+    toolsMenu->addAction(refreshAllPodcastsAction);
 }
 
 QStringList MainWindow::getAvailableSessions() {
@@ -2846,6 +2888,13 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
         if (obj->property("iptvIndex").isValid()) {
             int index = obj->property("iptvIndex").toInt();
             onIPTVStationSelected(index);
+            return true;
+        }
+
+        // Handle podcast card clicks
+        if (obj->property("podcastIndex").isValid()) {
+            int index = obj->property("podcastIndex").toInt();
+            onPodcastShowSelected(index);
             return true;
         }
     }
@@ -4195,6 +4244,7 @@ QString MainWindow::loadDarkTheme(){
         m_leftPanelTabs->setTabIcon(1, createRotatedIcon(":/resources/icons-white/bookmark.svg"));
         m_leftPanelTabs->setTabIcon(2, createRotatedIcon(":/resources/icons-white/radio.svg"));
         m_leftPanelTabs->setTabIcon(3, createRotatedIcon(":/resources/icons-white/tv.svg"));
+        m_leftPanelTabs->setTabIcon(4, createRotatedIcon(":/resources/icons-white/rss.svg"));
 
         m_open2faManagerAction->setIcon(QIcon(":/resources/icons-white/shield.svg"));
         m_usernameEyeButton->setIcon(QIcon(":/resources/icons-white/eye.svg"));
@@ -4252,6 +4302,7 @@ QString MainWindow::loadLightTheme(){
         m_leftPanelTabs->setTabIcon(1, createRotatedIcon(":/resources/icons/bookmark.svg"));
         m_leftPanelTabs->setTabIcon(2, createRotatedIcon(":/resources/icons/radio.svg"));
         m_leftPanelTabs->setTabIcon(3, createRotatedIcon(":/resources/icons/tv.svg"));
+        m_leftPanelTabs->setTabIcon(4, createRotatedIcon(":/resources/icons/rss.svg"));
 
         m_open2faManagerAction->setIcon(QIcon(":/resources/icons/shield.svg"));
         m_usernameEyeButton->setIcon(QIcon(":/resources/icons/eye.svg"));
@@ -6040,7 +6091,7 @@ void MainWindow::onRadioPlayClicked() {
 
         const RadioStation& station = m_radioStations[m_currentRadioIndex];
         if (!station.streamUrl.isEmpty()) {
-            showStreamLoadingDialog();
+            showStreamLoadingDialog(7000);
             player->setUrl(station.streamUrl);
             player->setWindowTitle(QString("Playing: %1").arg(station.name));
             player->play();
@@ -6502,13 +6553,13 @@ void MainWindow::searchCards(const QString& text)
     }
 }
 
-void MainWindow::showStreamLoadingDialog()
+void MainWindow::showStreamLoadingDialog(int duration)
 {
 
-    m_trayIcon->showMessage("Jasmine Radio and IPTV",
+    m_trayIcon->showMessage("Jasmine Internet, Radio and IPTV",
                          "Connecting to stream... Please wait.",
                          QSystemTrayIcon::Information,
-                         3000);
+                         duration);
 
     }
 
@@ -7071,7 +7122,7 @@ void MainWindow::onIPTVPlayClicked()
 
         IPTVChannel& channel = m_iptvChannels[m_currentIPTVIndex];
         if (!channel.streamUrl.isEmpty()) {
-            showStreamLoadingDialog();
+            showStreamLoadingDialog(7000);
             player->setUrl(channel.streamUrl);
             player->setWindowTitle(QString("Playing: %1").arg(channel.name));
             player->play();
@@ -7302,5 +7353,1051 @@ void MainWindow::sortAllCards()
     // Sort IPTV cards
     if (!m_iptvCards.isEmpty()) {
         sortCards(m_iptvCards, m_iptvGrid);
+    }
+}
+
+//////////////////////////// podcasts
+
+void MainWindow::createPodcastTab()
+{
+    m_podcastScrollArea = new QScrollArea();
+    m_podcastScrollArea->setWidgetResizable(true);
+    m_podcastScrollArea->setFrameShape(QFrame::NoFrame);
+    m_podcastContainer = new QWidget();
+    m_podcastGrid = new QGridLayout(m_podcastContainer);
+    m_podcastGrid->setSpacing(12);
+    m_podcastGrid->setContentsMargins(16, 16, 16, 16);
+    m_podcastGrid->setSizeConstraint(QLayout::SetFixedSize);
+    for (int i = 0; i < 3; ++i) {
+        m_podcastGrid->setColumnStretch(i, 0);
+    }
+    m_podcastScrollArea->setWidget(m_podcastContainer);
+
+    m_leftPanelTabs->addTab(m_podcastScrollArea, createRotatedIcon(":/resources/icons/rss.svg"), QString());
+    m_leftPanelTabs->tabBar()->setTabToolTip(4, "Podcasts");
+
+    QFrame* podcastDetailsPanel = createPodcastDetailPanel();
+    podcastDetailsPanel->setMinimumWidth(200);
+    detailsStack->addWidget(podcastDetailsPanel);
+
+    loadPodcasts();
+
+    if (!m_podcastShows.isEmpty()) {
+        updatePodcastGrid();
+        onPodcastShowSelected(0);
+    }
+}
+
+QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
+{
+    QFrame* card = new QFrame();
+    card->setObjectName(QString("podcastCard_%1").arg(index));
+    card->setProperty("podcastIndex", index);
+    card->setFrameShape(QFrame::StyledPanel);
+    card->setObjectName("podcastCard");
+    card->setFixedSize(200, 200);
+    card->setCursor(Qt::ArrowCursor);
+    card->installEventFilter(this);
+
+    // Shadow effect
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(10);
+    shadow->setColor(QColor(0, 0, 0, 30));
+    shadow->setOffset(0, 2);
+    card->setGraphicsEffect(shadow);
+
+    QVBoxLayout* layout = new QVBoxLayout(card);
+    layout->setContentsMargins(15, 15, 15, 15);
+
+    // Artwork
+    QLabel* artworkLabel = new QLabel();
+    artworkLabel->setFixedSize(60, 60);
+    artworkLabel->setAlignment(Qt::AlignCenter);
+    artworkLabel->setScaledContents(true);
+
+    if (!show.localArtworkPath.isEmpty() && QFile::exists(show.localArtworkPath)) {
+        QPixmap pixmap(show.localArtworkPath);
+        if (!pixmap.isNull()) {
+            artworkLabel->setPixmap(pixmap.scaled(60, 60, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            artworkLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(60, 60));
+        }
+    } else {
+        artworkLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(60, 60));
+    }
+    layout->addWidget(artworkLabel, 0, Qt::AlignCenter);
+
+    // Title
+    QLabel* titleLabel = new QLabel(show.title);
+    titleLabel->setObjectName("cardTitle");
+    titleLabel->setWordWrap(false);
+    titleLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(titleLabel);
+
+    // Author + episode count
+    QLabel* infoLabel = new QLabel(QString("%1 · %2 eps").arg(show.author, QString::number(show.episodeCount)));
+    infoLabel->setObjectName("cardInfo");
+    infoLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(infoLabel);
+
+    // Buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setContentsMargins(0, 8, 0, 0);
+
+    QPushButton* viewBtn = new QPushButton("Episodes");
+    viewBtn->setToolTip("View episodes");
+    viewBtn->setFlat(true);
+    viewBtn->setObjectName("cardButton");
+    //viewBtn->setVisible(false);
+    QPushButton* unsubscribeBtn = new QPushButton("Unsub");
+    unsubscribeBtn->setToolTip("Unsubscribe");
+    unsubscribeBtn->setFlat(true);
+    unsubscribeBtn->setObjectName("cardButton");
+
+    //buttonLayout->addWidget(viewBtn);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(unsubscribeBtn);
+    buttonLayout->addStretch();
+    layout->addLayout(buttonLayout);
+
+    connect(viewBtn, &QPushButton::clicked, [this, index]() {
+        onPodcastShowSelected(index);
+    });
+
+    connect(unsubscribeBtn, &QPushButton::clicked, [this, index]() {
+        onPodcastShowSelected(index);
+        onPodcastUnsubscribeClicked();
+    });
+
+    return card;
+}
+
+QFrame* MainWindow::createPodcastDetailPanel()
+{
+    QFrame* panel = new QFrame();
+    panel->setFrameShape(QFrame::StyledPanel);
+    panel->setObjectName("podcastDetailsPanel");
+
+    QVBoxLayout* layout = new QVBoxLayout(panel);
+    layout->setContentsMargins(16, 16, 16, 16);
+
+    // ========== ARTWORK SECTION ==========
+
+    /*
+    QHBoxLayout* artworkLayout = new QHBoxLayout();
+    artworkLayout->addStretch();
+    m_podcastArtworkLabel = new QLabel();
+    m_podcastArtworkLabel->setFixedSize(120, 120);
+    m_podcastArtworkLabel->setAlignment(Qt::AlignCenter);
+    m_podcastArtworkLabel->setScaledContents(true);
+    m_podcastArtworkLabel->setFrameShape(QFrame::StyledPanel);
+    m_podcastArtworkLabel->setObjectName("podcastArtworkPreview");
+    artworkLayout->addWidget(m_podcastArtworkLabel);
+    artworkLayout->addStretch();
+    layout->addLayout(artworkLayout);
+
+    */
+
+    // In createPodcastDetailPanel(), replace the artwork section:
+
+    // Artwork with generate button
+    QHBoxLayout* artworkLayout = new QHBoxLayout();
+    artworkLayout->addStretch();
+
+    m_podcastArtworkLabel = new QLabel();
+    m_podcastArtworkLabel->setFixedSize(100, 100);
+    m_podcastArtworkLabel->setAlignment(Qt::AlignCenter);
+    m_podcastArtworkLabel->setScaledContents(true);
+    m_podcastArtworkLabel->setFrameShape(QFrame::StyledPanel);
+    m_podcastArtworkLabel->setObjectName("podcastArtworkPreview");
+
+    QPushButton* generateIconButton = new QPushButton();
+    generateIconButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    generateIconButton->setFixedSize(24, 24);
+    generateIconButton->setToolTip("Generate custom icon (replaces original artwork)");
+
+    artworkLayout->addWidget(m_podcastArtworkLabel);
+    artworkLayout->addWidget(generateIconButton);
+    artworkLayout->addStretch();
+
+    layout->addLayout(artworkLayout);
+
+    // Connect the button
+    connect(generateIconButton, &QPushButton::clicked, [this]() {
+        if (m_currentPodcastIndex >= 0 && m_currentPodcastIndex < m_podcastShows.size()) {
+            QMessageBox::StandardButton reply = QMessageBox::warning(
+                this,
+                "Generate Custom Icon",
+                "This will replace the podcast artwork with a generated icon.\n\n"
+                "Original artwork will be lost.\n"
+                "To restore the original artwork, you will need to unsubscribe and subscribe again.\n\n"
+                "Continue?",
+                QMessageBox::Yes | QMessageBox::No
+            );
+
+            if (reply != QMessageBox::Yes) {
+                return;
+            }
+
+            QIcon newIcon = generateRandomSvgIcon();
+            QPixmap pixmap = newIcon.pixmap(100, 100);
+            m_podcastArtworkLabel->setPixmap(pixmap);
+
+            QString iconPath = JASMINE_CONSTANTS::iconDir + "/podcast_" +
+                              m_podcastShows[m_currentPodcastIndex].showId + "_generated.png";
+            pixmap.save(iconPath);
+            m_podcastShows[m_currentPodcastIndex].localArtworkPath = iconPath;
+            savePodcasts();
+            updatePodcastGrid();
+        }
+    });
+
+    layout->addSpacing(8);
+
+    // ========== PODCAST INFORMATION SECTION ==========
+    QLabel* infoTitle = new QLabel("Podcast Information");
+    infoTitle->setObjectName("detailsPanelSubtitle");
+    //layout->addWidget(infoTitle);
+
+    QFormLayout* formLayout = new QFormLayout();
+    formLayout->setSpacing(12);
+    formLayout->setLabelAlignment(Qt::AlignRight);
+
+    // Title
+    m_podcastTitleLabel = new QLabel();
+    m_podcastTitleLabel->setWordWrap(true);
+    formLayout->addRow("Title:", m_podcastTitleLabel);
+
+    // Author / Publisher
+    m_podcastAuthorLabel = new QLabel();
+    m_podcastAuthorLabel->setWordWrap(true);
+    formLayout->addRow("Author:", m_podcastAuthorLabel);
+
+    // Category
+    m_podcastCategoryLabel = new QLabel();
+    m_podcastCategoryLabel->setWordWrap(true);
+    formLayout->addRow("Category:", m_podcastCategoryLabel);
+
+    // Feed URL
+    m_podcastFeedUrlLabel = new QLabel();
+    m_podcastFeedUrlLabel->setWordWrap(true);
+    m_podcastFeedUrlLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    formLayout->addRow("Feed URL:", m_podcastFeedUrlLabel);
+
+    // Website URL
+    m_podcastWebsiteLabel = new QLabel();
+    m_podcastWebsiteLabel->setWordWrap(true);
+    m_podcastWebsiteLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_podcastWebsiteLabel->setOpenExternalLinks(true);
+    formLayout->addRow("Website:", m_podcastWebsiteLabel);
+
+    // Episode count & Last updated
+    QHBoxLayout* statsLayout = new QHBoxLayout();
+    m_podcastEpisodeCountLabel = new QLabel();
+    m_podcastLastUpdatedLabel = new QLabel();
+    statsLayout->addWidget(m_podcastEpisodeCountLabel);
+    statsLayout->addWidget(m_podcastLastUpdatedLabel);
+    statsLayout->addStretch();
+    formLayout->addRow("Stats:", statsLayout);
+
+    // Description
+    m_podcastDescriptionLabel = new QLabel();
+    m_podcastDescriptionLabel->setWordWrap(true);
+    m_podcastDescriptionLabel->setMinimumHeight(60);
+    m_podcastDescriptionLabel->setAlignment(Qt::AlignTop);
+    //formLayout->addRow("Description:", m_podcastDescriptionLabel);
+
+    // Comments section with toggle button
+    QVBoxLayout* commentsLayout = new QVBoxLayout();
+
+    // Button row
+    QHBoxLayout* buttonRow = new QHBoxLayout();
+    //buttonRow->addStretch();
+
+    QPushButton* commentsToggleButton = new QPushButton("Show Notes");
+    commentsToggleButton->setCheckable(true);
+    commentsToggleButton->setChecked(false);
+    commentsToggleButton->setObjectName("secondaryButton");
+    commentsToggleButton->setMaximumHeight(30);
+    buttonRow->addWidget(commentsToggleButton);
+    commentsLayout->addLayout(buttonRow);
+
+    // Comments text edit (initially invisible)
+    m_podcastCommentsEdit = new QTextEdit();
+    m_podcastCommentsEdit->setPlaceholderText("Add your personal notes about this podcast...");
+    m_podcastCommentsEdit->setMaximumHeight(100);
+    m_podcastCommentsEdit->setVisible(false);
+    commentsLayout->addWidget(m_podcastCommentsEdit);
+    formLayout->addRow(commentsLayout);
+    // Connect toggle button
+    connect(commentsToggleButton, &QPushButton::toggled, [this, commentsToggleButton](bool checked) {
+        m_podcastCommentsEdit->setVisible(checked);
+        commentsToggleButton->setText(checked ? "Hide Notes" : "Show Notes");
+    });
+
+    // Auto-save comments
+    connect(m_podcastCommentsEdit, &QTextEdit::textChanged, [this]() {
+        if (m_currentPodcastIndex >= 0 && m_currentPodcastIndex < m_podcastShows.size()) {
+            m_podcastShows[m_currentPodcastIndex].comments = m_podcastCommentsEdit->toPlainText();
+            savePodcasts();
+        }
+    });
+    layout->addLayout(formLayout);
+
+    layout->addSpacing(8);
+
+    // ========== EPISODE LIST SECTION ==========
+    QLabel* episodesLabel = new QLabel("Episodes");
+    episodesLabel->setObjectName("detailsPanelSubtitle");
+    layout->addWidget(episodesLabel);
+
+    m_podcastEpisodeList = new QListWidget();
+    m_podcastEpisodeList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_podcastEpisodeList->setAlternatingRowColors(true);
+    layout->addWidget(m_podcastEpisodeList);
+
+    // ========== PLAYBACK CONTROLS SECTION ==========
+    QLabel* playbackTitle = new QLabel("Playback");
+    playbackTitle->setObjectName("detailsPanelSubtitle");
+    layout->addWidget(playbackTitle);
+
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    buttonLayout->setSpacing(8);
+
+    m_podcastRefreshButton = new QPushButton("Refresh Feed");
+    m_podcastRefreshButton->setToolTip("Check for new episodes");
+    m_podcastRefreshButton->setObjectName("secondaryButton");
+
+    m_podcastUnsubscribeButton = new QPushButton("Unsubscribe");
+    m_podcastUnsubscribeButton->setToolTip("Remove podcast from your collection");
+    m_podcastUnsubscribeButton->setObjectName("secondaryButton");
+
+    m_podcastPlayButton = new QPushButton("Play Episode");
+    m_podcastPlayButton->setToolTip("Play selected episode");
+    m_podcastPlayButton->setObjectName("primaryButton");
+    m_podcastPlayButton->setEnabled(false);
+
+    m_podcastStopButton = new QPushButton("Stop");
+    m_podcastStopButton->setToolTip("Stop playback");
+    m_podcastStopButton->setObjectName("secondaryButton");
+    m_podcastStopButton->setEnabled(false);
+
+    buttonLayout->addWidget(m_podcastRefreshButton);
+    buttonLayout->addWidget(m_podcastUnsubscribeButton);
+    buttonLayout->addWidget(m_podcastPlayButton);
+    buttonLayout->addWidget(m_podcastStopButton);
+    buttonLayout->addStretch();
+
+    layout->addLayout(buttonLayout);
+    layout->addStretch();
+
+    // ========== SIGNAL CONNECTIONS ==========
+    connect(m_podcastRefreshButton, &QPushButton::clicked, this, &MainWindow::onPodcastRefreshClicked);
+    connect(m_podcastUnsubscribeButton, &QPushButton::clicked, this, &MainWindow::onPodcastUnsubscribeClicked);
+    connect(m_podcastPlayButton, &QPushButton::clicked, [this]() {
+        onPodcastPlayEpisodeClicked(m_podcastEpisodeList->currentRow());
+    });
+    connect(m_podcastStopButton, &QPushButton::clicked, this, &MainWindow::onPodcastStopClicked);
+    connect(m_podcastEpisodeList, &QListWidget::itemSelectionChanged, [this]() {
+        m_podcastPlayButton->setEnabled(m_podcastEpisodeList->currentRow() >= 0);
+    });
+    connect(m_podcastEpisodeList, &QListWidget::itemDoubleClicked, [this]() {
+        onPodcastPlayEpisodeClicked(m_podcastEpisodeList->currentRow());
+    });
+
+    return panel;
+}
+
+void MainWindow::updatePodcastGrid()
+{
+    // Clear existing cards
+    QLayoutItem* item;
+    while ((item = m_podcastGrid->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            item->widget()->deleteLater();
+        }
+        delete item;
+    }
+    m_podcastCards.clear();
+
+    if (m_podcastShows.isEmpty()) {
+        QLabel* emptyLabel = new QLabel("No podcasts subscribed yet.\n\nUse Tools → Browse Podcasts to add some.");
+        emptyLabel->setAlignment(Qt::AlignCenter);
+        emptyLabel->setWordWrap(true);
+        emptyLabel->setMinimumHeight(400);
+        emptyLabel->setObjectName("emptyMessageLabel");
+        m_podcastGrid->addWidget(emptyLabel, 0, 0, 1, 3);
+        return;
+    }
+
+    int row = 0;
+    int col = 0;
+    int maxCols = 3;
+
+    for (int i = 0; i < m_podcastShows.size(); ++i) {
+        QFrame* card = createPodcastCard(m_podcastShows[i], i);
+        m_podcastGrid->addWidget(card, row, col);
+        m_podcastCards[i] = card;
+
+        col++;
+        if (col >= maxCols) {
+            col = 0;
+            row++;
+        }
+    }
+
+    m_podcastGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
+}
+
+
+void MainWindow::savePodcasts()
+{
+    QString filePath = JASMINE_CONSTANTS::appDirPath + "/podcasts.dat";
+    QFile file(filePath);
+
+    if (file.open(QIODevice::WriteOnly)) {
+        QDataStream out(&file);
+        out.setVersion(QDataStream::Qt_6_0);
+        out << quint32(m_podcastShows.size());
+
+        for (const PodcastShow& show : m_podcastShows) {
+            out << show.showId;
+            out << show.title;
+            out << show.author;
+            out << show.artworkUrl;
+            out << show.feedUrl;
+            out << show.websiteUrl;
+            out << show.category;
+            out << show.description;
+            out << show.localArtworkPath;
+            out << show.comments;
+            out << show.episodeCount;
+            out << show.isSubscribed;
+            // Save episodes
+            out << quint32(show.episodes.size());
+            for (const PodcastEpisode& ep : show.episodes) {
+                out << ep.guid;
+                out << ep.title;
+                out << ep.description;
+                out << ep.audioUrl;
+                out << ep.pubDate;
+                out << ep.duration;
+                out << ep.playbackPosition;
+                out << ep.isPlayed;
+                out << ep.isDownloaded;
+                out << ep.localFilePath;
+            }
+        }
+        file.close();
+    }
+}
+
+void MainWindow::loadPodcasts()
+{
+    QString filePath = JASMINE_CONSTANTS::appDirPath + "/podcasts.dat";
+    QFile file(filePath);
+
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QDataStream in(&file);
+        in.setVersion(QDataStream::Qt_6_0);
+
+        quint32 count;
+        in >> count;
+        m_podcastShows.clear();
+
+        for (quint32 i = 0; i < count; ++i) {
+            PodcastShow show;
+            in >> show.showId;
+            in >> show.title;
+            in >> show.author;
+            in >> show.artworkUrl;
+            in >> show.feedUrl;
+            in >> show.websiteUrl;
+            in >> show.category;
+            in >> show.description;
+            in >> show.localArtworkPath;
+            in >> show.comments;
+            in >> show.episodeCount;
+            in >> show.isSubscribed;
+
+            quint32 epCount;
+            in >> epCount;
+            for (quint32 j = 0; j < epCount; ++j) {
+                PodcastEpisode ep;
+                in >> ep.guid;
+                in >> ep.title;
+                in >> ep.description;
+                in >> ep.audioUrl;
+                in >> ep.pubDate;
+                in >> ep.duration;
+                in >> ep.playbackPosition;
+                in >> ep.isPlayed;
+                in >> ep.isDownloaded;
+                in >> ep.localFilePath;
+                show.episodes.append(ep);
+            }
+            m_podcastShows.append(show);
+        }
+        file.close();
+    }
+}
+
+////// podcast slots
+
+void MainWindow::onPodcastShowSelected(int index)
+{
+    if (index < 0 || index >= m_podcastShows.size()) return;
+
+    m_currentPodcastIndex = index;
+    const PodcastShow& show = m_podcastShows[index];
+
+    // Update artwork
+    if (!show.localArtworkPath.isEmpty() && QFile::exists(show.localArtworkPath)) {
+        QPixmap pixmap(show.localArtworkPath);
+        if (!pixmap.isNull()) {
+            m_podcastArtworkLabel->setPixmap(pixmap.scaled(120, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            m_podcastArtworkLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(120, 120));
+        }
+    } else if (!show.artworkUrl.isEmpty()) {
+        m_podcastArtworkLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(120, 120));
+        downloadPodcastArtwork(index);
+    } else {
+        m_podcastArtworkLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(120, 120));
+    }
+
+    // Update podcast information
+    m_podcastTitleLabel->setText(show.title);
+    m_podcastAuthorLabel->setText(show.author);
+    m_podcastCategoryLabel->setText(show.category);
+    m_podcastFeedUrlLabel->setText(show.feedUrl);
+
+    // Website link
+    if (!show.websiteUrl.isEmpty()) {
+        m_podcastWebsiteLabel->setText(QString("<a href=\"%1\">%1</a>").arg(show.websiteUrl));
+    } else {
+        m_podcastWebsiteLabel->setText("Not available");
+    }
+
+    // Episode count and last updated
+    m_podcastEpisodeCountLabel->setText(QString("%1 episodes").arg(show.episodes.size()));
+    if (show.lastUpdated.isValid()) {
+        m_podcastLastUpdatedLabel->setText(QString("Updated: %1").arg(show.lastUpdated.toString("yyyy-MM-dd")));
+    } else {
+        m_podcastLastUpdatedLabel->setText("Not updated yet");
+    }
+
+    m_podcastDescriptionLabel->setText(show.description);
+    m_podcastCommentsEdit->setPlainText(show.comments);
+
+    // Populate episode list
+    m_podcastEpisodeList->clear();
+    for (const PodcastEpisode& episode : show.episodes) {
+        QString durationStr = QString("%1:%2")
+            .arg(episode.duration / 60, 2, 10, QChar('0'))
+            .arg(episode.duration % 60, 2, 10, QChar('0'));
+        QString itemText = QString("%1 - %2 (%3)")
+            .arg(episode.pubDate.toString("yyyy-MM-dd"))
+            .arg(episode.title)
+            .arg(durationStr);
+        QListWidgetItem* item = new QListWidgetItem(itemText);
+        if (episode.isPlayed) {
+            QFont font = item->font();
+            font.setStrikeOut(true);
+            item->setFont(font);
+            item->setForeground(Qt::gray);
+        }
+        m_podcastEpisodeList->addItem(item);
+    }
+
+    // Highlight selected card
+    for (int i = 0; i < m_podcastCards.size(); ++i) {
+        highlightCard(m_podcastCards[i], i == index);
+    }
+}
+
+void MainWindow::onPodcastRefreshClicked()
+{
+    if (m_currentPodcastIndex < 0 || m_currentPodcastIndex >= m_podcastShows.size()) return;
+
+    QString feedUrl = m_podcastShows[m_currentPodcastIndex].feedUrl;
+    if (feedUrl.isEmpty()) return;
+
+    // Show loading indicator
+    statusBar()->showMessage("Refreshing podcast feed...", 2000);
+
+    QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+    QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(feedUrl)));
+
+    connect(reply, &QNetworkReply::finished, [this, reply, nam]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            parseRSSFeed(reply->readAll(), m_currentPodcastIndex);
+            savePodcasts();
+            updatePodcastGrid();
+            onPodcastShowSelected(m_currentPodcastIndex);
+            statusBar()->showMessage("Podcast feed refreshed.", 3000);
+        } else {
+            statusBar()->showMessage("Failed to refresh: " + reply->errorString(), 3000);
+        }
+        reply->deleteLater();
+        nam->deleteLater();
+    });
+}
+
+void MainWindow::onPodcastUnsubscribeClicked()
+{
+    if (m_currentPodcastIndex < 0 || m_currentPodcastIndex >= m_podcastShows.size()) return;
+
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "Unsubscribe",
+        QString("Unsubscribe from \"%1\"?\n\nThis will remove the podcast and all episodes from your collection.")
+            .arg(m_podcastShows[m_currentPodcastIndex].title),
+        QMessageBox::Yes | QMessageBox::No
+    );
+
+    if (reply == QMessageBox::Yes) {
+        // Delete local artwork
+        QString artworkPath = m_podcastShows[m_currentPodcastIndex].localArtworkPath;
+        if (!artworkPath.isEmpty() && QFile::exists(artworkPath)) {
+            QFile::remove(artworkPath);
+        }
+
+        m_podcastShows.removeAt(m_currentPodcastIndex);
+        savePodcasts();
+        updatePodcastGrid();
+
+        if (m_podcastShows.isEmpty()) {
+            m_currentPodcastIndex = -1;
+            m_podcastArtworkLabel->clear();
+            m_podcastTitleLabel->clear();
+            m_podcastAuthorLabel->clear();
+            m_podcastCategoryLabel->clear();
+            m_podcastDescriptionLabel->clear();
+            m_podcastEpisodeList->clear();
+        } else {
+            onPodcastShowSelected(0);
+        }
+
+        statusBar()->showMessage("Podcast unsubscribed.", 3000);
+    }
+}
+/*
+void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
+{
+    if (m_currentPodcastIndex < 0 || m_currentPodcastIndex >= m_podcastShows.size()) return;
+    if (episodeIndex < 0 || episodeIndex >= m_podcastShows[m_currentPodcastIndex].episodes.size()) return;
+
+    const PodcastEpisode& episode = m_podcastShows[m_currentPodcastIndex].episodes[episodeIndex];
+    if (!episode.audioUrl.isEmpty()) {
+        player->setUrl(episode.audioUrl);
+        player->setWindowTitle(QString("Playing: %1 - %2").arg(
+            m_podcastShows[m_currentPodcastIndex].title,
+            episode.title));
+        player->play();
+        player->show();
+
+        statusBar()->showMessage(QString("Now Playing: %1").arg(episode.title), 0);
+        m_podcastPlayButton->setEnabled(false);
+        m_podcastStopButton->setEnabled(true);
+    }
+}
+*/
+
+void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
+{
+    if (m_currentPodcastIndex < 0 || m_currentPodcastIndex >= m_podcastShows.size()) return;
+    if (episodeIndex < 0 || episodeIndex >= m_podcastShows[m_currentPodcastIndex].episodes.size()) return;
+
+    const PodcastEpisode& episode = m_podcastShows[m_currentPodcastIndex].episodes[episodeIndex];
+    if (!episode.audioUrl.isEmpty()) {
+        // Clear playing flag from all podcast cards
+        for (QFrame* card : m_podcastCards) {
+            card->setProperty("playing", false);
+            card->style()->polish(card);
+        }
+
+        // Set playing flag on current podcast card
+        if (m_podcastCards.contains(m_currentPodcastIndex)) {
+            m_podcastCards[m_currentPodcastIndex]->setProperty("playing", true);
+            m_podcastCards[m_currentPodcastIndex]->style()->polish(m_podcastCards[m_currentPodcastIndex]);
+        }
+
+        // Unhighlight all episodes in the list
+        for (int i = 0; i < m_podcastEpisodeList->count(); ++i) {
+            QListWidgetItem* item = m_podcastEpisodeList->item(i);
+            QFont font = item->font();
+            font.setBold(false);
+            item->setFont(font);
+            //item->setForeground(Qt::gray);
+        }
+
+        // Highlight the currently playing episode
+        QListWidgetItem* currentItem = m_podcastEpisodeList->item(episodeIndex);
+        if (currentItem) {
+            QFont font = currentItem->font();
+            font.setBold(true);
+            currentItem->setFont(font);
+            currentItem->setForeground(QColor(170, 102, 255)); // Purple
+        }
+
+        showStreamLoadingDialog(7000);
+        player->setUrl(episode.audioUrl);
+        player->setWindowTitle(QString("Playing: %1 - %2").arg(
+            m_podcastShows[m_currentPodcastIndex].title,
+            episode.title));
+        player->play();
+        player->show();
+
+        statusBar()->showMessage(QString("Now Playing: %1").arg(episode.title), 0);
+        m_podcastPlayButton->setEnabled(false);
+        m_podcastStopButton->setEnabled(true);
+    }
+}
+
+void MainWindow::onPodcastStopClicked()
+{
+    player->stop();
+    m_podcastPlayButton->setEnabled(true);
+    m_podcastStopButton->setEnabled(false);
+    statusBar()->showMessage(QString());
+
+    // Clear playing flag from all podcast cards
+    for (QFrame* card : m_podcastCards) {
+        card->setProperty("playing", false);
+        card->style()->polish(card);
+    }
+
+    // Unhighlight all episodes in the list
+    for (int i = 0; i < m_podcastEpisodeList->count(); ++i) {
+        QListWidgetItem* item = m_podcastEpisodeList->item(i);
+        QFont font = item->font();
+        font.setBold(false);
+        item->setFont(font);
+        item->setForeground(Qt::gray);
+    }
+}
+
+/*
+void MainWindow::onPodcastStopClicked()
+{
+    player->stop();
+    m_podcastPlayButton->setEnabled(true);
+    m_podcastStopButton->setEnabled(false);
+    statusBar()->showMessage(QString());
+}
+*/
+
+
+void MainWindow::onAddPodcastFromDialog(const PodcastShow &show)
+{
+    // Check if already subscribed
+    for (const auto& existing : m_podcastShows) {
+        if (existing.feedUrl == show.feedUrl) {
+            statusBar()->showMessage("Already subscribed to this podcast.", 3000);
+            return;
+        }
+    }
+
+    // Add new show
+    PodcastShow newShow = show;
+    newShow.isSubscribed = true;
+    newShow.episodes.clear();
+    newShow.episodeCount = 0;
+
+    m_podcastShows.append(newShow);
+    savePodcasts();
+    updatePodcastGrid();
+
+    // Fetch episodes from RSS feed
+    QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+    QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(newShow.feedUrl)));
+
+    connect(reply, &QNetworkReply::finished, [this, reply, nam, index = m_podcastShows.size() - 1]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            parseRSSFeed(reply->readAll(), index);
+            savePodcasts();
+            updatePodcastGrid();
+            onPodcastShowSelected(index);
+        }
+        reply->deleteLater();
+        nam->deleteLater();
+    });
+
+    // Switch to podcast tab
+    if (m_leftPanelTabs->count() > 4) {
+        m_leftPanelTabs->setCurrentIndex(4);
+    }
+
+    statusBar()->showMessage(QString("Subscribed to: %1").arg(show.title), 3000);
+}
+
+void MainWindow::downloadPodcastArtwork(int index)
+{
+    if (index < 0 || index >= m_podcastShows.size()) return;
+
+    QString artworkUrl = m_podcastShows[index].artworkUrl;
+    if (artworkUrl.isEmpty()) return;
+
+    QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+    QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(artworkUrl)));
+
+    connect(reply, &QNetworkReply::finished, [this, reply, nam, index]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QDir().mkpath(JASMINE_CONSTANTS::iconDir);
+            QString iconPath = JASMINE_CONSTANTS::iconDir + "/podcast_" +
+                              m_podcastShows[index].showId + ".png";
+
+            QFile file(iconPath);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(reply->readAll());
+                file.close();
+
+                m_podcastShows[index].localArtworkPath = iconPath;
+                savePodcasts();
+                updatePodcastGrid();
+
+                if (m_currentPodcastIndex == index) {
+                    QPixmap pixmap(iconPath);
+                    if (!pixmap.isNull()) {
+                        m_podcastArtworkLabel->setPixmap(pixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                    }
+                }
+            }
+        }
+        reply->deleteLater();
+        nam->deleteLater();
+    });
+}
+
+void MainWindow::parseRSSFeed(const QByteArray &data, int showIndex)
+{
+    if (showIndex < 0 || showIndex >= m_podcastShows.size()) return;
+
+    QXmlStreamReader xml(data);
+    QVector<PodcastEpisode> episodes;
+
+    while (!xml.atEnd()) {
+        xml.readNext();
+
+        if (xml.isStartElement() && xml.name() == "item") {
+            PodcastEpisode episode;
+
+            while (!(xml.isEndElement() && xml.name() == "item")) {
+                xml.readNext();
+
+                if (xml.isStartElement()) {
+                    if (xml.name() == "title") {
+                        episode.title = xml.readElementText();
+                    } else if (xml.name() == "description" || xml.name() == "summary") {
+                        episode.description = xml.readElementText();
+                    } else if (xml.name() == "pubDate") {
+                        episode.pubDate = QDateTime::fromString(xml.readElementText(), Qt::RFC2822Date);
+                    } else if (xml.name() == "guid") {
+                        episode.guid = xml.readElementText();
+                    } else if (xml.name() == "enclosure") {
+                        episode.audioUrl = xml.attributes().value("url").toString();
+                    } else if (xml.name() == "duration") {
+                        episode.duration = xml.readElementText().toInt();
+                    }
+                }
+            }
+
+            if (!episode.audioUrl.isEmpty() && !episode.guid.isEmpty()) {
+                episodes.append(episode);
+            }
+        }
+    }
+
+    m_podcastShows[showIndex].episodes = episodes;
+    m_podcastShows[showIndex].episodeCount = episodes.size();
+    m_podcastShows[showIndex].lastUpdated = QDateTime::currentDateTime();
+
+    if (xml.hasError()) {
+        qDebug() << "RSS parse error:" << xml.errorString();
+    }
+}
+
+void MainWindow::exportPodcastSubscriptions()
+{
+    QString defaultFileName = JASMINE_CONSTANTS::appDirPath + "/jasmine_podcasts.opml";
+    QString filePath = QFileDialog::getSaveFileName(this, "Export Podcast Subscriptions",
+                                                    defaultFileName,
+                                                    "OPML Files (*.opml);;All Files (*.*)");
+    if (filePath.isEmpty()) return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "Error", "Cannot write file: " + file.errorString());
+        return;
+    }
+
+    QXmlStreamWriter xml(&file);
+    xml.setAutoFormatting(true);
+    xml.writeStartDocument();
+    xml.writeStartElement("opml");
+    xml.writeAttribute("version", "1.0");
+
+    xml.writeStartElement("head");
+    xml.writeTextElement("title", "Jasmine Podcast Subscriptions");
+    xml.writeTextElement("dateCreated", QDateTime::currentDateTime().toString(Qt::ISODate));
+    xml.writeEndElement(); // head
+
+    xml.writeStartElement("body");
+
+    for (const PodcastShow& show : m_podcastShows) {
+        xml.writeStartElement("outline");
+        xml.writeAttribute("type", "rss");
+        xml.writeAttribute("text", show.title);
+        xml.writeAttribute("title", show.title);
+        xml.writeAttribute("xmlUrl", show.feedUrl);
+        xml.writeAttribute("htmlUrl", show.websiteUrl);
+        xml.writeEndElement();
+    }
+
+    xml.writeEndElement(); // body
+    xml.writeEndElement(); // opml
+    xml.writeEndDocument();
+
+    file.close();
+    statusBar()->showMessage(QString("Exported %1 subscriptions to %2").arg(m_podcastShows.size()).arg(filePath), 3000);
+}
+
+void MainWindow::importPodcastSubscriptions()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "Import Podcast Subscriptions",
+                                                    JASMINE_CONSTANTS::appDirPath,
+                                                    "OPML Files (*.opml);;All Files (*.*)");
+    if (filePath.isEmpty()) return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Error", "Cannot read file: " + file.errorString());
+        return;
+    }
+
+    QXmlStreamReader xml(&file);
+    int importedCount = 0;
+
+    while (!xml.atEnd()) {
+        xml.readNext();
+
+        if (xml.isStartElement() && xml.name() == "outline") {
+            QString type = xml.attributes().value("type").toString();
+            if (type == "rss" || type.isEmpty()) {
+                QString feedUrl = xml.attributes().value("xmlUrl").toString();
+                QString title = xml.attributes().value("title").toString();
+                if (title.isEmpty()) {
+                    title = xml.attributes().value("text").toString();
+                }
+                QString websiteUrl = xml.attributes().value("htmlUrl").toString();
+
+                if (!feedUrl.isEmpty()) {
+                    // Check if already subscribed
+                    bool exists = false;
+                    for (const auto& existing : m_podcastShows) {
+                        if (existing.feedUrl == feedUrl) {
+                            exists = true;
+                            break;
+                        }
+                    }
+
+                    if (!exists) {
+                        PodcastShow newShow;
+                        newShow.feedUrl = feedUrl;
+                        newShow.title = title;
+                        newShow.websiteUrl = websiteUrl;
+                        newShow.isSubscribed = true;
+                        newShow.showId = QUuid::createUuid().toString();
+
+                        m_podcastShows.append(newShow);
+                        importedCount++;
+
+                    // Fetch the RSS feed to get artwork, description, etc.
+                       QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+                       QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(feedUrl)));
+                       int newIndex = m_podcastShows.size() - 1;
+
+                       connect(reply, &QNetworkReply::finished, [this, reply, nam, newIndex]() {
+                           if (reply->error() == QNetworkReply::NoError) {
+                               // This will update episodes, artwork, description
+                               parseRSSFeed(reply->readAll(), newIndex);
+                               savePodcasts();
+                               updatePodcastGrid();
+                               if (m_currentPodcastIndex == newIndex) {
+                                   onPodcastShowSelected(newIndex);
+                               }
+                           }
+                           reply->deleteLater();
+                           nam->deleteLater();
+                       });
+                    }
+                }
+            }
+        }
+    }
+
+    if (xml.hasError()) {
+        QMessageBox::warning(this, "Error", "Failed to parse OPML: " + xml.errorString());
+    }
+
+    file.close();
+
+    if (importedCount > 0) {
+        savePodcasts();
+        updatePodcastGrid();
+        statusBar()->showMessage(QString("Imported %1 podcasts from %2").arg(importedCount).arg(filePath), 3000);
+    } else {
+        statusBar()->showMessage("No new podcasts found in OPML file.", 3000);
+    }
+}
+
+void MainWindow::refreshAllPodcasts()
+{
+    if (m_podcastShows.isEmpty()) {
+        statusBar()->showMessage("No podcasts to refresh.", 2000);
+        return;
+    }
+
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "Refresh All Podcasts",
+        QString("Refresh all %1 podcasts?\n\nThis will check for new episodes in each feed.").arg(m_podcastShows.size()),
+        QMessageBox::Yes | QMessageBox::No
+    );
+
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
+    statusBar()->showMessage("Refreshing all podcasts...", 2000);
+
+    int total = m_podcastShows.size();
+    int completed = 0;
+
+    for (int i = 0; i < total; ++i) {
+        QString feedUrl = m_podcastShows[i].feedUrl;
+        if (feedUrl.isEmpty()) continue;
+
+        QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+        QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(feedUrl)));
+
+        connect(reply, &QNetworkReply::finished, [this, reply, nam, i, total, &completed]() {
+            if (reply->error() == QNetworkReply::NoError) {
+                parseRSSFeed(reply->readAll(), i);
+            }
+            reply->deleteLater();
+            nam->deleteLater();
+
+            completed++;
+            if (completed == total) {
+                savePodcasts();
+                updatePodcastGrid();
+                if (m_currentPodcastIndex >= 0) {
+                    onPodcastShowSelected(m_currentPodcastIndex);
+                }
+                statusBar()->showMessage("All podcasts refreshed.", 3000);
+            }
+        });
     }
 }

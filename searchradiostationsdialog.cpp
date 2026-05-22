@@ -233,6 +233,7 @@ void SearchRadioStationsDialog::onPlayClicked()
     if (m_currentSelectedIndex >= 0 && m_currentSelectedIndex < m_currentResults.size()) {
         const RadioStation &station = m_currentResults[m_currentSelectedIndex];
         if (!station.streamUrl.isEmpty()) {
+            emit showNotification(4000);
             player->setSource(station.streamUrl);
             player->play();
             m_playButton->setEnabled(false);

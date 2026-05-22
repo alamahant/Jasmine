@@ -55,6 +55,8 @@ qt_add_executable(Jasmine
     radiobrowserapi.cpp radiobrowserapi.h
     iptvchannel.h
     searchiptvdialog.cpp searchiptvdialog.h
+    podcast.h
+    searchpodcastdialog.cpp searchpodcastdialog.h
 
 
 )

@@ -28,7 +28,7 @@ public:
 
 signals:
     void stationSelected(const RadioStation &station);
-
+    void showNotification(int duration);
 private slots:
     void onSearchClicked();
     void onSearchResult(const QJsonArray &stations);

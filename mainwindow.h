@@ -50,6 +50,8 @@
 #include<QSystemTrayIcon>
 #include"iptvchannel.h"
 #include"searchiptvdialog.h"
+#include"podcast.h"
+#include"searchpodcastdialog.h"
 
 // Session data structure
 struct SessionData {
@@ -286,8 +288,8 @@ private:
     bool isUrlBarVisible = false;
     void updateUrlBarState();
     QSize m_savedWebViewSize;
-    static const int DASHBOARD_WIDTH = 1150;
-    static const int DASHBOARD_HEIGHT = 800;
+    static const int DASHBOARD_WIDTH = 1220; // orig 1150
+    static const int DASHBOARD_HEIGHT = 850; // orig 800
     void connectUrlBar();
     void createNewTabWithUrl(const QString &url);
     QAction* m_addWebsiteFromUrlAction;
@@ -411,7 +413,7 @@ private:
 private:
     SearchRadioStationsDialog* radioSearchDialog = nullptr;
     QPushButton* m_radioGenerateIconButton;
-    void showStreamLoadingDialog();
+    void showStreamLoadingDialog(int duration);
     QSystemTrayIcon* m_trayIcon;
     QLineEdit* m_searchLineEdit;
     QAction* searchAction;
@@ -468,6 +470,59 @@ private:
     void relayoutCards(QGridLayout* grid, const QMap<int, QFrame*>& cards, const QVector<bool>& visible);
     void downloadIPTVIconIfNeeded(int index);
     void sortAllCards();
+
+    // podcasts
+private:
+    // Podcast tab components
+    void createPodcastTab();
+    void updatePodcastGrid();
+    void savePodcasts();
+    void loadPodcasts();
+
+    QFrame* createPodcastCard(const PodcastShow& show, int index);
+    QFrame* createPodcastDetailPanel();
+
+    // Podcast data
+    QVector<PodcastShow> m_podcastShows;
+    QMap<int, QFrame*> m_podcastCards;
+    int m_currentPodcastIndex;
+    int m_currentEpisodeIndex;
+
+    // Podcast widgets
+    QScrollArea* m_podcastScrollArea;
+    QWidget* m_podcastContainer;
+    QGridLayout* m_podcastGrid;
+    QLabel* m_podcastArtworkLabel;
+    QLabel* m_podcastTitleLabel;
+    QLabel* m_podcastAuthorLabel;
+    QLabel* m_podcastCategoryLabel;
+    QLabel* m_podcastDescriptionLabel;
+    QListWidget* m_podcastEpisodeList;
+    QPushButton* m_podcastRefreshButton;
+    QPushButton* m_podcastUnsubscribeButton;
+    QPushButton* m_podcastPlayButton;
+    QPushButton* m_podcastStopButton;
+    void downloadPodcastArtwork(int index);
+    void parseRSSFeed(const QByteArray &data, int showIndex);
+
+    QLabel* m_podcastFeedUrlLabel;
+    QLabel* m_podcastWebsiteLabel;
+    QLabel* m_podcastEpisodeCountLabel;
+    QLabel* m_podcastLastUpdatedLabel;
+    QTextEdit* m_podcastCommentsEdit;
+
+    SearchPodcastDialog* searchPodcastdialog = nullptr;
+private slots:
+    void onPodcastShowSelected(int index);
+    void onPodcastRefreshClicked();
+    void onPodcastUnsubscribeClicked();
+    void onPodcastPlayEpisodeClicked(int episodeIndex);
+    void onPodcastStopClicked();
+    void onAddPodcastFromDialog(const PodcastShow &show);
+    void importPodcastSubscriptions();
+    void exportPodcastSubscriptions();
+    void refreshAllPodcasts();
+
 };
 
 #endif // MAINWINDOW_H

@@ -25,7 +25,7 @@ public:
 signals:
     void channelsSelected(const QVector<IPTVChannel> &channels);
     void previewChannel(const QString &streamUrl, const QString &name);
-
+    void showNotification(int duration);
 private slots:
     void onLoadRemoteM3U();
     void onBrowseLocalFile();

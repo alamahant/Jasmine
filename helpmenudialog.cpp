@@ -246,6 +246,26 @@ QString HelpMenuDialog::getFeaturesContent()
             </ul>
             </div>
 
+
+            <h2 style="color: #3498db; border-bottom: 2px solid #3498db; padding-bottom: 5px;">🎙️ Podcast Manager</h2>
+            <div style="margin: 20px 0;">
+            <h3 style="color: #e67e22;">🔍 Search & Subscribe</h3>
+            <p>Search for podcasts by name, category, or author using the iTunes API. Subscribe directly via RSS feed URL - works with any podcast host, including self-hosted and independent shows.</p>
+            <h3 style="color: #e67e22;">📦 Import & Export</h3>
+            <p>Import and export podcast subscriptions using OPML format. Easily backup your collection or migrate from other podcast apps like Apple Podcasts, Spotify, or Pocket Casts.</p>
+            <h3 style="color: #e67e22;">▶️ Episode Management</h3>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+            <li>Square card grid layout for subscribed shows with artwork and episode count</li>
+            <li>Episode list with play/stop controls, duration, and publish date</li>
+            <li>Purple bold highlight for currently playing episode</li>
+            <li>Automatic artwork download and local caching</li>
+            <li>Generate custom icons for podcasts without artwork</li>
+            <li>Collapsible comments section for personal notes</li>
+            <li>Refresh individual feeds or all podcasts at once</li>
+            <li>Persistent storage with OPML import/export</li>
+            </ul>
+            </div>
+
             <h2 style="color: #9b59b6; border-bottom: 2px solid #9b59b6; padding-bottom: 5px;">🎯 Perfect For</h2>
             <ul style="margin: 15px 0; padding-left: 20px;">
                 <li>Managing multiple accounts on the same service with isolated sessions</li>
@@ -381,6 +401,31 @@ QString HelpMenuDialog::getInstructionsContent()
 <li>Purple border indicator shows what is currently playing</li>
 <li>System tray notifications on playback start</li>
 <li>Persistent storage with automatic save and load</li>
+</ul>
+</div>
+
+<h2 style="color: #3498db; border-bottom: 2px solid #3498db; padding-bottom: 5px;">🎙️ Podcast Manager</h2>
+<div style="margin: 20px 0;">
+<h3 style="color: #e67e22;">🔍 Search & Subscribe</h3>
+<p>Search for podcasts by name, category, or author using the iTunes API. Subscribe directly via RSS feed URL - works with any podcast host, including self-hosted and independent shows.</p>
+<p>Sample podcast feeds to try:</p>
+<ul>
+<li>The Daily (News): https://feeds.simplecast.com/54n3c8p6</li>
+<li>Lex Fridman Podcast (Tech/Science): https://lexfridman.com/feed/podcast/</li>
+<li>Stuff You Should Know (Education): https://feeds.megaphone.fm/ESP7177053348</li>
+</ul>
+<h3 style="color: #e67e22;">📦 Import & Export</h3>
+<p>Import and export podcast subscriptions using OPML format. Easily backup your collection or migrate from other podcast apps like Apple Podcasts, Spotify, or Pocket Casts.</p>
+<h3 style="color: #e67e22;">▶️ Episode Management</h3>
+<ul>
+<li>Square card grid layout for subscribed shows with artwork and episode count</li>
+<li>Episode list with play/stop controls, duration, and publish date</li>
+<li>Purple bold highlight for currently playing episode</li>
+<li>Automatic artwork download and local caching</li>
+<li>Generate custom icons for podcasts without artwork</li>
+<li>Collapsible comments section for personal notes</li>
+<li>Refresh individual feeds or all podcasts at once</li>
+<li>OPML import/export for backup and migration</li>
 </ul>
 </div>
 
@@ -1460,6 +1505,17 @@ QString HelpMenuDialog::getChangelogContent()
 {
     return QString(
         "<h3>Changelog</h3>"
+
+        "<h4>[v1.3.0] - 2026-05-22</h4>"
+        "<ul>"
+        "<li><b>Podcast Manager:</b> Subscribe to podcasts via iTunes search or direct RSS feed URL. Browse, search, and manage your favorite shows.</li>"
+        "<li><b>OPML Import/Export:</b> Import and export podcast subscriptions using standard OPML format. Backup your collection or migrate from other apps.</li>"
+        "<li><b>Episode Management:</b> Play episodes with duration and publish date display. Purple bold highlight for currently playing episode.</li>"
+        "<li><b>Automatic Artwork:</b> Podcast artwork is downloaded and cached locally. Generate custom icons for shows without artwork.</li>"
+        "<li><b>Collapsible Comments:</b> Personal notes section for each podcast with auto-save functionality.</li>"
+        "<li><b>Refresh All:</b> New action in Tools menu to refresh all podcast feeds at once.</li>"
+        "<li><b>Bug Fixes:</b> Fixed episode highlight persistence when switching between podcasts, improved RSS feed parsing for various formats.</li>"
+        "</ul>"
 
         "<h4>[v1.2.9] - 2026-05-21</h4>"
         "<ul>"

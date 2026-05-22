@@ -1,5 +1,68 @@
 # Changelog
 
+## [v1.3.0] - 2026-05-22
+
+### New Features: Podcast Manager
+
+**Podcast Tab:**
+- Complete podcast manager with grid-based cards for subscribed shows
+- Browse podcasts via iTunes Search API (search by name, category, or author)
+- Subscribe directly using RSS feed URL (works with any podcast host)
+- Import/Export podcast subscriptions using OPML format (standard for podcast apps)
+- Automatic episode fetching and parsing from RSS feeds
+- Download and cache podcast artwork locally
+- Episode list with play/stop controls, duration, and publish date
+- Purple bold highlight for currently playing episode
+- Manual icon generation for podcasts without artwork
+- Play episodes using existing AdFreePlayerDialog
+
+**Podcast Details Panel:**
+- Show artwork, title, author, category, feed URL, website link
+- Episode count and last updated timestamp
+- Collapsible comments section with auto-save
+- Refresh individual podcast feed
+- Unsubscribe button
+
+**Podcast Card:**
+- 200x200 square card with artwork, title, author, episode count
+- Unsubscribe button on card
+- Purple playing indicator when any episode is playing
+
+**Podcast Search Dialog:**
+- Search by name, category, or author via iTunes API
+- Subscribe by direct RSS feed URL
+- Results table with podcast, category, author
+- Preview section with details before subscribing
+- Non-modal dialog (stays open for multiple subscriptions)
+
+**Import/Export:**
+- Export podcast subscriptions to OPML file for backup or migration
+- Import subscriptions from OPML file
+- Duplicate detection prevents double subscriptions
+
+**Technical Improvements:**
+- RSS feed parser using QXmlStreamReader
+- Background episode fetching doesn't block UI
+- Automatic artwork download and caching
+- Persistent storage using QDataStream
+- Dark theme support for all podcast dialogs
+
+### Radio & IPTV Enhancements:
+- Added "Refresh All Podcasts" action in Tools menu
+- Fixed episode highlight persistence when switching tabs
+- Added generate icon button with warning message for podcasts
+- Improved list widget styling for dark theme
+
+### Bug Fixes:
+- Fixed episode highlight disappearing when switching podcasts
+- Fixed artwork not displaying for imported podcasts
+- Fixed URL subscription parsing for various feed formats
+- Fixed duplicate detection in OPML import
+
+---
+
+**Full changelog:** [v1.2.9] - [v1.3.0]
+
 ## [v1.2.9] - 2026-05-21
 
 ### New Features: Radio Stations & IPTV

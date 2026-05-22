@@ -19,6 +19,9 @@
       <li>Session Management: Create, save, and restore multi-tab browsing sessions with one click</li>
       <li>Private Profile System: Completely isolated browsing environments for multi-account management</li>
       <li>Multi-Account Support: Simultaneously access multiple accounts on the same service without conflicts</li>
+      <li>Radio Stations: Browse, search, and play thousands of internet radio stations with local icon caching</li>
+      <li>IPTV Channels: Import M3U playlists, browse channels by category, and watch live TV streams</li>
+      <li>Podcast Manager: Subscribe to podcasts via iTunes search or RSS feed URL, manage episodes, and play audio</li>
       <li>Built-in Download Manager: Complete download management with progress tracking</li>
       <li>2FA Integration: Built-in two-factor authentication code generator</li>
       <li>Screenshot Capture: Take and save screenshots of web pages for documentation</li>
@@ -37,6 +40,39 @@
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main.png</image>
       <caption>Main interface displaying organized bookmarks</caption>
     </screenshot>
+
+
+<screenshot>
+  <image>https://raw.githubusercontent.com/alamahant/Jasmine/master/screenshots/radio.png</image>
+  <caption>Radio Stations Tab - Browse and search thousands of internet radio stations</caption>
+</screenshot>
+
+<screenshot>
+  <image>https://raw.githubusercontent.com/alamahant/Jasmine/master/screenshots/iptv.png</image>
+  <caption>IPTV Tab - Import M3U playlists and watch live TV channels</caption>
+</screenshot>
+
+<screenshot>
+  <image>https://raw.githubusercontent.com/alamahant/Jasmine/master/screenshots/podcast.png</image>
+  <caption>Podcast Manager - Subscribe to podcasts, manage episodes, and listen to your favorite shows</caption>
+</screenshot>
+
+<screenshot>
+  <image>https://raw.githubusercontent.com/alamahant/Jasmine/master/screenshots/media-player.png</image>
+  <caption>Ad-Free Media Player - Watch YouTube and other videos without interruptions</caption>
+</screenshot>
+
+<screenshot>
+  <image>https://raw.githubusercontent.com/alamahant/Jasmine/master/screenshots/player.png</image>
+  <caption>Media Player Controls - Play, pause, volume, and progress controls</caption>
+</screenshot>
+
+<screenshot>
+  <image>https://raw.githubusercontent.com/alamahant/Jasmine/master/screenshots/player-full.png</image>
+  <caption>Fullscreen Mode - Enjoy videos in fullscreen with auto-hide controls</caption>
+</screenshot>
+
+
     <screenshot>
       <image>https://raw.githubusercontent.com/alamahant/Jasmine/fa9112851de0bc964e11f1c93171ae52d5296b50/screenshots/Jasmine-Main-DarkTheme.png</image>
       <caption>Main Interface with Dark Theme Showing Website Cards</caption>
@@ -107,6 +143,24 @@
   </content_rating>
 
   <releases>
+
+<release version="1.3.0" date="2026-05-22">
+    <description>
+        <p>Podcast Manager</p>
+        <ul>
+            <li>Added Podcasts tab: search for podcasts by name, category, or author using iTunes API.</li>
+            <li>Subscribe directly using RSS feed URL - works with any podcast host.</li>
+            <li>Import and export podcast subscriptions using OPML format for backup and migration.</li>
+            <li>Automatic episode fetching with play/stop controls, duration, and publish date.</li>
+            <li>Podcast artwork is downloaded and cached locally.</li>
+            <li>Generate custom icons for podcasts without artwork.</li>
+            <li>Collapsible comments section for personal notes.</li>
+            <li>Refresh individual podcast feeds to check for new episodes.</li>
+            <li>Added Refresh All Podcasts action in Tools menu.</li>
+            <li>Fixed episode highlight persistence when switching between podcasts.</li>
+        </ul>
+    </description>
+</release>
 
 <release version="1.2.9" date="2026-05-21">
     <description>
