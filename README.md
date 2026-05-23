@@ -4,7 +4,7 @@
 
 **Website & Session Manager**
 
-A comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace.
+A comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace. Jasmine also includes built-in Internet Radio, IPTV, and Podcast Manager for a complete media and productivity suite.
 
 **Download**
 
@@ -13,19 +13,17 @@ A comprehensive web launcher and session management application that transforms 
 | **Linux** | [Flathub](https://flathub.org/en/apps/search?q=alamahant) |
 | **Windows and Mac** | [Buy on Gumroad](https://jnanadhakini.gumroad.com/) - Pre-compiled binary, no compilation needed |
 
-
 ---
 
 ## 📋 Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [Private Profile System](#private-profile-system)
+- [Profile System](#profile-system)
 - [Real-World Use Cases](#real-world-use-cases)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Advanced Usage](#advanced-usage)
 - [Security](#security)
-- [Use Cases](#use-cases)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -34,21 +32,26 @@ A comprehensive web launcher and session management application that transforms 
 **Built with:** Qt Framework  
 **Platform:** Cross-platform  
 
-Jasmine combines bookmarking, multi-tab session handling, flexible browsing profiles, and integrated web utilities into one streamlined tool. Perfect for productivity enthusiasts and multi-account managers.
+Jasmine combines bookmarking, multi-tab session handling, flexible browsing profiles, Internet Radio, IPTV, Podcast management, and integrated web utilities into one streamlined tool. Perfect for productivity enthusiasts, multi-account managers, and media lovers.
 
 ## ✨ Key Features
 
 ### 🔥 Core Functionality
 - **📚 Smart Bookmarking** - Store websites with titles, URLs, comments, favicons, and login references
 - **💾 Session Management** - Create, save, and restore multi-tab browsing sessions with one click
-- **🔒 Flexible Web Profiles** - Toggle between isolated private profiles or shared profiles per site
+- **🔒 Flexible Web Profiles** - Choose between shared, named-shared (user-created), or private (incognito) profiles per tab
 - **👥 Multi-Account Support** - Simultaneously access multiple accounts on the same service without conflicts
 - **⚡ Launch Control** - Quick-launch individual websites or entire browsing sessions instantly
+
+### 🎵 Media & Entertainment
+- **📻 Internet Radio** - Browse, search, and play thousands of internet radio stations with local icon caching
+- **📺 IPTV** - Import M3U playlists, browse channels by category, and watch live TV streams
+- **🎙️ Podcast Manager** - Subscribe to podcasts via iTunes search or RSS feed URLs, manage episodes, and play audio
 
 ### 🛠️ Integrated Utilities
 - **📥 Download Manager** - Complete download management system with progress tracking
 - **📸 Screenshot Capture** - Take and save screenshots of web pages for documentation
-- **🔑 Login Reference** - Store username/password reminders with privacy controls
+- **🔑 Login Reference** - Store username and password reminders with privacy controls
 - **🔐 2FA Integration** - Built-in two-factor authentication code generator
 - **📊 Visit Tracking** - Monitor site usage with visit counts and timestamps
 
@@ -58,142 +61,210 @@ Jasmine combines bookmarking, multi-tab session handling, flexible browsing prof
 - **🕵️ Incognito Mode** - Temporary private sessions without saving data
 
 ## 🎯 Perfect For
-- **Managing multiple accounts** on the same service with isolated or shared sessions
+- **Managing multiple accounts** on the same service with isolated, named-shared, or shared sessions
+- **Grouping entire workflows** under a single named profile - multiple different sites sharing the same session data
 - **Users who work with multiple web applications** daily and need integrated utilities
-- **Developers managing various development/staging environments** with documentation needs
+- **Developers managing various development and staging environments** with documentation needs
 - **Anyone who wants organized access** to their frequently-used sites with full session control
 - **Teams needing quick access** to shared web resources with built-in productivity tools
+- **Media enthusiasts** who want Internet Radio, IPTV, and podcasts alongside their browsing
 
-## 🔒 Jasmine's Private Profile System - Complete Guide
+## 🔒 Jasmine's Profile System - Complete Guide
 
-### What Are Private Profiles?
-Private profiles are completely isolated browsing environments within Jasmine. Each private profile operates as if it's a separate browser with its own:
+### What Are Profiles?
+Profiles in Jasmine are browsing environments that determine how cookies, login sessions, and data are shared or isolated. Jasmine offers three distinct profile types:
 
-- **Cookies and login sessions**
-- **Browsing history and cache**
-- **Saved passwords and form data**
-- **Local storage and website preferences**
-- **Download history and settings**
+- **Shared Profile (Default):** One common profile shared across all tabs. Cookies and data persist normally. Perfect for everyday browsing.
 
-When you use a private profile, that website cannot see or access any data from other tabs, other profiles, or your shared browsing. It's like having multiple browsers running simultaneously, each completely unaware of the others.
+- **Named-Shared Profiles (User-Created):** Create a named profile (e.g., "Work", "Personal", "Client X") and launch multiple tabs under that same name. All tabs under that named profile share cookies and session data with each other - regardless of whether they are the same website or different websites. For example, under a "Work" named profile, you can have Gmail, Slack, Jira, and GitHub all sharing login sessions seamlessly. Different named profiles remain completely isolated from each other and from the default shared profile.
 
-### The Two Modes of Private Profiles
+- **Private Profiles (Incognito):** Completely isolated environment with no local persistence — no cookies, history, or cache are saved after a tab closes. However, unlike typical incognito modes, Jasmine allows you to save private profile tabs as part of a session and relaunch them later, preserving their temporary isolation. Perfect for one-off logins, testing, sensitive browsing, or repeated use where you always want a clean slate.
 
-#### 1. Incognito Mode (Private Profile Without Saving)
-When you launch a website with "Use Private Profile" checked but don't save it as a session:
+### Profile Comparison
 
-- ✅ Creates a temporary isolated environment
-- ✅ You can browse, log in, and use the site normally
-- ✅ All data (cookies, history, logins) exists only while the browser is open
-- ⚠️ When you close Jasmine or the tab, ALL data is permanently deleted
-- 🔄 Next time you launch that website, it's completely fresh with no memory of previous visits
-
-**Perfect for:** Testing, temporary access, sensitive browsing, or when you don't want to leave any traces
-
-#### 2. Persistent Multi-Account Management (Private Profile With Saving)
-When you launch websites with "Use Private Profile" and save them as sessions:
-
-- ✅ Creates permanent isolated environments for each website/account
-- ✅ Login states, cookies, and preferences are saved forever
-- ✅ Each private profile maintains its own separate data between browser sessions
-- ✅ You can have multiple accounts on the same service, each in its own private profile
-
-**Perfect for:** Managing multiple accounts, work/personal separation, or maintaining different identities online
+| Feature | Shared | Named-Shared | Private |
+| :--- | :--- | :--- | :--- |
+| Persists after restart | Yes | Yes | Optional (can save in sessions) |
+| Shares data across tabs | Yes (all tabs) | Yes (only tabs under the same profile name) | No |
+| Can share data across different websites | Yes | Yes | No |
+| Isolated from other profiles | No | Yes | Yes |
+| Can save in sessions | Yes | Yes | Yes |
+| Best for | Everyday browsing | Grouped workflows (multiple sites working together) | Temporary access or clean-slate repeated use |
 
 ## 🌟 Real-World Use Cases with Examples
+
+### 💼 Work Session with Multiple Sites
+**Scenario:** You need Gmail, Slack, Jira, GitHub, and Google Drive all logged into your work accounts.
+
+**Setup with Named-Shared:**
+1. Create a named-shared profile called "Work"
+2. Launch Gmail under "Work" → Log into work email
+3. Launch Slack under "Work" → Log into work Slack
+4. Launch Jira under "Work" → Log into work Jira
+5. Launch GitHub under "Work" → Log into work GitHub
+6. Launch Google Drive under "Work" → Log into work Drive
+7. Save all five tabs as "Full Work Session"
+
+**Result:** One-click access to your entire work ecosystem. All sites share session data where needed (e.g., Google Drive recognizes your work Gmail), but nothing from this "Work" profile leaks into your personal browsing or other named profiles.
+
+### 🏠 Personal Session with Multiple Sites
+**Scenario:** You want your personal Gmail, YouTube, Google Photos, and Reddit all logged into your personal accounts.
+
+**Setup:**
+1. Create a named-shared profile called "Personal"
+2. Launch Gmail under "Personal" → Personal email
+3. Launch YouTube under "Personal" → Personal recommendations
+4. Launch Google Photos under "Personal" → Personal photo library
+5. Launch Reddit under "Personal" → Personal Reddit account
+6. Save as "Personal Session"
+
+**Result:** Your entire personal web life in one session. YouTube knows your Gmail account, Google Photos is already logged in, and nothing mixes with work.
 
 ### 📧 Gmail Multi-Account Management
 **Scenario:** You have personal Gmail, work Gmail, and side-project Gmail accounts.
 
-**Setup:**
-1. Launch Gmail with "Use Private Profile" → Log into personal account (john.doe@gmail.com)
-2. Launch Gmail again with "Use Private Profile" → Log into work account (john@company.com)
-3. Launch Gmail again with "Use Private Profile" → Log into project account (john@startup.com)
+**Setup with Named-Shared:**
+1. Create a named-shared profile called "Personal Email" → Launch Gmail, log into personal account
+2. Create a named-shared profile called "Work Email" → Launch Gmail, log into work account
+3. Create a named-shared profile called "Project Email" → Launch Gmail, log into side-project account
 4. Save all three tabs as "All Gmail Accounts" session
 
-**Result:** One-click access to all three Gmail accounts simultaneously, each completely isolated. No conflicts, no accidental cross-posting, no logging out of one to access another.
+**Result:** One-click access to all three Gmail accounts simultaneously. Each named profile is isolated from the others. No conflicts, no accidental cross-posting.
 
-### 💻 GitHub Development Workflow
-**Scenario:** You contribute to personal projects, work repositories, and open-source projects.
+### 🛠️ Development Workflow
+**Scenario:** You are working on Project A with its own set of tools, and Project B with a completely different set.
 
 **Setup:**
-1. Launch GitHub with "Use Private Profile" → Log into personal account with your repositories
-2. Launch GitHub with "Use Private Profile" → Log into work organization account
-3. Launch GitHub with "Use Private Profile" → Log into open-source contributor account
-4. Add related development tools (each with private profiles if needed)
-5. Save as "Development Session"
+1. Create named-shared profile "Project A"
+   - GitHub (project A repos)
+   - Jira (project A tickets)
+   - AWS Console (project A infrastructure)
+   - Sentry (project A error tracking)
+2. Create named-shared profile "Project B"
+   - GitLab (project B repos)
+   - Trello (project B tasks)
+   - Google Cloud Console (project B infrastructure)
+   - Datadog (project B monitoring)
+3. Save each as separate sessions
 
-**Result:** Switch between different GitHub identities instantly, each with its own commit history, starred repos, and organization access.
+**Result:** Switch between entire project contexts instantly. Each project's tools share logins seamlessly, but Project A and Project B never mix.
 
 ### 📱 Social Media Management
-**Scenario:** You manage personal accounts plus business/brand accounts.
+**Scenario:** You manage personal accounts plus two business brands, each with multiple platforms.
 
 **Setup:**
-1. Launch Twitter with "Use Private Profile" → Personal account
-2. Launch Twitter with "Use Private Profile" → Business account
-3. Launch Instagram with "Use Private Profile" → Personal account
-4. Launch Instagram with "Use Private Profile" → Business account
-5. Launch Facebook with "Use Private Profile" → Personal account
-6. Launch Facebook with "Use Private Profile" → Business page
-7. Save as "Social Media Management" session
+1. Named-shared profile "Personal"
+   - Twitter (personal)
+   - Instagram (personal)
+   - Facebook (personal)
+   - LinkedIn (personal)
+2. Named-shared profile "Brand A"
+   - Twitter (Brand A)
+   - Instagram (Brand A)
+   - Facebook (Brand A)
+   - TikTok (Brand A)
+3. Named-shared profile "Brand B"
+   - Twitter (Brand B)
+   - Instagram (Brand B)
+   - Facebook (Brand B)
+   - Pinterest (Brand B)
+4. Save each as separate sessions
 
-**Result:** Manage all accounts simultaneously without constant logging in/out or browser switching.
+**Result:** Manage all accounts across all platforms. Each brand's social media tabs share data with each other but stay completely isolated from other brands.
 
 ### 🛒 E-commerce and Shopping
-**Scenario:** You want to compare prices, manage different buyer accounts, or separate personal/business purchases.
+**Scenario:** You want separate shopping identities: personal buying, business purchasing, and selling.
 
 **Setup:**
-1. Launch Amazon with "Use Private Profile" → Personal account with your wishlist and payment methods
-2. Launch Amazon with "Use Private Profile" → Business account for company purchases
-3. Launch eBay with "Use Private Profile" → Separate account for selling
-4. Launch eBay with "Use Private Profile" → Account for buying collectibles
-5. Save as "Shopping Accounts" session
+1. Named-shared profile "Personal Shopping"
+   - Amazon (personal wishlist, payment methods)
+   - eBay (personal buying account)
+   - Etsy (personal account)
+2. Named-shared profile "Business Purchasing"
+   - Amazon Business (company purchases)
+   - Staples (business supplies)
+   - CDW (IT equipment)
+3. Named-shared profile "Seller"
+   - eBay seller account
+   - PayPal Business
+4. Save as separate sessions
 
-**Result:** Access all your e-commerce accounts simultaneously, each with its own purchase history, saved items, and payment methods.
+**Result:** Each shopping identity keeps its own purchase history, saved items, and payment methods.
+
+### 🎵 Media & Entertainment Setup
+**Scenario:** You want to listen to Internet Radio, watch IPTV, and catch up on podcasts while browsing.
+
+**Setup:**
+1. Launch Internet Radio module → Browse and play your favorite stations
+2. Launch IPTV module → Import an M3U playlist and watch live TV channels by category
+3. Launch Podcast Manager → Subscribe to podcasts via iTunes search or RSS feed URL
+4. Launch your regular browsing session in the shared profile
+5. Save as "Entertainment + Browsing" session
+
+**Result:** All your media and browsing in one window. Switch between radio, TV, podcasts, and websites without juggling separate apps.
 
 ## 🔄 Mix and Match Strategies
 
-### Hybrid Sessions - Combining Private and Shared Profiles
-You can create sessions that mix private profiles (for isolation) with shared profiles (for integration):
+### Hybrid Sessions - Combining Profile Types
+You can create sessions that mix shared, named-shared, and private profiles:
 
-**Example "Work Session":**
-- **Gmail Work** (private profile) → Isolated work email
-- **Google Calendar** (shared profile) → Can access work Gmail for calendar integration
-- **Slack** (private profile) → Work team communication, isolated from personal
-- **GitHub Work** (private profile) → Work repositories only
-- **Stack Overflow** (shared profile) → General development research
-- **Company Intranet** (shared profile) → General company resources
+**Example "Full Work Day" Session:**
+- **Gmail Work** (named-shared: "Work Email")
+- **Google Calendar** (named-shared: "Work Email") → Shares session with Work Gmail
+- **Slack** (named-shared: "Work Comms")
+- **GitHub Work** (named-shared: "Work Dev")
+- **Jira** (named-shared: "Work Dev") → Shares session with GitHub
+- **Stack Overflow** (shared profile) → General research, no login needed
+- **Company Intranet** (shared profile)
+- **Personal Email Check** (private) → Quick one-off check without mixing data
 
-This gives you isolation where you need it (email, code, team chat) but integration where it's helpful (calendar seeing email, shared research browsing).
+**Result:** Different named profiles for different purposes (Email suite, Development tools), each sharing data internally, but isolated from each other. Shared profile for public sites. Private for temporary access.
 
 ### Testing and Development
-- **Production site** (shared profile) → Your normal user account
-- **Staging site** (private profile) → Test account #1
-- **Development site** (private profile) → Test account #2
-- **Admin panel** (private profile) → Administrative access
+- **Production site** (shared profile) → Normal user account
+- **Staging site** (named-shared: "Staging Test") → Multiple staging tools sharing test data
+- **Development site** (named-shared: "Dev Test") → Multiple dev tools sharing dev data
+- **Admin panel** (private profile) → Administrative access with isolation
 - **Analytics dashboard** (shared profile) → Can see data from production
 
 ### Privacy Levels
-- **Banking/Financial** (private profile) → Maximum isolation for sensitive accounts
-- **Work accounts** (private profile) → Professional identity separation
-- **Personal accounts** (private profile or shared) → Depending on privacy needs
+- **Banking and Financial** (private profile) → Maximum isolation for sensitive accounts
+- **Work accounts** (named-shared per project or department)
+- **Personal accounts** (named-shared: "Personal")
+- **Family shared accounts** (named-shared: "Family") → Netflix, Spotify, shared calendar
 - **General browsing** (shared profile) → Convenience for sites that can share data
 
 ## 🚀 Advanced Multi-Account Scenarios
 
-### Freelancer/Consultant Setup
-- **Client A project tools** (all private profiles) → Completely isolated work environment
-- **Client B project tools** (all private profiles) → Separate isolated environment
-- **Personal business tools** (private profiles) → Your own business accounts
-- **General research/tools** (shared profile) → Non-sensitive shared resources
+### Freelancer or Consultant Setup
+- **Client A project** (named-shared: "Client A")
+  - Client A Gmail
+  - Client A Slack
+  - Client A GitHub
+  - Client A AWS Console
+- **Client B project** (named-shared: "Client B")
+  - Client B Gmail
+  - Client B Teams
+  - Client B GitLab
+  - Client B Cloud Console
+- **My Business** (named-shared: "My Business")
+  - Business email
+  - Invoicing software
+  - Accounting portal
+- **General research** (shared profile)
 
 ### Content Creator Workflow
-- **YouTube Channel A** (private profile) → Gaming content channel
-- **YouTube Channel B** (private profile) → Educational content channel
-- **Twitch streaming** (private profile) → Live streaming account
-- **Social media for Channel A** (private profiles) → Gaming community accounts
-- **Social media for Channel B** (private profiles) → Educational community accounts
-- **Research and inspiration** (shared profile) → General content research
+- **Gaming Channel** (named-shared: "Gaming")
+  - YouTube (gaming channel)
+  - Twitch dashboard
+  - Discord (gaming community)
+  - Social media (gaming accounts)
+- **Educational Channel** (named-shared: "Education")
+  - YouTube (edu channel)
+  - Patreon
+  - Email (edu contact)
+  - Social media (edu accounts)
+- **Research** (shared profile) → General content research
 
 ## 🔐 Two-Factor Authentication (2FA) Manager
 
@@ -219,7 +290,7 @@ Two-Factor Authentication adds an extra layer of security to your accounts by re
 1. Click "Add Account" button
 2. Enter account name (e.g., "GitHub", "Google", "Discord")
 3. Paste the secret key from the website's 2FA setup
-4. Optionally enter the issuer/company name
+4. Optionally enter the issuer or company name
 5. Click OK to save
 
 ### Where to Find Secret Keys
@@ -237,7 +308,7 @@ When enabling 2FA on websites, they typically show:
 
 ### Supported Services
 Works with any service that supports TOTP 2FA:
-- Google/Gmail accounts
+- Google and Gmail accounts
 - GitHub
 - Discord
 - Microsoft accounts
@@ -245,7 +316,7 @@ Works with any service that supports TOTP 2FA:
 - Social media platforms
 - And many more
 
-## 🗂️ Data Management & Privacy
+## 🗂️ Data Management and Privacy
 
 Jasmine provides comprehensive tools to manage your browsing data, sessions, and privacy settings.
 
@@ -262,7 +333,7 @@ Clears browsing data from all currently active sessions and the shared profile.
 - After browsing sensitive websites
 - When sharing your computer
 - To free up storage space
-- For privacy after online shopping/banking
+- For privacy after online shopping or banking
 
 ### Clean Shared Profile Data
 Clears browsing data only from the shared profile, leaving separate tab profiles untouched.
@@ -272,8 +343,9 @@ Clears browsing data only from the shared profile, leaving separate tab profiles
 - Shared profile cache
 - Shared profile visited links
 
-**What's preserved:**
+**What is preserved:**
 - Individual tab profile data
+- Named-shared profile data
 - Private profile sessions
 - Separate profile cookies and cache
 
@@ -286,6 +358,7 @@ Completely resets Jasmine to its original state, removing:
 - All application settings and preferences
 - Security settings and master passwords
 - All browsing data (cookies, cache, history)
+- All named profiles and their data
 - Application data directories
 - Profile configurations
 
@@ -323,11 +396,11 @@ Jasmine includes a comprehensive download manager that handles all your file dow
 **Download Location:**
 - Files are saved to: `Downloads/Jasmine/`
 - Organized in your system's default Downloads folder
-- Automatic folder creation if it doesn't exist
+- Automatic folder creation if it does not exist
 
 ### Download Progress Tracking
 **Real-time Information:**
-- File name and size: Clear identification of what's downloading
+- File name and size: Clear identification of what is downloading
 - Progress bar: Visual representation of download completion
 - Speed indicator: Current download speed (KB/s, MB/s)
 - Time remaining: Estimated completion time
@@ -353,7 +426,7 @@ Jasmine includes a comprehensive download manager that handles all your file dow
 
 ### Download Management
 **Window Controls:**
-- Clear Finished: Remove completed/cancelled downloads from list
+- Clear Finished: Remove completed or cancelled downloads from list
 - Open Downloads Folder: Quick access to download directory
 - Individual Remove: Remove specific items from history
 
@@ -364,10 +437,60 @@ Jasmine includes a comprehensive download manager that handles all your file dow
 - Clean History: Regularly clear finished downloads
 - Cancel if Needed: Stop unwanted downloads immediately
 
-## 🔒 Security & Privacy Notice
+## 📻 Internet Radio
+
+Jasmine includes a full-featured Internet Radio player.
+
+### Key Features
+- Browse thousands of internet radio stations
+- Search for stations by name, genre, or country
+- Local icon caching for fast loading
+- Play streams directly in the application
+- Save favorite stations
+
+### How to Use
+1. Open the Internet Radio module from the toolbar or Tools menu
+2. Browse or search for stations
+3. Double-click a station to start playing
+4. Enjoy live audio streaming
+
+## 📺 IPTV Player
+
+Watch live TV streams by importing M3U playlists.
+
+### Key Features
+- Import M3U and M3U8 playlists
+- Browse channels by category
+- Watch live TV streams
+- Save and reload playlists
+
+### How to Use
+1. Open the IPTV module from the toolbar or Tools menu
+2. Load an M3U playlist file
+3. Browse channels by category
+4. Select a channel to start watching
+
+## 🎙️ Podcast Manager
+
+Subscribe to and manage podcasts from multiple sources.
+
+### Key Features
+- Search for podcasts via iTunes API
+- Subscribe using RSS feed URLs
+- Manage episodes (download, play, mark as played)
+- Built-in audio player
+- Episode progress tracking
+
+### How to Use
+1. Open the Podcast Manager from the toolbar or Tools menu
+2. Add podcasts by searching iTunes or entering an RSS feed URL
+3. Browse episodes and click to play
+4. Manage your subscription list and episode history
+
+## 🔒 Security and Privacy Notice
 
 **Optional Security Features:**
-- Username/password storage in website entries is **completely optional**
+- Username and password storage in website entries is **completely optional**
 - Master password protection is **optional** but recommended
 - 2FA manager is an **optional convenience feature**
 
@@ -392,7 +515,6 @@ git clone [repository-url]
 cd jasmine
 qmake
 make
-```
 
 ## 🚀 Quick Start
 
