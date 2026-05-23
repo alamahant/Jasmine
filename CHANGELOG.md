@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.3.1] - 2026-05-22
+
+### Fixed
+- Removed separator lines appearing above podcast episode items.
+
+---
+
 ## [v1.3.0] - 2026-05-22
 
 ### New Features: Podcast Manager

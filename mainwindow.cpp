@@ -7902,10 +7902,7 @@ void MainWindow::onPodcastShowSelected(int index)
             .arg(durationStr);
         QListWidgetItem* item = new QListWidgetItem(itemText);
         if (episode.isPlayed) {
-            QFont font = item->font();
-            font.setStrikeOut(true);
-            item->setFont(font);
-            item->setForeground(Qt::gray);
+
         }
         m_podcastEpisodeList->addItem(item);
     }
@@ -8029,7 +8026,7 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
             QFont font = item->font();
             font.setBold(false);
             item->setFont(font);
-            //item->setForeground(Qt::gray);
+            item->setForeground(QBrush());  // Empty brush = default color
         }
 
         // Highlight the currently playing episode
@@ -8040,6 +8037,7 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
             currentItem->setFont(font);
             currentItem->setForeground(QColor(170, 102, 255)); // Purple
         }
+
 
         showStreamLoadingDialog(7000);
         player->setUrl(episode.audioUrl);
@@ -8055,7 +8053,7 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
     }
 }
 
-void MainWindow::onPodcastStopClicked()
+void MainWindow::onPodcastStopClicked(int episodeindex)
 {
     player->stop();
     m_podcastPlayButton->setEnabled(true);
@@ -8069,13 +8067,15 @@ void MainWindow::onPodcastStopClicked()
     }
 
     // Unhighlight all episodes in the list
+
     for (int i = 0; i < m_podcastEpisodeList->count(); ++i) {
         QListWidgetItem* item = m_podcastEpisodeList->item(i);
         QFont font = item->font();
         font.setBold(false);
         item->setFont(font);
-        item->setForeground(Qt::gray);
+        item->setForeground(QBrush());  // Empty brush = default color
     }
+
 }
 
 /*

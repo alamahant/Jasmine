@@ -13,7 +13,7 @@ struct PodcastEpisode {
     QDateTime pubDate;
     int duration;  // seconds
     int playbackPosition;
-    bool isPlayed;
+    bool isPlayed = false;
     bool isDownloaded;
     QString localFilePath;
 };

@@ -144,6 +144,25 @@
 
   <releases>
 
+<release version="1.3.1" date="2026-05-22">
+    <description>
+        <p>Podcast episode list display fix</p>
+        <ul>
+            <li>REMOVED separator lines appearing above podcast episode items.</li>
+            <li>Added Podcasts tab: search for podcasts by name, category, or author using iTunes API.</li>
+            <li>Subscribe directly using RSS feed URL - works with any podcast host.</li>
+            <li>Import and export podcast subscriptions using OPML format for backup and migration.</li>
+            <li>Automatic episode fetching with play/stop controls, duration, and publish date.</li>
+            <li>Podcast artwork is downloaded and cached locally.</li>
+            <li>Generate custom icons for podcasts without artwork.</li>
+            <li>Collapsible comments section for personal notes.</li>
+            <li>Refresh individual podcast feeds to check for new episodes.</li>
+            <li>Added Refresh All Podcasts action in Tools menu.</li>
+            <li>Fixed episode highlight persistence when switching between podcasts.</li>
+        </ul>
+    </description>
+</release>
+
 <release version="1.3.0" date="2026-05-22">
     <description>
         <p>Podcast Manager</p>

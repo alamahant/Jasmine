@@ -2,7 +2,7 @@
 
 namespace JASMINE_CONSTANTS {
 
-const char* APP_VERSION = "1.3.0";
+const char* APP_VERSION = "1.3.1";
 const QString appDirPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/Jasmine";
 const QString downloadsDirPath = appDirPath + "/Downloads";
 const QString screenshotsDirPath = appDirPath + "/Screenshots";
