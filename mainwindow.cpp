@@ -8053,7 +8053,7 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
     }
 }
 
-void MainWindow::onPodcastStopClicked(int episodeindex)
+void MainWindow::onPodcastStopClicked()
 {
     player->stop();
     m_podcastPlayButton->setEnabled(true);
