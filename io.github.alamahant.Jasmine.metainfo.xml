@@ -7,33 +7,49 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <url type="vcs-browser">https://github.com/alamahant/Jasmine</url>
-  <description>
+
+
+<description>
     <p>
-      Jasmine is a comprehensive web launcher and session management application that transforms your scattered bookmarks and browser tabs into an organized, launchable workspace. Perfect for productivity enthusiasts and multi-account managers.
+Jasmine is a website launcher and session management platform with shared, named or private profiles for each tab. Also featuring Internet Radio, IPTV and Podcasts.
     </p>
     <p>
       Key Features:
     </p>
+    <p>
+      Core:
+    </p>
     <ul>
-      <li>Smart Bookmarking: Store websites with titles, URLs, comments, favicons, and login references</li>
-      <li>Session Management: Create, save, and restore multi-tab browsing sessions with one click</li>
-      <li>Private Profile System: Completely isolated browsing environments for multi-account management</li>
-      <li>Multi-Account Support: Simultaneously access multiple accounts on the same service without conflicts</li>
-      <li>Radio Stations: Browse, search, and play thousands of internet radio stations with local icon caching</li>
-      <li>IPTV Channels: Import M3U playlists, browse channels by category, and watch live TV streams</li>
-      <li>Podcast Manager: Subscribe to podcasts via iTunes search or RSS feed URL, manage episodes, and play audio</li>
-      <li>Built-in Download Manager: Complete download management with progress tracking</li>
-      <li>2FA Integration: Built-in two-factor authentication code generator</li>
-      <li>Screenshot Capture: Take and save screenshots of web pages for documentation</li>
-      <li>Master Password Protection: Secure your data with password protection</li>
+      <li>Smart Bookmarking - Store websites with titles, URLs, comments, favicons, and login references</li>
+      <li>Session Management - Create, save, and restore multi-tab sessions with one click</li>
+      <li>Flexible Profiles - Choose between shared, named-shared (user-created), or private (incognito) profiles per tab</li>
+      <li>Multi-Account Support - Access multiple accounts on the same service without conflicts</li>
     </ul>
     <p>
-      Perfect for managing multiple Gmail accounts, GitHub profiles, social media accounts, or any scenario where you need isolated browsing sessions. Each private profile operates as a separate browser with its own cookies, login sessions, and browsing data.
+      Media:
     </p>
+    <ul>
+      <li>Internet Radio - Browse, search, and play thousands of stations with local icon caching</li>
+      <li>IPTV - Import M3U playlists, browse channels by category, and watch live TV</li>
+      <li>Podcast Manager - Subscribe via iTunes search or RSS, manage episodes, and play audio</li>
+    </ul>
     <p>
-      Whether you're a developer managing different environments, a content creator with multiple channels, or a business manager handling client accounts, Jasmine provides unprecedented control over your online identity management.
+      Utilities:
     </p>
-  </description>
+    <ul>
+      <li>Download Manager - Progress tracking and file organization</li>
+      <li>Ad Blocker - Block unwanted ads and popups for cleaner browsing</li>
+      <li>2FA Integration - Built-in TOTP code generator</li>
+    </ul>
+    <p>
+      Security:
+    </p>
+    <ul>
+      <li>Master Password Protection - Encrypted data protection</li>
+      <li>Private Profiles - Completely isolated browsing environments</li>
+    </ul>
+</description>
+
 
   <screenshots>
     <screenshot type="default">
@@ -143,6 +159,19 @@
   </content_rating>
 
   <releases>
+
+<release version="1.3.2" date="2026-05-24">
+    <description>
+        <p>Xtream Codes API Support for IPTV</p>
+        <ul>
+            <li>Added Xtream Codes API support for IPTV providers.</li>
+            <li>Connect using Server URL, Username, and Password.</li>
+            <li>Optional User-Agent header for providers that require it.</li>
+            <li>Automatic channel loading from Xtream server.</li>
+            <li>Same channel selection and preview functionality as M3U playlists.</li>
+        </ul>
+    </description>
+</release>
 
 <release version="1.3.1" date="2026-05-22">
     <description>
@@ -375,15 +404,3 @@
     <control>pointing</control>
   </recommends>
 </component>
-
-
-
-
-
-
-
-
-
-
-
-

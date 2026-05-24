@@ -33,17 +33,12 @@
 #include"downloadmanager.h"
 #include"twofamanager.h"
 #include"securitymanager.h"
-#include"helpmenudialog.h"
 #include"urlbar.h"
 #include"RequestInterceptor.h"
 #include "simpleadblocker.h"
-#include "AdBlockScript.h"
 #include<QWebEngineFullScreenRequest>
 #include<QShortcut>
 #include "mywebpage.h"
-#include<memory>
-#include"cosmeticfilterinjector.h"
-#include"extensionmanager.h"
 #include"adfreeplayerdialog.h"
 #include"radiostation.h"
 #include"searchradiostationsdialog.h"
@@ -288,8 +283,13 @@ private:
     bool isUrlBarVisible = false;
     void updateUrlBarState();
     QSize m_savedWebViewSize;
+#ifndef FLATPAK_BUILD
     static const int DASHBOARD_WIDTH = 1220; // orig 1150
     static const int DASHBOARD_HEIGHT = 850; // orig 800
+#else
+    static const int DASHBOARD_WIDTH = 1230; // orig 1150
+    static const int DASHBOARD_HEIGHT = 860; // orig 800
+#endif
     void connectUrlBar();
     void createNewTabWithUrl(const QString &url);
     QAction* m_addWebsiteFromUrlAction;
@@ -413,7 +413,7 @@ private:
 private:
     SearchRadioStationsDialog* radioSearchDialog = nullptr;
     QPushButton* m_radioGenerateIconButton;
-    void showStreamLoadingDialog(int duration);
+    void showNotification(const QString& msg, int duration);
     QSystemTrayIcon* m_trayIcon;
     QLineEdit* m_searchLineEdit;
     QAction* searchAction;
@@ -522,6 +522,9 @@ private slots:
     void importPodcastSubscriptions();
     void exportPodcastSubscriptions();
     void refreshAllPodcasts();
+private:
+    int m_currentPlayingPodcastIndex = -1;
+    int m_currentPlayingEpisodeIndex = -1;
 
 };
 

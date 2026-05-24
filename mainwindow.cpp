@@ -45,6 +45,9 @@
 #include<QPainter>
 #include<QSystemTrayIcon>
 #include<QFileDialog>
+#include"helpmenudialog.h"
+#include "AdBlockScript.h"
+#include"countrymapper.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -226,7 +229,7 @@ MainWindow::MainWindow(QWidget *parent)
         if(m_urlBar){
         QString currentUrl = m_urlBar->urlInput()->text();
         if (!currentUrl.isEmpty()) {
-            showStreamLoadingDialog(7000);
+            showNotification(QString(), 7000);
             player->setUrl(currentUrl);
         }
         }
@@ -270,15 +273,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(radioSearchDialog, &SearchRadioStationsDialog::stationSelected,
             this, &MainWindow::onAddRadioStationFromDialog);
 
-    connect(radioSearchDialog, &SearchRadioStationsDialog::showNotification, this, [this](int duration){
-        showStreamLoadingDialog(duration);
-    });
     connect(searchIPTVDialog, &SearchIPTVDialog::channelsSelected,
             this, &MainWindow::onAddIPTVChannelsFromDialog);
 
     connect(searchIPTVDialog, &SearchIPTVDialog::previewChannel,
             [this](const QString &streamUrl, const QString &name) {
-                showStreamLoadingDialog(7000);
+                showNotification(QString(), 7000);
                 player->setUrl(streamUrl);
                 player->setWindowTitle(QString("Preview: %1").arg(name));
                 player->play();
@@ -288,6 +288,30 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(searchPodcastdialog, &SearchPodcastDialog::podcastSelected,
             this, &MainWindow::onAddPodcastFromDialog);
+
+    // notification connects
+    connect(radioSearchDialog, &SearchRadioStationsDialog::showNotification, this, [this](const QString& msg, int duration){
+        showNotification(msg, duration);
+    });
+
+
+    connect(searchPodcastdialog, &SearchPodcastDialog::showNotification, this, [this](const QString& msg, int duration){
+        showNotification(msg, duration);
+    });
+
+    connect(searchIPTVDialog, &SearchIPTVDialog::showNotification, this, [this](const QString& msg, int duration){
+        showNotification(msg, duration);
+    });
+
+
+    connect(radioSearchDialog, &SearchRadioStationsDialog::previewRadioStation,
+            [this](const QString &streamUrl, const QString &name) {
+        player->setUrl(streamUrl);
+        player->setWindowTitle(QString("Preview: %1").arg(name));
+        player->play();
+        player->show();
+        player->raise();
+    });
 
     //sortAllCards(); // maybe dangerous needs further testing
 
@@ -2010,7 +2034,11 @@ void MainWindow::createMenus() {
     QAction *openRadiosAction = toolsMenu->addAction("Browse Radio Stations");
     connect(openRadiosAction, &QAction::triggered, this, [this](){
 
-        if(radioSearchDialog)  radioSearchDialog->show();
+        if(radioSearchDialog) {
+            radioSearchDialog->show();
+            radioSearchDialog->raise();
+
+        }
 
     });
 
@@ -2034,7 +2062,11 @@ void MainWindow::createMenus() {
     toolsMenu->addSeparator();
     QAction *browseIPTVAction = new QAction("Browse IPTV Channels...", this);
     connect(browseIPTVAction, &QAction::triggered, this, [this](){
-        if(searchIPTVDialog)  searchIPTVDialog->show();
+        if(searchIPTVDialog){
+            searchIPTVDialog->show();
+            searchIPTVDialog->raise();
+
+        }
 
     });
     toolsMenu->addAction(browseIPTVAction);
@@ -2042,7 +2074,10 @@ void MainWindow::createMenus() {
     toolsMenu->addSeparator();
     QAction *browsePodcastsAction = new QAction("Browse Podcasts...", this);
     connect(browsePodcastsAction, &QAction::triggered, this, [this](){
-        if(searchPodcastdialog)  searchPodcastdialog->show();
+        if(searchPodcastdialog) {
+            searchPodcastdialog->show();
+            searchPodcastdialog->raise();
+        }
 
     });
     toolsMenu->addAction(browsePodcastsAction);
@@ -2306,9 +2341,6 @@ void MainWindow::loadSessionsData() {
 
     updateSessionCards();
 }
-
-
-
 
 void MainWindow::onSaveSession(){
     bool ok;
@@ -6091,10 +6123,13 @@ void MainWindow::onRadioPlayClicked() {
 
         const RadioStation& station = m_radioStations[m_currentRadioIndex];
         if (!station.streamUrl.isEmpty()) {
-            showStreamLoadingDialog(7000);
+            showNotification(QString(), 7000);
             player->setUrl(station.streamUrl);
             player->setWindowTitle(QString("Playing: %1").arg(station.name));
+
             player->play();
+            player->show();
+            player->raise();
 
 
             // Add playing property to current card
@@ -6135,7 +6170,9 @@ void MainWindow::onRadioStationSelected(int index) {
 
     m_radioNameEdit->setText(station.name);
     m_radioStreamUrlEdit->setText(station.streamUrl);
-    m_radioCountryEdit->setText(station.countrycode);
+    QString countryName = CountryMapper::getCountryNameFromCode(station.countrycode);
+    //m_radioCountryEdit->setText(station.countrycode);
+    m_radioCountryEdit->setText(countryName);
     m_radioGenreEdit->setText(station.genre);
     m_radioBitrateEdit->setText(QString::number(station.bitrate));
     m_radioCodecEdit->setText(station.codec);
@@ -6550,14 +6587,32 @@ void MainWindow::searchCards(const QString& text)
             visible[i] = matches;
         }
         relayoutCards(m_iptvGrid, m_iptvCards, visible);
+    } else if (currentTab == 4) {
+    // Podcast cards
+    QVector<bool> visible(m_podcastCards.size(), false);
+    for (int i = 0; i < m_podcastCards.size(); ++i) {
+        QFrame* card = m_podcastCards[i];
+        QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
+        bool matches = text.isEmpty() || (titleLabel && titleLabel->text().contains(text, Qt::CaseInsensitive));
+        card->setVisible(matches);
+        visible[i] = matches;
+    }
+    relayoutCards(m_podcastGrid, m_podcastCards, visible);
     }
 }
 
-void MainWindow::showStreamLoadingDialog(int duration)
+void MainWindow::showNotification(const QString& msg, int duration)
 {
+    QString message;
+    if(msg.isEmpty()) {
+        message = QString("Connecting to stream... Please wait.");
+    } else{
+        message = msg;
+    }
 
-    m_trayIcon->showMessage("Jasmine Internet, Radio and IPTV",
-                         "Connecting to stream... Please wait.",
+
+    m_trayIcon->showMessage("Jasmine - Internet, Radio, IPTV and Podcasts",
+                         message,
                          QSystemTrayIcon::Information,
                          duration);
 
@@ -6943,38 +6998,6 @@ void MainWindow::loadIPTVChannels()
 }
 
 ////// slot functions
-/*
-void MainWindow::onIPTVStationSelected(int index)
-{
-    if (index < 0 || index >= m_iptvChannels.size()) return;
-
-    m_currentIPTVIndex = index;
-    const IPTVChannel& channel = m_iptvChannels[index];
-
-    m_iptvNameEdit->setText(channel.name);
-    m_iptvStreamUrlEdit->setText(channel.streamUrl);
-    m_iptvCategoryEdit->setText(channel.category);
-    m_iptvCountryEdit->setText(channel.country);
-    m_iptvCommentsEdit->setPlainText(channel.comments);
-
-    // Load icon
-    if (!channel.localLogoPath.isEmpty() && QFile::exists(channel.localLogoPath)) {
-        QPixmap pixmap(channel.localLogoPath);
-        if (!pixmap.isNull()) {
-            m_iptvIconLabel->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-        } else {
-            m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
-        }
-    } else {
-        m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
-    }
-
-    // Highlight selected card
-    for (int i = 0; i < m_iptvCards.size(); ++i) {
-        highlightCard(m_iptvCards[i], i == index);
-    }
-}
-*/
 
 void MainWindow::onIPTVStationSelected(int index)
 {
@@ -7122,10 +7145,13 @@ void MainWindow::onIPTVPlayClicked()
 
         IPTVChannel& channel = m_iptvChannels[m_currentIPTVIndex];
         if (!channel.streamUrl.isEmpty()) {
-            showStreamLoadingDialog(7000);
+            showNotification(QString(), 7000);
             player->setUrl(channel.streamUrl);
             player->setWindowTitle(QString("Playing: %1").arg(channel.name));
+
             player->play();
+            player->show();
+            player->raise();
 
             // Add playing property to current card ONLY
             if (m_iptvCards.contains(m_currentIPTVIndex)) {
@@ -7407,8 +7433,8 @@ QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
     card->setGraphicsEffect(shadow);
 
     QVBoxLayout* layout = new QVBoxLayout(card);
-    layout->setContentsMargins(15, 15, 15, 15);
-
+    layout->setContentsMargins(15, 10, 15, 10);
+    layout->setSpacing(2);  // Reduce spacing between elements
     // Artwork
     QLabel* artworkLabel = new QLabel();
     artworkLabel->setFixedSize(60, 60);
@@ -7428,14 +7454,25 @@ QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
     layout->addWidget(artworkLabel, 0, Qt::AlignCenter);
 
     // Title
-    QLabel* titleLabel = new QLabel(show.title);
+
+    // Title with ellipsis for long names
+    QString shortTitle = show.title;
+    int maxChars = 35;  // Adjust as needed
+    if (shortTitle.length() > maxChars) {
+        shortTitle = shortTitle.left(maxChars - 3) + "...";
+    }
+
+    QLabel* titleLabel = new QLabel(shortTitle);
     titleLabel->setObjectName("cardTitle");
-    titleLabel->setWordWrap(false);
+    titleLabel->setWordWrap(true);
     titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setMaximumHeight(40);
     layout->addWidget(titleLabel);
 
     // Author + episode count
-    QLabel* infoLabel = new QLabel(QString("%1 · %2 eps").arg(show.author, QString::number(show.episodeCount)));
+    //QLabel* infoLabel = new QLabel(QString("%1 · %2 eps").arg(show.author, QString::number(show.episodeCount)));
+    QLabel* infoLabel = new QLabel(QString("%1 eps").arg(QString::number(show.episodeCount)));
+
     infoLabel->setObjectName("cardInfo");
     infoLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(infoLabel);
@@ -7907,6 +7944,18 @@ void MainWindow::onPodcastShowSelected(int index)
         m_podcastEpisodeList->addItem(item);
     }
 
+    // Restore playing episode highlight if this podcast is currently playing
+    if (m_currentPlayingPodcastIndex == index && m_currentPlayingEpisodeIndex >= 0) {
+        QListWidgetItem* currentItem = m_podcastEpisodeList->item(m_currentPlayingEpisodeIndex);
+        if (currentItem) {
+            QFont font = currentItem->font();
+            font.setBold(true);
+            currentItem->setFont(font);
+            currentItem->setForeground(QColor(170, 102, 255));
+            m_podcastEpisodeList->scrollToItem(currentItem, QAbstractItemView::PositionAtCenter);
+        }
+    }
+
     // Highlight selected card
     for (int i = 0; i < m_podcastCards.size(); ++i) {
         highlightCard(m_podcastCards[i], i == index);
@@ -7979,27 +8028,6 @@ void MainWindow::onPodcastUnsubscribeClicked()
         statusBar()->showMessage("Podcast unsubscribed.", 3000);
     }
 }
-/*
-void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
-{
-    if (m_currentPodcastIndex < 0 || m_currentPodcastIndex >= m_podcastShows.size()) return;
-    if (episodeIndex < 0 || episodeIndex >= m_podcastShows[m_currentPodcastIndex].episodes.size()) return;
-
-    const PodcastEpisode& episode = m_podcastShows[m_currentPodcastIndex].episodes[episodeIndex];
-    if (!episode.audioUrl.isEmpty()) {
-        player->setUrl(episode.audioUrl);
-        player->setWindowTitle(QString("Playing: %1 - %2").arg(
-            m_podcastShows[m_currentPodcastIndex].title,
-            episode.title));
-        player->play();
-        player->show();
-
-        statusBar()->showMessage(QString("Now Playing: %1").arg(episode.title), 0);
-        m_podcastPlayButton->setEnabled(false);
-        m_podcastStopButton->setEnabled(true);
-    }
-}
-*/
 
 void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
 {
@@ -8008,6 +8036,11 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
 
     const PodcastEpisode& episode = m_podcastShows[m_currentPodcastIndex].episodes[episodeIndex];
     if (!episode.audioUrl.isEmpty()) {
+
+        // Store currently playing episode
+        m_currentPlayingPodcastIndex = m_currentPodcastIndex;
+        m_currentPlayingEpisodeIndex = episodeIndex;
+
         // Clear playing flag from all podcast cards
         for (QFrame* card : m_podcastCards) {
             card->setProperty("playing", false);
@@ -8036,16 +8069,20 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
             font.setBold(true);
             currentItem->setFont(font);
             currentItem->setForeground(QColor(170, 102, 255)); // Purple
+            //currentItem->setForeground(QColor(0, 212, 255));  // Cyan
+
         }
 
 
-        showStreamLoadingDialog(7000);
+        showNotification(QString(), 7000);
         player->setUrl(episode.audioUrl);
         player->setWindowTitle(QString("Playing: %1 - %2").arg(
-            m_podcastShows[m_currentPodcastIndex].title,
-            episode.title));
+        m_podcastShows[m_currentPodcastIndex].title,
+        episode.title));
+
         player->play();
         player->show();
+        player->raise();
 
         statusBar()->showMessage(QString("Now Playing: %1").arg(episode.title), 0);
         m_podcastPlayButton->setEnabled(false);
@@ -8056,9 +8093,15 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
 void MainWindow::onPodcastStopClicked()
 {
     player->stop();
+
+    m_currentPlayingPodcastIndex = -1;
+    m_currentPlayingEpisodeIndex = -1;
+
     m_podcastPlayButton->setEnabled(true);
     m_podcastStopButton->setEnabled(false);
     statusBar()->showMessage(QString());
+
+
 
     // Clear playing flag from all podcast cards
     for (QFrame* card : m_podcastCards) {

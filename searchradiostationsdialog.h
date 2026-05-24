@@ -12,9 +12,7 @@
 #include <QMessageBox>
 #include "radiobrowserapi.h"
 #include "radiostation.h"
-#include "Constants.h"
-#include<QMediaPlayer>
-#include<QAudioOutput>
+
 
 class SearchRadioStationsDialog : public QDialog
 {
@@ -28,7 +26,8 @@ public:
 
 signals:
     void stationSelected(const RadioStation &station);
-    void showNotification(int duration);
+    void showNotification(const QString& msg, int duration);
+    void previewRadioStation(const QString &streamUrl, const QString &name);
 private slots:
     void onSearchClicked();
     void onSearchResult(const QJsonArray &stations);
@@ -36,7 +35,6 @@ private slots:
     void onPlayClicked();
     void onAddClicked();
     void onApiError(const QString &message);
-    void onStopClicked();
 private:
     void setupUI();
     void performSearch();
@@ -44,8 +42,7 @@ private:
     RadioStation parseJsonToStation(const QJsonObject &obj);
     void updatePreview(const RadioStation &station);
     void clearPreview();
-    QMediaPlayer* player = nullptr;
-    QAudioOutput* audioOutput = nullptr;
+
     // UI Components
     QComboBox *m_countryCombo;
     QLineEdit *m_nameEdit;
@@ -72,7 +69,6 @@ private:
 private:
     QLineEdit *m_filterEdit;  // Filter/search within results
     void filterResults(const QString &text);
-    QPushButton* m_stopButton;
 };
 
 #endif // SEARCHRADIOSTATIONSDIALOG_H

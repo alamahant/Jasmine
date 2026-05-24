@@ -1141,3 +1141,4 @@ QListWidget::item:selected {
 QListWidget::item:hover:!selected {
     background-color: #3d3d3d;
 }
+

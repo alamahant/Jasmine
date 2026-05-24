@@ -89,13 +89,11 @@ void SearchIPTVDialog::setupUI()
     xtreamForm->addRow("User-Agent:", m_xtreamUserAgentEdit);
     
     m_xtreamConnectButton = new QPushButton("Connect & Load");
-    m_xtreamConnectButton->setEnabled(false);
-    m_xtreamConnectButton->setToolTip("Xtream Codes support coming soon");
+    m_xtreamConnectButton->setEnabled(true);
+    //m_xtreamConnectButton->setToolTip("");
     xtreamForm->addRow("", m_xtreamConnectButton);
     
-    QLabel *comingSoonLabel = new QLabel("Xtream Codes support will be available in a future update.");
-    comingSoonLabel->setStyleSheet("color: #808080; font-style: italic;");
-    xtreamForm->addRow("", comingSoonLabel);
+
     
     xtreamLayout->addWidget(xtreamGroup);
     xtreamLayout->addStretch();
@@ -250,78 +248,6 @@ void SearchIPTVDialog::loadLocalM3U(const QString &filePath)
     parseM3UAsync(content, filePath);
 }
 
-void SearchIPTVDialog::parseM3U(const QString &content, const QString &sourceName)
-{
-    m_allChannels.clear();
-    m_currentSource = sourceName;
-    
-    QStringList lines = content.split('\n', Qt::SkipEmptyParts);
-    
-    QRegularExpression logoRegex("tvg-logo=\"([^\"]*)\"");
-    QRegularExpression categoryRegex("group-title=\"([^\"]*)\"");
-    QRegularExpression idRegex("tvg-id=\"([^\"]*)\"");
-    QRegularExpression resolutionRegex("(\\d{3,4}p)");
-    
-    for (int i = 0; i < lines.size(); ++i) {
-        QString line = lines[i].trimmed();
-        
-        if (line.startsWith("#EXTINF")) {
-            IPTVChannel channel;
-            
-            // Extract logo URL
-            QRegularExpressionMatch logoMatch = logoRegex.match(line);
-            if (logoMatch.hasMatch()) {
-                channel.logoUrl = logoMatch.captured(1);
-            }
-            
-            // Extract category
-            QRegularExpressionMatch categoryMatch = categoryRegex.match(line);
-            if (categoryMatch.hasMatch()) {
-                channel.category = categoryMatch.captured(1);
-            }
-            
-            // Extract channel ID
-            QRegularExpressionMatch idMatch = idRegex.match(line);
-            if (idMatch.hasMatch()) {
-                channel.channelId = idMatch.captured(1);
-            } else {
-                channel.channelId = QUuid::createUuid().toString();
-            }
-            
-            // Extract channel name (after last comma)
-            int lastComma = line.lastIndexOf(',');
-            if (lastComma != -1) {
-                channel.name = line.mid(lastComma + 1).trimmed();
-            } else {
-                channel.name = "Unknown";
-            }
-            
-            // Extract resolution from name
-            QRegularExpressionMatch resMatch = resolutionRegex.match(channel.name);
-            if (resMatch.hasMatch()) {
-                channel.resolution = resMatch.captured(1);
-            }
-            
-            // Look for stream URL on next line
-            if (i + 1 < lines.size()) {
-                QString nextLine = lines[i + 1].trimmed();
-                if (!nextLine.isEmpty() && !nextLine.startsWith("#")) {
-                    channel.streamUrl = nextLine;
-                }
-            }
-            
-            if (!channel.streamUrl.isEmpty()) {
-                m_allChannels.append(channel);
-            }
-        }
-    }
-    
-    m_filteredChannels = m_allChannels;
-    m_selectedRows.fill(false, m_filteredChannels.size());
-    displayChannels();
-    
-    QMessageBox::information(this, "Loaded", QString("Loaded %1 channels from %2").arg(m_allChannels.size()).arg(sourceName));
-}
 
 void SearchIPTVDialog::displayChannels()
 {
@@ -429,7 +355,7 @@ void SearchIPTVDialog::onAddSelectedClicked()
     }
     
     emit channelsSelected(selectedChannels);
-    
+    emit showNotification("Selected Channels Added!", 3000);
     // Clear selection after adding
     for (int i = 0; i < m_selectedRows.size(); ++i) {
         m_selectedRows[i] = false;
@@ -444,10 +370,131 @@ void SearchIPTVDialog::updatePreviewButtonState()
     m_previewButton->setEnabled(m_resultsTable->currentRow() >= 0);
 }
 
+
 void SearchIPTVDialog::onXtreamConnect()
 {
-    QMessageBox::information(this, "Coming Soon", "Xtream Codes support will be available in a future update.\n\nFor now, please use M3U playlists.");
+    QString server = m_xtreamServerEdit->text().trimmed();
+    QString username = m_xtreamUsernameEdit->text().trimmed();
+    QString password = m_xtreamPasswordEdit->text().trimmed();
+    QString userAgent = m_xtreamUserAgentEdit->text().trimmed();
+
+    if (server.isEmpty() || username.isEmpty() || password.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Server URL, username, and password are required.");
+        return;
+    }
+
+    // Remove trailing slash if present
+    if (server.endsWith("/")) {
+        server.chop(1);
+    }
+
+    // Show progress
+    QProgressDialog *progress = new QProgressDialog("Connecting to Xtream server...", "Cancel", 0, 0, this);
+    progress->setWindowModality(Qt::WindowModal);
+    progress->show();
+
+    // Authenticate and get server info
+    QString authUrl = QString("%1/player_api.php?username=%2&password=%3")
+                      .arg(server, username, password);
+
+    QNetworkRequest request((QUrl(authUrl)));
+    if (!userAgent.isEmpty()) {
+        request.setHeader(QNetworkRequest::UserAgentHeader, userAgent);
+    }
+
+    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    QNetworkReply *reply = nam->get(request);
+
+    connect(reply, &QNetworkReply::finished, [this, reply, nam, progress, server, username, password, userAgent]() {
+        progress->accept();
+        if (reply->error() == QNetworkReply::NoError) {
+            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            if (doc.isObject()) {
+                QJsonObject obj = doc.object();
+                if (obj.contains("user_info")) {
+                    // Authentication successful, fetch live streams
+                    fetchXtreamChannels(server, username, password, userAgent);
+                } else {
+                    QMessageBox::warning(this, "Error", "Invalid credentials or server response.");
+                }
+            } else {
+                QMessageBox::warning(this, "Error", "Invalid server response.");
+            }
+        } else {
+            QMessageBox::warning(this, "Error", "Connection failed: " + reply->errorString());
+        }
+        reply->deleteLater();
+        nam->deleteLater();
+        progress->deleteLater();
+    });
 }
+
+
+void SearchIPTVDialog::fetchXtreamChannels(const QString &server, const QString &username,
+                                            const QString &password, const QString &userAgent)
+{
+    QString url = QString("%1/player_api.php?username=%2&password=%3&action=get_live_streams")
+                  .arg(server, username, password);
+
+    QNetworkRequest request((QUrl(url)));
+    if (!userAgent.isEmpty()) {
+        request.setHeader(QNetworkRequest::UserAgentHeader, userAgent);
+    }
+
+    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    QNetworkReply *reply = nam->get(request);
+
+    QProgressDialog *progress = new QProgressDialog("Loading channels...", "Cancel", 0, 0, this);
+    progress->setWindowModality(Qt::WindowModal);
+    progress->show();
+
+    connect(reply, &QNetworkReply::finished, [this, reply, nam, progress]() {
+        progress->accept();
+        if (reply->error() == QNetworkReply::NoError) {
+            parseXtreamChannels(reply->readAll());
+        } else {
+            QMessageBox::warning(this, "Error", "Failed to fetch channels: " + reply->errorString());
+        }
+        reply->deleteLater();
+        nam->deleteLater();
+        progress->deleteLater();
+    });
+}
+
+void SearchIPTVDialog::parseXtreamChannels(const QByteArray &data)
+{
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isArray()) {
+        QMessageBox::warning(this, "Error", "Invalid channels response.");
+        return;
+    }
+
+    m_allChannels.clear();
+    QJsonArray channels = doc.array();
+
+    for (const QJsonValue &val : channels) {
+        QJsonObject obj = val.toObject();
+        IPTVChannel channel;
+
+        channel.channelId = QString::number(obj["stream_id"].toInt());
+        channel.name = obj["name"].toString();
+        channel.streamUrl = obj["stream_url"].toString();
+        channel.logoUrl = obj["stream_icon"].toString();
+        channel.category = obj["category_name"].toString();
+        channel.resolution = "";  // Not provided by Xtream API
+
+        if (!channel.streamUrl.isEmpty()) {
+            m_allChannels.append(channel);
+        }
+    }
+
+    m_filteredChannels = m_allChannels;
+    m_selectedRows.fill(false, m_filteredChannels.size());
+    displayChannels();
+
+    QMessageBox::information(this, "Loaded", QString("Loaded %1 channels from Xtream server.").arg(m_allChannels.size()));
+}
+
 
 
 // concurrent parsing
@@ -558,6 +605,9 @@ void SearchIPTVDialog::onParseFinished()
     if (m_allChannels.size() > 1000) {
         msg = QString("Loaded %1 channels.\n\n"
                       "Note: Large playlists may affect performance.\n"
+                      "Instead of scrolling through thousands of channels,\n"
+                      "use the search box to narrow down results.\n"
+                      "Browsing filtered results is much faster and more responsive.\n\n"
                       "We recommend adding your desired channels now, then restarting Jasmine\n"
                       "for optimal memory usage.\n\n"
                       "This dialog stays open so you won't need to reload the playlist.")

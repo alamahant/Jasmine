@@ -4,17 +4,16 @@
 #include <QStatusBar>
 #include<QFormLayout>
 #include<QGroupBox>
+#include<QFile>
+#include "Constants.h"
+#include"countrymapper.h"
 
 SearchRadioStationsDialog::SearchRadioStationsDialog(QWidget *parent)
     : QDialog(parent)
     , m_currentSelectedIndex(-1)
 
 {
-    if(!player){
-        player = new QMediaPlayer(this);
-        audioOutput = new QAudioOutput(this);
-        player->setAudioOutput(audioOutput);
-    }
+
     setupUI();
     populateCountryCombo();
     
@@ -29,6 +28,7 @@ SearchRadioStationsDialog::SearchRadioStationsDialog(QWidget *parent)
 SearchRadioStationsDialog::~SearchRadioStationsDialog()
 {
 }
+
 
 void SearchRadioStationsDialog::setupUI()
 {
@@ -110,13 +110,11 @@ void SearchRadioStationsDialog::setupUI()
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     
-    m_playButton = new QPushButton("Play");
+    m_playButton = new QPushButton("Preview");
     m_playButton->setObjectName("secondaryButton");
     m_playButton->setEnabled(false);
     
-    m_stopButton = new QPushButton("Stop");
-    m_stopButton->setObjectName("secondaryButton");
-    m_stopButton->setEnabled(false);
+
 
     m_addButton = new QPushButton("Add to My Stations");
     m_addButton->setObjectName("primaryButton");
@@ -126,7 +124,6 @@ void SearchRadioStationsDialog::setupUI()
     m_cancelButton->setObjectName("secondaryButton");
     
     buttonLayout->addWidget(m_playButton);
-    buttonLayout->addWidget(m_stopButton);
     buttonLayout->addWidget(m_addButton);
     buttonLayout->addWidget(m_cancelButton);
     
@@ -136,7 +133,6 @@ void SearchRadioStationsDialog::setupUI()
     connect(m_searchButton, &QPushButton::clicked, this, &SearchRadioStationsDialog::onSearchClicked);
     connect(m_resultsTable, &QTableWidget::itemSelectionChanged, this, &SearchRadioStationsDialog::onResultSelectionChanged);
     connect(m_playButton, &QPushButton::clicked, this, &SearchRadioStationsDialog::onPlayClicked);
-    connect(m_stopButton, &QPushButton::clicked, this, &SearchRadioStationsDialog::onStopClicked);
     connect(m_addButton, &QPushButton::clicked, this, &SearchRadioStationsDialog::onAddClicked);
     connect(m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
 }
@@ -146,9 +142,9 @@ void SearchRadioStationsDialog::populateCountryCombo()
     m_countryCombo->addItem("All", "");
     
     // Get countries from Constants
-    QList<QString> countryCodes = JASMINE_CONSTANTS::getAllCountryCodes();
+    QList<QString> countryCodes = CountryMapper::getAllCountryCodes();
     for (const QString &code : countryCodes) {
-        QString countryName = JASMINE_CONSTANTS::getCountryNameFromCode(code);
+        QString countryName = CountryMapper::getCountryNameFromCode(code);
         m_countryCombo->addItem(countryName, code);
     }
 }
@@ -200,7 +196,7 @@ void SearchRadioStationsDialog::onSearchResult(const QJsonArray &stations)
         m_currentResults.append(station);
         
         m_resultsTable->setItem(i, 0, new QTableWidgetItem(station.name));
-        m_resultsTable->setItem(i, 1, new QTableWidgetItem(JASMINE_CONSTANTS::getCountryNameFromCode(station.countrycode)));
+        m_resultsTable->setItem(i, 1, new QTableWidgetItem(CountryMapper::getCountryNameFromCode(station.countrycode)));
         m_resultsTable->setItem(i, 2, new QTableWidgetItem(QString::number(station.bitrate) + " kbps"));
         m_resultsTable->setItem(i, 3, new QTableWidgetItem(station.codec));
         m_resultsTable->setItem(i, 4, new QTableWidgetItem(station.genre));
@@ -233,11 +229,9 @@ void SearchRadioStationsDialog::onPlayClicked()
     if (m_currentSelectedIndex >= 0 && m_currentSelectedIndex < m_currentResults.size()) {
         const RadioStation &station = m_currentResults[m_currentSelectedIndex];
         if (!station.streamUrl.isEmpty()) {
-            emit showNotification(4000);
-            player->setSource(station.streamUrl);
-            player->play();
-            m_playButton->setEnabled(false);
-            m_stopButton->setEnabled(true);
+            emit showNotification(QString(), 4000);
+
+            emit previewRadioStation(station.streamUrl, station.name);
         }
     }
 }
@@ -247,9 +241,11 @@ void SearchRadioStationsDialog::onAddClicked()
     if (m_currentSelectedIndex >= 0 && m_currentSelectedIndex < m_currentResults.size()) {
 
         RadioStation station = m_currentResults[m_currentSelectedIndex];
+        emit showNotification(QString("Added %1").arg(station.name), 3000);
 
         // Download icon if URL exists
         if (!station.iconUrl.isEmpty()) {
+
             QNetworkAccessManager *nam = new QNetworkAccessManager(this);
             QNetworkReply *reply = nam->get(QNetworkRequest(QUrl(station.iconUrl)));
 
@@ -318,7 +314,7 @@ void SearchRadioStationsDialog::updatePreview(const RadioStation &station)
 {
     m_previewName->setText(station.name);
     m_previewUrl->setText(station.streamUrl);
-    m_previewCountry->setText(JASMINE_CONSTANTS::getCountryNameFromCode(station.countrycode));
+    m_previewCountry->setText(CountryMapper::getCountryNameFromCode(station.countrycode));
     m_previewBitrate->setText(QString::number(station.bitrate) + " kbps");
     m_previewCodec->setText(station.codec);
     m_previewGenre->setText(station.genre);
@@ -360,11 +356,3 @@ void SearchRadioStationsDialog::filterResults(const QString &text)
     }
 }
 
-void SearchRadioStationsDialog::onStopClicked()
-{
-    if (player) {
-        player->stop();
-    }
-    m_playButton->setEnabled(true);
-    m_stopButton->setEnabled(false);
-}

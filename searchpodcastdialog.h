@@ -23,6 +23,7 @@ public:
 
 signals:
     void podcastSelected(const PodcastShow &show);
+    void showNotification(const QString& msg, int duration);
 
 private slots:
     void onSearchClicked();

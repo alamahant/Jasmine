@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.3.2] - 2026-05-24
+
+### New Features: Xtream Codes API Support
+
+**IPTV Tab:**
+- Added Xtream Codes API support for IPTV providers
+- Connect using Server URL, Username, and Password
+- Optional User-Agent header for providers that require it
+- Automatic channel loading from Xtream server
+- Same channel selection and preview functionality as M3U playlists
+
+---
+
 ## [v1.3.1] - 2026-05-22
 
 ### Fixed

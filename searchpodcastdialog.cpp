@@ -204,6 +204,8 @@ void SearchPodcastDialog::onSubscribeClicked()
 {
     if (m_currentSelectedIndex >= 0 && m_currentSelectedIndex < m_currentResults.size()) {
         emit podcastSelected(m_currentResults[m_currentSelectedIndex]);
+        emit showNotification(QString("%1 Added!").arg(m_currentResults[m_currentSelectedIndex].title), 7000);
+
         // Keep dialog open for multiple subscriptions
     }
 }
@@ -263,6 +265,7 @@ void SearchPodcastDialog::onUrlSubscribeClicked()
     }
 
     // Fetch and parse the feed
+
     QNetworkAccessManager* nam = new QNetworkAccessManager(this);
     QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(feedUrl)));
 

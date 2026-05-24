@@ -57,6 +57,7 @@ qt_add_executable(Jasmine
     searchiptvdialog.cpp searchiptvdialog.h
     podcast.h
     searchpodcastdialog.cpp searchpodcastdialog.h
+    countrymapper.h
 
 
 )

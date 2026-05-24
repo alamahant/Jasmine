@@ -25,7 +25,8 @@ public:
 signals:
     void channelsSelected(const QVector<IPTVChannel> &channels);
     void previewChannel(const QString &streamUrl, const QString &name);
-    void showNotification(int duration);
+    void showNotification(const QString& msg, int duration);
+
 private slots:
     void onLoadRemoteM3U();
     void onBrowseLocalFile();
@@ -38,7 +39,6 @@ private slots:
     void onTableDoubleClicked(const QModelIndex &index);
 private:
     void setupUI();
-    void parseM3U(const QString &content, const QString &sourceName);
     void loadRemoteM3U(const QUrl &url);
     void loadLocalM3U(const QString &filePath);
     void displayChannels();
@@ -81,7 +81,11 @@ private:
 private slots:
     void onParseFinished();
     void onSearchClicked();
-
+    //xtream
+private:
+    void fetchXtreamChannels(const QString &server, const QString &username,
+                              const QString &password, const QString &userAgent);
+    void parseXtreamChannels(const QByteArray &data);
 
 };
 
