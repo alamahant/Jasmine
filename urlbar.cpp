@@ -23,7 +23,6 @@ void URLBar::setupUI()
     layout->setContentsMargins(8, 4, 8, 4);
     layout->setSpacing(8);
 
-    // Create navigation buttons
     m_backButton = new QPushButton();
     m_backButton->setIcon(QIcon(":/resources/icons/arrow-left.svg"));
     m_backButton->setFixedSize(32, 32);
@@ -48,14 +47,10 @@ void URLBar::setupUI()
     m_homeButton->setToolTip("Home");
     m_homeButton->setObjectName("urlBarButton");
 
-    // Create URL input
     m_urlInput = new QLineEdit();
     m_urlInput->setObjectName("formInput");
     m_urlInput->setPlaceholderText("Enter URL or Search Term...");
     m_urlInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    // make it readonly
-    //m_urlInput->setReadOnly(true);
-    // Create utility buttons
 
 
     m_copyButton = new QPushButton();
@@ -73,7 +68,6 @@ void URLBar::setupUI()
     m_addWebsiteButton->setObjectName("urlBarButton");
 
 
-    // Create search engine selector
     m_searchEngineCombo = new QComboBox();
     m_searchEngineCombo->addItem(QIcon(":/resources/icons/search.svg"), "Google");
     m_searchEngineCombo->addItem(QIcon(":/resources/icons/search.png"), "Duck2Go");
@@ -88,7 +82,6 @@ void URLBar::setupUI()
     m_openTabButton->setToolTip("New Tab");
     m_openTabButton->setObjectName("openTabButton");
 
-    // Add widgets to layout
     layout->addWidget(m_backButton);
     layout->addWidget(m_forwardButton);
     layout->addWidget(m_reloadButton);
@@ -102,7 +95,6 @@ void URLBar::setupUI()
     layout->addWidget(m_openTabButton);
 
 
-    // Initially disable navigation buttons
     updateButtonStates();
 
     QSettings settings;
@@ -149,7 +141,6 @@ void URLBar::onUrlEditingFinished()
 {
     QString url = m_urlInput->text().trimmed();
     if (!url.isEmpty()) {
-        // Add protocol if missing
         if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("file://")) {
             url = "https://" + url;
         }
@@ -189,9 +180,6 @@ void URLBar::onCopyClicked()
 
 void URLBar::updateButtonStates()
 {
-    // Initially disable navigation buttons until we have a web view
-    //m_backButton->setEnabled(false);
-    //m_forwardButton->setEnabled(false);
 }
 
 QString URLBar::getCurrentEngine() const
@@ -209,7 +197,6 @@ void URLBar::updateTheme(bool isDarkTheme) {
     m_copyButton->setIcon(QIcon(iconPath + "copy.svg"));
     m_addWebsiteButton->setIcon(QIcon(iconPath + "file-plus.svg"));
     m_openTabButton->setIcon(QIcon(iconPath + "plus.svg"));
-    // Update search engine combo icons
     if (m_searchEngineCombo) {
         QIcon searchIcon(iconPath + "search.svg");
         for (int i = 0; i < m_searchEngineCombo->count(); ++i) {
@@ -251,7 +238,6 @@ QUrl URLBar::getSearchUrl() const {
         return QUrl("https://www.bing.com/search?q=");
     }
 
-    // Default to Google
     return QUrl("https://www.google.com/search?q=");
 }
 

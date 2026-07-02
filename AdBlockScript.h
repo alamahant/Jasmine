@@ -2,13 +2,11 @@
 #define ADBLOCKSCRIPT_H
 #include <QString>
 
-// Simple class to provide ad-blocking JavaScript
 class AdBlockScript
 {
 public:
     static QString getScript()
     {
-        // More comprehensive CSS rules
         QString customCssRules = R"(
             /* Common ad selectors */
             div[id*="google_ads"],
@@ -54,10 +52,8 @@ public:
             }
         )";
 
-        // Build the full script with the CSS rules
         return R"(
             (function() {
-                // Apply CSS rules to block ads
                 function addStyleSheet() {
                     const style = document.createElement('style');
                     style.textContent = `)" + customCssRules + R"(`;
@@ -65,9 +61,7 @@ public:
                     (document.head || document.documentElement).appendChild(style);
                 }
 
-                // Remove existing ads
                 function removeAds() {
-                    // Find ad iframes
                     const iframes = document.querySelectorAll('iframe');
                     for (let i = 0; i < iframes.length; i++) {
                         const src = iframes[i].src || '';
@@ -81,7 +75,6 @@ public:
                         }
                     }
 
-                    // Find ad scripts
                     const scripts = document.querySelectorAll('script');
                     for (let i = 0; i < scripts.length; i++) {
                         const src = scripts[i].src || '';
@@ -95,9 +88,7 @@ public:
                     }
                 }
 
-                // Block ad-related JavaScript variables
                 function blockAdVars() {
-                    // Override common ad-related globals
                     window.canRunAds = true;  // Trick anti-adblock
                     window.adsbygoogle = [];
                     window.googletag = {
@@ -112,7 +103,6 @@ public:
                         }
                     };
 
-                    // Intercept ad-related functions
                     if (window.open) {
                         const originalOpen = window.open;
                         window.open = function(url, name, specs) {
@@ -127,7 +117,6 @@ public:
                     }
                 }
 
-                // Watch for dynamic ad insertions
                 function watchForAds() {
                     const observer = new MutationObserver(function(mutations) {
                         removeAds();
@@ -139,12 +128,10 @@ public:
                     });
                 }
 
-                // Run immediately
                 addStyleSheet();
                 removeAds();
                 blockAdVars();
 
-                // Run again when DOM is fully loaded
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', function() {
                         removeAds();
@@ -154,7 +141,6 @@ public:
                     watchForAds();
                 }
 
-                // Run again when page is fully loaded
                 window.addEventListener('load', function() {
                     removeAds();
                 });

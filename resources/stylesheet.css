@@ -13,7 +13,7 @@ QTabWidget::tab-bar {
 }
 
 QTabBar::tab {
-    padding: 8px 16px;
+    padding: 5px 16px;
     background: #e0e0e0;
     border: none;
 }

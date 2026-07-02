@@ -15,17 +15,14 @@ class CosmeticFilterInjector : public QObject
 public:
     explicit CosmeticFilterInjector(QWebEngineProfile *profile, QObject *parent = nullptr);
 
-    // Add raw JS or CSS as a script
     void addScript(const QString &name, const QString &sourceCode,
                    QWebEngineScript::InjectionPoint point = QWebEngineScript::DocumentReady);
 
-    // Convenience: add pure CSS rules
     void addCssFilter(const QString &name, const QString &css);
 
 private:
     QWebEngineProfile *m_profile;
 
-    // Install default cosmetic filters (YouTube, Facebook, etc.)
     void installDefaultFilters();
 };
 

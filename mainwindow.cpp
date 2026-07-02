@@ -56,23 +56,22 @@ MainWindow::MainWindow(QWidget *parent)
       player(new AdFreePlayerDialog(this)),
       radioSearchDialog(new SearchRadioStationsDialog(this)),
       searchIPTVDialog(new SearchIPTVDialog(this)),
-      searchPodcastdialog(new SearchPodcastDialog(this))
+      searchPodcastdialog(new SearchPodcastDialog(this)),
+      historyManager(new HistoryManager(this)),
+      bookmarkManager(new BookmarkManager(this))
 
 {
     setWindowTitle("Jasmine");
     setWindowIcon(QIcon(":/resources/jasmine.png"));
-    //this->setFixedSize(1130, 800);
     this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
 
 
     QSettings settings;
     buttonsHighlighted = settings.value("buttonsHighlighted", true).toBool();
+    historyEnabled = settings.value("history_enabled", false).toBool();
+    showUrlBar = settings.value("showurlbar_enabled", false).toBool();
 
-    //resize(1130, 800);
-    //this->installEventFilter(this);
 
-
-    // Load stylesheet
     QFile styleFile(":/resources/stylesheet.css");
     if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
         QTextStream stream(&styleFile);
@@ -82,63 +81,49 @@ MainWindow::MainWindow(QWidget *parent)
         setupModernStyles();
     }
 
-    // Create the stacked widget as the central widget
     m_stackedWidget = new QStackedWidget(this);
 
     setCentralWidget(m_stackedWidget);
 
 
-    // Create the dashboard and add it to the stacked widget
     m_dashboardWidget = createModernDashboard();
     m_stackedWidget->addWidget(m_dashboardWidget);
 
-    // add urlbar
     m_urlBar = new URLBar(this);
 
     m_urlBar->setObjectName("urlBar");
     m_urlBar->setVisible(false); // Initially hidden
-    // Create the web view container and add it to the stacked widget
     m_webViewContainer = createWebViewContainer();
     m_stackedWidget->addWidget(m_webViewContainer);
 
 
-    // Load sessions data
     loadSessionsData();
 
-    // Load the model
     if (QFile::exists(getWebsitesFilePath())) {
         m_model = loadModel();
     } else {
         m_model = new WebsiteListModel(this);
     }
 
-    // Set the model to the list view (keep this for compatibility)
     if (m_websiteList) {
         m_websiteList->setModel(m_model);
     }
 
-    // Update the website cards
     updateWebsiteCards();
     updateSessionCards();
 
-    //
-    // Select the first website if we're on the websites tab
     if (m_leftPanelTabs->currentIndex() == 0 && m_model->rowCount() > 0) {
         QModelIndex firstIndex = m_model->index(0, 0);
         m_websiteList->setCurrentIndex(firstIndex); // Add this line
 
         onWebsiteSelected(firstIndex);
     }
-    // Select the first session if we're on the sessions tab
     else if (m_leftPanelTabs->currentIndex() == 1 && !m_sessions.isEmpty()) {
         QString firstName = m_sessions.keys().first();
         onSessionSelected(firstName);
     }
-    //
-    // Setup web profile
     m_webProfile = new QWebEngineProfile("WebsiteManager", this);
 
-    //m_extManager = new ExtensionManager(m_webProfile,this);
 
     interceptor = new RequestInterceptor(this);
     m_adBlocker = new SimpleAdBlocker(this);
@@ -150,30 +135,21 @@ MainWindow::MainWindow(QWidget *parent)
     m_webProfile->setPersistentStoragePath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/storage");
     ensureProfileDirectoriesExist();
 
-    // Create toolbar with actions
 
     QToolBar* toolbar = createToolbar();
 
 
-    // Connect list view signals (keep for compatibility)
     connect(m_websiteList, &QListView::clicked, this, &MainWindow::onWebsiteSelected);
     connect(m_websiteList, &QListView::doubleClicked, this, &MainWindow::onWebsiteDoubleClicked);
 
-    // Connect tab widget signals
     connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::onTabCloseRequested);
 
-    // Set up keyboard shortcuts
     new QShortcut(QKeySequence("Ctrl+A"), this, SLOT(onAddWebsite()));
     new QShortcut(QKeySequence("Ctrl+E"), this, SLOT(onEditWebsite()));
     new QShortcut(QKeySequence("Delete"), this, SLOT(onDeleteWebsite()));
-   // new QShortcut(QKeySequence("Ctrl+L"), this, SLOT(ebsite()));
-    //new QShortcut(QKeySequence("Escape"), this, SLOT(onBackToDashboard()));
 
-    // Start with the dashboard view
     showDashboard();
-    //initialize downloadmanager
     downloadManager = new DownloadManager(this);
-    //connect download icon change
     connect(downloadManager, &DownloadManager::activeDownloadsChanged, [this](int count) {
         if (count > 0) {
 
@@ -188,42 +164,26 @@ MainWindow::MainWindow(QWidget *parent)
             }
         }
     });
-    //
-    // Connect downloads to download manager
     connect(m_webProfile, &QWebEngineProfile::downloadRequested,
             downloadManager, &DownloadManager::handleDownloadRequest);
 
-    //security manager
     m_securityManager = new SecurityManager(this);
     connect(m_securityManager, &SecurityManager::factoryResetRequested,
             this, &MainWindow::onRestoreFactoryDefaults);
-    //
     createMenus();
-    //2FA
     m_twoFAManager = nullptr;
-    //connect urlbar
     connectUrlBar();
-    //cleanu temp profiles
     cleanupTempProfiles();
 
-    // Load named profiles
 
     QTimer::singleShot(100, this, [this]() {
-        // First load the profile data
         loadNamedProfilesData();
 
-        // Then set up the UI
         setupNamedProfilesUI();
     });
 
     statusBar()->showMessage("Ready");
 
-    //testing extensions
-    //QString extensionPath = "/home/dharma/.local/share/Alamahant/Jasmine-extensions/storage/Extensions/uBOLite_2026.301.2014.chromium_XWsHZP";
-       // Or your AdGuard path
-    //QString extensionPath = "/home/dharma/shared/downloads/adguard/";
-    //QString extensionPath = "/home/dharma/.local/share/Alamahant/Jasmine-extensions/storage/Extensions/addguard_YSc6qX/";
-       //m_extManager->loadFromFolder(extensionPath);
 
     connect(player, &AdFreePlayerDialog::requestCurrentUrl, this, [this]() {
         if(m_urlBar){
@@ -237,7 +197,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     /*
     connect(player, &AdFreePlayerDialog::mediaLoaded, [this]() {
-        // Player started playing
         m_radioPlayButton->setEnabled(false);
         m_radioStopButton->setEnabled(true);
         m_iptvPlayButton->setEnabled(false);
@@ -247,13 +206,11 @@ MainWindow::MainWindow(QWidget *parent)
     */
 
     connect(player, &AdFreePlayerDialog::mediaStopped, [this]() {
-        // Player stopped
         m_radioPlayButton->setEnabled(true);
         m_radioStopButton->setEnabled(false);
         m_iptvPlayButton->setEnabled(true);
         m_iptvStopButton->setEnabled(false);
 
-        // Clear all playing indicators
         for (QFrame* card : m_radioCards) {
             card->setProperty("playing", false);
             card->style()->unpolish(card);
@@ -289,7 +246,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(searchPodcastdialog, &SearchPodcastDialog::podcastSelected,
             this, &MainWindow::onAddPodcastFromDialog);
 
-    // notification connects
     connect(radioSearchDialog, &SearchRadioStationsDialog::showNotification, this, [this](const QString& msg, int duration){
         showNotification(msg, duration);
     });
@@ -313,45 +269,57 @@ MainWindow::MainWindow(QWidget *parent)
         player->raise();
     });
 
-    //sortAllCards(); // maybe dangerous needs further testing
 
     m_trayIcon = new QSystemTrayIcon(this);
     m_trayIcon->setIcon(QIcon(":/resources/jasmine.png"));
     m_trayIcon->setToolTip("Jasmine Browser");
     m_trayIcon->show();
 
+    connect(historyManager, &HistoryManager::urlLaunched,
+            this, &MainWindow::createNewTabWithUrl);
+    connect(bookmarkManager, &BookmarkManager::urlLaunched,
+            this, &MainWindow::createNewTabWithUrl);
+
+    enableHistoryAction->blockSignals(true);
+    enableHistoryAction->setChecked(historyEnabled);
+    enableHistoryAction->blockSignals(false);
+
+    showUrlBarAction->blockSignals(true);
+    showUrlBarAction->setChecked(showUrlBar);
+    showUrlBarAction->blockSignals(false);
+
 }
 
 MainWindow::~MainWindow() {
 
-    //saveSessionsData();
-    // Save model on exit
     saveModel();
 
     if(m_toggleViewAction)
         delete m_toggleViewAction;
 
 
-    // Close download window before deleting download manager
     if (downloadManager) {
         delete downloadManager;
         downloadManager = nullptr;
     }
 
-    if(m_trayIcon) delete m_trayIcon;
+
+
+    if(m_trayIcon) {
+        delete m_trayIcon;
+        m_trayIcon = nullptr;
+    }
 
 }
 
 QWidget* MainWindow::createModernDashboard() {
     QWidget* dashboard = new QWidget(this);
 
-    // Main layout
     QVBoxLayout* containerLayout = new QVBoxLayout(dashboard);
     containerLayout->setSpacing(0);
     containerLayout->setContentsMargins(0, 0, 0, 0);
 
 
-    // Create main horizontal splitter
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal);
     mainSplitter->setHandleWidth(3); // was 1
 
@@ -368,12 +336,10 @@ QWidget* MainWindow::createModernDashboard() {
     mainSplitter->setChildrenCollapsible(true); // Allow collapsing
     containerLayout->addWidget(mainSplitter, 1);
 
-    // Create left panel with tabs
     m_leftPanelTabs = new QTabWidget();
     m_leftPanelTabs->setTabPosition(QTabWidget::West);
     m_leftPanelTabs->setDocumentMode(true);
 
-    // Create websites tab content
     m_websitesScrollArea = new QScrollArea();
     m_websitesScrollArea->setWidgetResizable(true);
     m_websitesScrollArea->setFrameShape(QFrame::NoFrame);
@@ -382,14 +348,12 @@ QWidget* MainWindow::createModernDashboard() {
 
     m_websitesGrid->setSpacing(12);
     m_websitesGrid->setContentsMargins(16, 16, 16, 16);
-    //
     m_websitesGrid->setSizeConstraint(QLayout::SetFixedSize);
     for (int i = 0; i < 3; ++i) { // Assuming 3 columns
         m_websitesGrid->setColumnStretch(i, 0);
     }
     m_websitesScrollArea->setWidget(m_websitesContainer);
 
-    // Create sessions tab content
     m_sessionsScrollArea = new QScrollArea();
     m_sessionsScrollArea->setWidgetResizable(true);
     m_sessionsScrollArea->setFrameShape(QFrame::NoFrame);
@@ -397,7 +361,6 @@ QWidget* MainWindow::createModernDashboard() {
     m_sessionsGrid = new QGridLayout(m_sessionsContainer);
     m_sessionsGrid->setSpacing(12);
     m_sessionsGrid->setContentsMargins(16, 16, 16, 16);
-    //
     m_sessionsGrid->setSizeConstraint(QLayout::SetFixedSize);
     for (int i = 0; i < 3; ++i) { // Assuming 3 columns
         m_sessionsGrid->setColumnStretch(i, 0);
@@ -406,56 +369,43 @@ QWidget* MainWindow::createModernDashboard() {
 
     m_leftPanelTabs->addTab(m_websitesScrollArea, createRotatedIcon(":/resources/icons/globe.svg"), QString());
     m_leftPanelTabs->addTab(m_sessionsScrollArea, createRotatedIcon(":/resources/icons/bookmark.svg"), QString());
-    // Set icon size
     m_leftPanelTabs->setIconSize(QSize(120, 15));
 
-    // Add tooltips to the tabs
     m_leftPanelTabs->tabBar()->setTabToolTip(0, "Websites");
     m_leftPanelTabs->tabBar()->setTabToolTip(1, "Sessions");
 
-    // Create a stacked widget for the details panels
     detailsStack = new QStackedWidget();
 
-    // Create website details panel
     m_detailsPanel = createDetailPanel();
 
-    // Set minimum size for details panel
     m_detailsPanel->setMinimumWidth(200); // Set a smaller minimum width
 
-    // Adjust size policies for form elements to allow shrinking
     m_urlInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_titleInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_commentsInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     detailsStack->addWidget(m_detailsPanel);
 
-    // Create session details panel
     QFrame* sessionDetailsPanel = createSessionDetailPanel();
     sessionDetailsPanel->setObjectName("sessionDetailsPanel");
 
-    // Set minimum size for session details panel
     sessionDetailsPanel->setMinimumWidth(200); // Set a smaller minimum width
 
-    // Adjust size policies for session form elements
     m_sessionNameInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_sessionTabsDisplay->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     detailsStack->addWidget(sessionDetailsPanel);
 
-    // Add panels to splitter
     mainSplitter->addWidget(m_leftPanelTabs);
     mainSplitter->addWidget(detailsStack);
 
-    // Set initial sizes (adjust as needed)
     mainSplitter->setSizes(QList<int>() << 400 << 300);
 
     connect(m_leftPanelTabs, &QTabWidget::currentChanged, [this](int index) {
-        // Switch the details stack to match the tab
         if (index >= 0 && index < detailsStack->count()) {
             detailsStack->setCurrentIndex(index);
         }
 
-        // Restore selection based on the active tab
         if (index == 0) { // Websites tab
             if (m_currentWebsiteIndex >= 0 && m_currentWebsiteIndex < m_model->rowCount()) {
                 QModelIndex modelIndex = m_model->index(m_currentWebsiteIndex, 0);
@@ -492,11 +442,9 @@ QWidget* MainWindow::createModernDashboard() {
         }
     });
 
-    // Create a hidden list view for backward compatibility
     m_websiteList = new QListView();
     m_websiteList->setVisible(false);
 
-    // radio
     createRadioTab();
     loadRadioStations();
     if (!m_radioStations.isEmpty()) {
@@ -504,14 +452,12 @@ QWidget* MainWindow::createModernDashboard() {
     }
     updateRadioGrid();
 
-    // iptv
     createIPTVTab();
     loadIPTVChannels();
     if (!m_iptvChannels.isEmpty()) {
         onIPTVStationSelected(0);
     }
     updateIPTVGrid();
-    // podcast
     createPodcastTab();
     loadPodcasts();
     if (!m_podcastShows.isEmpty()) {
@@ -531,12 +477,10 @@ QFrame* MainWindow::createDetailPanel() {
     QVBoxLayout* layout = new QVBoxLayout(panel);
     layout->setContentsMargins(16, 16, 16, 16);
 
-    // Title
     QLabel* titleLabel = new QLabel("Website Details");
     titleLabel->setObjectName("detailsPanelTitle");
     layout->addWidget(titleLabel);
 
-    // Form fields
     QFormLayout* formLayout = new QFormLayout();
     formLayout->setSpacing(12);
     formLayout->setLabelAlignment(Qt::AlignRight);
@@ -545,14 +489,12 @@ QFrame* MainWindow::createDetailPanel() {
     m_urlInput = new QLineEdit();
     m_titleInput = new QLineEdit();
 
-    // Add username and password fields
     m_usernameInput = new QLineEdit();
     m_usernameInput->setEchoMode(QLineEdit::Password);
 
     m_passwordInput = new QLineEdit();
     m_passwordInput->setEchoMode(QLineEdit::Password);
 
-    // Create eye icon buttons
     m_usernameEyeButton = new QPushButton();
     m_passwordEyeButton = new QPushButton();
     m_usernameEyeButton->setIcon(QIcon(":/resources/icons/eye.svg"));
@@ -564,14 +506,12 @@ QFrame* MainWindow::createDetailPanel() {
     m_commentsInput = new QTextEdit();
     m_commentsInput->setMinimumHeight(100);
 
-    // Icon display
     m_iconLabel = new QLabel();
     m_iconLabel->setFixedSize(32, 32);
     m_iconLabel->setAlignment(Qt::AlignCenter);
     m_iconLabel->setFrameShape(QFrame::StyledPanel);
     m_iconLabel->setObjectName("iconPreview");
 
-    // Set object names
     m_urlInput->setObjectName("formInput");
     m_urlInput->setPlaceholderText("*Required*");
     m_titleInput->setObjectName("formInput");
@@ -588,7 +528,6 @@ QFrame* MainWindow::createDetailPanel() {
     m_commentsInput->setObjectName("formTextArea");
     m_commentsInput->setPlaceholderText("Optional");
 
-    // Create layouts for username/password with eye buttons
     QHBoxLayout* usernameLayout = new QHBoxLayout();
     usernameLayout->addWidget(m_usernameInput);
     usernameLayout->addWidget(m_usernameEyeButton);
@@ -599,7 +538,6 @@ QFrame* MainWindow::createDetailPanel() {
     passwordLayout->addWidget(m_passwordEyeButton);
     passwordLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Add to form
     formLayout->addRow("Icon:", m_iconLabel);
     formLayout->addRow("URL:", m_urlInput);
     formLayout->addRow("Title:", m_titleInput);
@@ -607,7 +545,6 @@ QFrame* MainWindow::createDetailPanel() {
     formLayout->addRow("Password:", passwordLayout);
     formLayout->addRow("Comments:", m_commentsInput);
 
-    // Connect eye button signals
     connect(m_usernameEyeButton, &QPushButton::toggled, [this](bool checked) {
         m_usernameInput->setEchoMode(checked ? QLineEdit::Normal : QLineEdit::Password);
     });
@@ -618,11 +555,9 @@ QFrame* MainWindow::createDetailPanel() {
 
     layout->addLayout(formLayout);
 
-    // Create action buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(8);
 
-    // Create buttons
     m_addButton = new QPushButton("Add");
     m_addButton->setToolTip("Save the website to your collection");
 
@@ -639,38 +574,27 @@ QFrame* MainWindow::createDetailPanel() {
     m_clearButton->setToolTip("Clear the form");
 
 
-    // Set icons
-    //m_addButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
-    //m_editButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-    //m_deleteButton->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
-    //m_launchButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
-    //m_clearButton->setIcon(style()->standardIcon(QStyle::SP_DialogResetButton));
 
-    // Set object names for styling
     m_addButton->setObjectName("primaryButton");
     m_launchButton->setObjectName("primaryButton");
     m_editButton->setObjectName("secondaryButton");
     m_deleteButton->setObjectName("secondaryButton");
     m_clearButton->setObjectName("secondaryButton");
 
-    // Initially disable edit/delete/launch buttons
     m_editButton->setEnabled(false);
     m_deleteButton->setEnabled(false);
     m_launchButton->setEnabled(false);
 
-    // Add buttons to layout
     buttonLayout->addWidget(m_addButton);
     buttonLayout->addWidget(m_editButton);
     buttonLayout->addWidget(m_deleteButton);
     buttonLayout->addWidget(m_launchButton);
     buttonLayout->addWidget(m_clearButton);
 
-    // Add some spacing before buttons
     layout->addSpacing(16);
     layout->addLayout(buttonLayout);
     layout->addStretch();
 
-    // Connect buttons to their slots
     connect(m_addButton, &QPushButton::clicked, this, &MainWindow::onAddWebsite);
     connect(m_editButton, &QPushButton::clicked, this, &MainWindow::onEditWebsite);
     connect(m_deleteButton, &QPushButton::clicked, this, &MainWindow::onDeleteWebsite);
@@ -686,19 +610,15 @@ QWidget* MainWindow::createWebViewContainer() {
     QVBoxLayout* layout = new QVBoxLayout(container);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-    // Add URLBar
     layout->addWidget(m_urlBar);
-    //m_urlBar->setVisible(true);
-    // Create tab widget
     m_tabWidget = new QTabWidget();
 
-    // connect tab switching to update url in urlbar
     connect(m_tabWidget, &QTabWidget::currentChanged, this, [this](int index) {
         if (index >= 0) {
             if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->widget(index))) {
                 m_urlBar->setUrl(view->url().toString());
-                //refresh to solve resize issues
-                // Fix WebView display issues
+                bookmarkManager->setCurrentUrl(view->url().toString(), view->title());
+
                 view->updateGeometry();
                 view->update();
             }
@@ -706,9 +626,8 @@ QWidget* MainWindow::createWebViewContainer() {
     });
 
 
-
+/*
     connect(page, &MyWebPage::newTabRequested, this, [this](QWebEngineView *view, QWebEngineProfile *){
-        // Just use your existing method
          createNewTabWithUrlFromLink(view->url().toString(), view);
     });
 
@@ -718,13 +637,12 @@ QWidget* MainWindow::createWebViewContainer() {
 
         });
 
-
+*/
 
     m_tabWidget->setTabsClosable(true);
     m_tabWidget->setDocumentMode(true);
     m_tabWidget->setMovable(true);
 
-    // Add widgets to layout
     layout->addWidget(m_tabWidget, 1);
 
     return container;
@@ -738,61 +656,48 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     card->setCursor(Qt::PointingHandCursor);
     card->setObjectName("websiteCard");
     card->setFixedSize(200, 200); // Square cards - was 180
-    //card->setMinimumSize(180, 180); // Set minimum instead
-    //card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     card->setCursor(Qt::ArrowCursor);  // Always arrow, never hand
 
 
-    // Add shadow effect
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
     shadow->setBlurRadius(10);
     shadow->setColor(QColor(0, 0, 0, 30));
     shadow->setOffset(0, 2);
     card->setGraphicsEffect(shadow);
 
-    // Create layout
     QVBoxLayout* layout = new QVBoxLayout(card);
     layout->setContentsMargins(15, 15, 15, 15); // was 12
 
-    // Create a horizontal layout for title and favicon
     QHBoxLayout* titleLayout = new QHBoxLayout();
 
-    // Add favicon
     QLabel* iconLabel = new QLabel();
     iconLabel->setFixedSize(16, 16);
 
     if (!website.favicon.isNull()) {
-        // Use the stored favicon
         iconLabel->setPixmap(website.favicon.pixmap(16, 16));
     } else {
-        // Use a default icon
         iconLabel->setPixmap(QIcon::fromTheme("text-html").pixmap(16, 16));
     }
 
     titleLayout->addWidget(iconLabel);
 
-    // Title
     QLabel* titleLabel = new QLabel(website.title);
     titleLabel->setObjectName("cardTitle");
     titleLabel->setWordWrap(true);
     titleLayout->addWidget(titleLabel, 1); // 1 gives it stretch priority
 
-    // Add title layout to main layout
     layout->addLayout(titleLayout);
 
-    // URL
     QLabel* urlLabel = new QLabel(website.url);
     urlLabel->setObjectName("cardUrl");
     urlLabel->setWordWrap(true);
     layout->addWidget(urlLabel);
 
 
-    // Add action buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setContentsMargins(0, 8, 0, 0);
 
-    // Launch button
     launchBtn = new QPushButton();
     launchBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
     launchBtn->setToolTip("Launch Website");
@@ -800,7 +705,6 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     launchBtn->setCursor(Qt::PointingHandCursor);
     launchBtn->setObjectName("cardButton");
 
-    // Edit button
     editBtn = new QPushButton();
     editBtn->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
     editBtn->setToolTip("Update Website Details");
@@ -808,7 +712,6 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     editBtn->setCursor(Qt::PointingHandCursor);
     editBtn->setObjectName("cardButton");
 
-    // Delete button
     deleteBtn = new QPushButton();
     deleteBtn->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
     deleteBtn->setToolTip("Delete Website");
@@ -816,22 +719,18 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
     deleteBtn->setCursor(Qt::PointingHandCursor);
     deleteBtn->setObjectName("cardButton");
 
-    // Add buttons to layout
     buttonLayout->addWidget(launchBtn);
     buttonLayout->addWidget(editBtn);
     buttonLayout->addWidget(deleteBtn);
     buttonLayout->addStretch();
     layout->addLayout(buttonLayout);
 
-    // Connect button signals
     connect(launchBtn, &QPushButton::clicked, [this, index]() {
         m_websiteList->setCurrentIndex(m_model->index(index, 0));
         onLaunchWebsite();
     });
 
     connect(editBtn, &QPushButton::clicked, [this, index]() {
-        //m_websiteList->setCurrentIndex(m_model->index(index, 0));
-        //onWebsiteSelected(m_model->index(index, 0));
         onEditWebsite();
     });
 
@@ -840,7 +739,6 @@ QFrame* MainWindow::createWebsiteCard(const Website& website, int index) {
         onDeleteWebsite();
     });
 
-    // Connect card click
     card->installEventFilter(this);
     card->setProperty("websiteIndex", index);
 
@@ -857,23 +755,18 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     card->setFixedSize(200, 200); // Square cards - was 180
     card->setCursor(Qt::ArrowCursor);  // Always arrow, never hand
 
-    //card->installEventFilter(this);
 
-    // Add shadow effect
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
     shadow->setBlurRadius(10);
     shadow->setColor(QColor(0, 0, 0, 30));
     shadow->setOffset(0, 2);
     card->setGraphicsEffect(shadow);
 
-    // Create layout
     QVBoxLayout* layout = new QVBoxLayout(card);
     layout->setContentsMargins(15, 15, 15, 15); // was  12
 
-    // Title row with icon and name
     QHBoxLayout* titleLayout = new QHBoxLayout();
 
-    // Icon display
     QLabel* iconLabel = new QLabel();
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setFixedSize(20, 20); // was 24
@@ -884,12 +777,10 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     }
     titleLayout->addWidget(iconLabel);
 
-    // Session name
     QLabel* nameLabel = new QLabel(sessionName);
     nameLabel->setObjectName("cardTitle");
     nameLabel->setWordWrap(true);
 
-    // OPTION: Smaller font
     QFont font = nameLabel->font();
     font.setPointSize(8); // Slightly smaller
     nameLabel->setFont(font);
@@ -899,16 +790,13 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
 
     layout->addLayout(titleLayout);
 
-    // Tab count
     QLabel* tabCountLabel = new QLabel(QString("%1 tabs").arg(session.openTabUrls.count()));
     tabCountLabel->setObjectName("cardTabCount");
     layout->addWidget(tabCountLabel);
 
-    // Add action buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setContentsMargins(0, 8, 0, 0);
 
-    // Load button
     QPushButton* loadBtn = new QPushButton();
     loadBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
     loadBtn->setToolTip("Load Session");
@@ -916,7 +804,6 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     loadBtn->setCursor(Qt::PointingHandCursor);
     loadBtn->setObjectName("cardButton");
 
-    // Delete button
     QPushButton* deleteBtn = new QPushButton();
     deleteBtn->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
     deleteBtn->setToolTip("Delete Session");
@@ -924,13 +811,11 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
     deleteBtn->setCursor(Qt::PointingHandCursor);
     deleteBtn->setObjectName("cardButton");
 
-    // Add buttons to layout
     buttonLayout->addWidget(loadBtn);
     buttonLayout->addWidget(deleteBtn);
     buttonLayout->addStretch();
     layout->addLayout(buttonLayout);
 
-    // Connect button signals
     connect(loadBtn, &QPushButton::clicked, [this, sessionName]() {
         onSessionSelected(sessionName);
         onLoadSelectedSession();
@@ -954,7 +839,6 @@ QFrame* MainWindow::createSessionCard(const QString& sessionName, const SessionD
 
 
 void MainWindow::updateWebsiteCards() {
-    // Clear existing cards
     QLayoutItem* item;
     while ((item = m_websitesGrid->takeAt(0)) != nullptr) {
         if (item->widget()) {
@@ -964,7 +848,6 @@ void MainWindow::updateWebsiteCards() {
     }
     m_websiteCards.clear();
 
-    // Add website cards
     int row = 0;
     int col = 0;
     int maxCols = 3; // Adjust based on your preference
@@ -981,11 +864,9 @@ void MainWindow::updateWebsiteCards() {
             row++;
         }
     }
-    // Add a stretch at the end
     m_websitesGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
 
 
-    // Restore highlight for currently selected website
     QModelIndex currentSelection = m_websiteList->currentIndex();
     if (currentSelection.isValid()) {
         onWebsiteSelected(currentSelection);
@@ -993,7 +874,6 @@ void MainWindow::updateWebsiteCards() {
 }
 
 void MainWindow::updateSessionCards() {
-    // Clear existing cards
     QLayoutItem* item;
     while ((item = m_sessionsGrid->takeAt(0)) != nullptr) {
         if (item->widget()) {
@@ -1003,7 +883,6 @@ void MainWindow::updateSessionCards() {
     }
     m_sessionCards.clear();
 
-    // Add session cards
     int row = 0;
     int col = 0;
     int maxCols = 3; // Adjust based on your preference
@@ -1023,7 +902,6 @@ void MainWindow::updateSessionCards() {
         }
     }
 
-    // Add a stretch at the end
     m_sessionsGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
 }
 
@@ -1044,19 +922,15 @@ void MainWindow::highlightCard(QFrame* card, bool highlight) {
 }
 
 void MainWindow::setupModernStyles() {
-    // This is a fallback if the external stylesheet can't be loaded
     setStyleSheet(
-        // Main application
         "QMainWindow { background-color: #f5f5f5; }"
 
-        // Tab widget
         "QTabWidget::pane { border: none; }"
         "QTabWidget::tab-bar { alignment: left; }"
         "QTabBar::tab { padding: 8px 16px; background: #e0e0e0; border: none; }"
         "QTabBar::tab:selected { background: #2196F3; color: white; }"
         "QTabBar::tab:hover:!selected { background: #d0d0d0; }"
 
-        // Website cards
         "#websiteCard {"
         "  background-color: white;"
         "  border-radius: 8px;"
@@ -1070,7 +944,6 @@ void MainWindow::setupModernStyles() {
         "  border: 2px solid #2196F3;"
         "}"
 
-        // Session cards
         "#sessionCard {"
         "  background-color: white;"
         "  border-radius: 8px;"
@@ -1080,7 +953,6 @@ void MainWindow::setupModernStyles() {
         "  background-color: #f0f7ff;"
         "}"
 
-        // Card elements
         "#cardTitle { font-weight: bold; font-size: 16px; }"
         "#cardUrl { color: #2196F3; font-size: 12px; }"
         "#cardComments { color: #757575; font-size: 12px; margin-top: 8px; }"
@@ -1089,7 +961,6 @@ void MainWindow::setupModernStyles() {
         "#cardButton { border: none; padding: 4px; }"
         "#cardButton:hover { background-color: #e0e0e0; border-radius: 4px; }"
 
-        // Details panel
         "#detailsPanel {"
         "  background-color: #f5f5f5;"
         "  border-radius: 8px;"
@@ -1097,7 +968,6 @@ void MainWindow::setupModernStyles() {
         "}"
         "#detailsPanelTitle { font-size: 18px; font-weight: bold; margin-bottom: 16px; }"
 
-        // Form elements
         "#formInput, #formTextArea {"
         "  border: 1px solid #ddd;"
         "  border-radius: 4px;"
@@ -1108,7 +978,6 @@ void MainWindow::setupModernStyles() {
         "  border: 2px solid #2196F3;"
         "}"
 
-        // Buttons
         "#primaryButton {"
         "  background-color: #2196F3;"
         "  color: white;"
@@ -1132,7 +1001,6 @@ void MainWindow::setupModernStyles() {
         "  background-color: #e0e0e0;"
         "}"
 
-        // Dashboard button
         "#dashboardButton {"
         "  background-color: #2196F3;"
         "  color: white;"
@@ -1147,7 +1015,6 @@ void MainWindow::setupModernStyles() {
 }
 
 void MainWindow::onAddWebsite() {
-    // Get the data from the form
     QString url = m_urlInput->text().trimmed();
     QString title = m_titleInput->text().trimmed();
     QString userName = m_usernameInput->text().trimmed();
@@ -1155,25 +1022,21 @@ void MainWindow::onAddWebsite() {
 
     QString comments = m_commentsInput->toPlainText().trimmed();
 
-    // Validate URL
     if (url.isEmpty()) {
         QMessageBox::warning(this, "Invalid URL", "Please enter a valid URL.");
         return;
     }
 
-    // Add http:// if missing
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
         url = "http://" + url;
         m_urlInput->setText(url);
     }
 
-    // If title is empty, use the URL as title
     if (title.isEmpty()) {
         title = url;
         m_titleInput->setText(title);
     }
 
-    // Add the website to the model
     Website website;
     website.url = url;
     website.title = title;
@@ -1181,57 +1044,46 @@ void MainWindow::onAddWebsite() {
     website.password = userPassword;
     website.comments = comments;
     m_model->addWebsite(website);
-    // Clear the form
     onClearForm();
-    // Save the model
     saveModel();
-    // Update the website cards
     updateWebsiteCards();
-    // Show a status message
     statusBar()->showMessage("Website added successfully.", 3000);
 }
 
 
 void MainWindow::onEditWebsite() {
-    // Get the selected index
     QModelIndex currentIndex = m_websiteList->currentIndex();
     if (!currentIndex.isValid()) {
         QMessageBox::warning(this, "No Selection", "Please select a website to edit.");
         return;
     }
 
-    // Get the data from the form
     QString url = m_urlInput->text().trimmed();
     QString title = m_titleInput->text().trimmed();
     QString userName = m_usernameInput->text().trimmed();
     QString userPassword = m_passwordInput->text().trimmed();
     QString comments = m_commentsInput->toPlainText().trimmed();
 
-    // Validate URL
     if (url.isEmpty()) {
         QMessageBox::warning(this, "Invalid URL", "Please enter a valid URL.");
         return;
     }
 
-    // Add http:// if missing
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
         url = "http://" + url;
         m_urlInput->setText(url);
     }
 
-    // If title is empty, use the URL as title
     if (title.isEmpty()) {
         title = url;
         m_titleInput->setText(title);
     }
 
-    // Get favicon from the icon label
     QIcon favicon;
     if (!m_iconLabel->pixmap().isNull()) {
         favicon = QIcon(m_iconLabel->pixmap());
     }
 
-    // Update the website in the model
     Website website;
     website.url = url;
     website.title = title;
@@ -1242,44 +1094,33 @@ void MainWindow::onEditWebsite() {
 
     m_model->setWebsite(currentIndex.row(), website);
 
-    // Clear the form
     onClearForm();
 
-    // Save the model
     saveModel();
 
-    // Update the website cards
     updateWebsiteCards();
 
-    // Show a status message
     statusBar()->showMessage("Website updated successfully.", 3000);
 }
 
 void MainWindow::onDeleteWebsite() {
-    // Get the selected index
     QModelIndex currentIndex = m_websiteList->currentIndex();
     if (!currentIndex.isValid()) {
         QMessageBox::warning(this, "No Selection", "Please select a website to delete.");
         return;
     }
 
-    // Ask for confirmation
     if (QMessageBox::question(this, "Confirm Deletion",
                               "Are you sure you want to delete this website?",
                               QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
-        // Delete the website from the model
         m_model->removeWebsite(currentIndex.row());
 
-        // Clear the form
         onClearForm();
 
-        // Save the model
         saveModel();
 
-        // Update the website cards
         updateWebsiteCards();
 
-        // Show a status message
         statusBar()->showMessage("Website deleted successfully.", 3000);
     }
 }
@@ -1293,71 +1134,66 @@ void MainWindow::onLaunchWebsite() {
         return;
     }
 
+    if(player){
+        player->hide();
+        streamButton->setChecked(false);
+    }
+
     Website website = m_model->getWebsite(index.row());
 
-    // Create a new web view for the website
     QWebEngineView* webView = new QWebEngineView(m_tabWidget);
-    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+    connect(webView, &QWebEngineView::urlChanged, this, [this, webView](const QUrl &url) {
         if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
             if (sender() == currentView) {
                 m_urlBar->setUrl(url.toString());
             }
+            onHistoryEnabled(webView);
+
         }
+
+
     });
-    // Determine which profile to use
+    //onHistoryEnabled(webView);
+
     QWebEngineProfile *profile;
 
     if (m_usingNamedProfiles && !m_selectedProfileName.isEmpty()) {
-        // Use private profile
         profile = getOrCreateNamedProfile(m_selectedProfileName);
 
-        //configureProfile(profile);
 
         m_tabNamedProfiles[webView] = m_selectedProfileName;
 
     } else if (m_usingSeparateProfiles) {
-        // Use separate profile
         profile = createProfileForTab();
 
-        //configureProfile(profile);
 
         m_tabProfiles[webView] = profile;
 
     } else {
-        // Use shared profile
         profile = m_webProfile;
     }
 
-    // Create page with the selected profile
     page = new MyWebPage(profile, webView);
 
-    // full screen
     configurePage(page);
 
     webView->setPage(page);
     setupCustomContextMenu(webView, profile);
 
-    // Add new tab for this website FIRST
 
     int tabIndex = m_tabWidget->addTab(webView, website.title);
 
-    // Set the tab icon if we already have a favicon
     if (!website.favicon.isNull()) {
         m_tabWidget->setTabIcon(tabIndex, website.favicon);
     }
     showWebViews();
-    // Set the current tab
     m_tabWidget->setCurrentIndex(tabIndex);
 
-    // NOW load the URL (after switching views)
     webView->setUrl(QUrl(website.url));
 
-    // Disable the checkbox after opening the first tab
     if (m_tabWidget->count() == 1) {  // Changed from 0 to 1
-        //m_separateProfilesCheckbox->setEnabled(false);
     }
 
-    // Connect to the destroyed signal to clean up the profile
     connect(webView, &QObject::destroyed, this, [this, webView]() {
         cleanupTabProfile(webView);
     });
@@ -1366,26 +1202,23 @@ void MainWindow::onLaunchWebsite() {
 
         updateWebsiteIcon(websiteIndex, icon);
 
-        // Update the tab icon
         int tabIndex = m_tabWidget->indexOf(webView);
         if (tabIndex != -1) {
             m_tabWidget->setTabIcon(tabIndex, icon);
         }
 
-        // Update website cards if on dashboard
         if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
 
             updateWebsiteCards();
 
         }
-        // Disconnect ALL iconChanged signals from this webView to this MainWindow
         disconnect(webView, &QWebEngineView::iconChanged, this, nullptr);
     });
+    m_urlBar->setVisible(showUrlBar);
     statusBar()->showMessage("Launched: " + website.title, 3000);
 }
 
 void MainWindow::onClearForm() {
-    // Clear the form fields
     m_urlInput->clear();
     m_titleInput->clear();
     m_usernameInput->clear();
@@ -1393,15 +1226,12 @@ void MainWindow::onClearForm() {
     m_commentsInput->clear();
     m_iconLabel->clear();
 
-    // Deselect any selected website
     m_websiteList->clearSelection();
 
-    // Disable edit/delete/launch buttons
     m_editButton->setEnabled(false);
     m_deleteButton->setEnabled(false);
     m_launchButton->setEnabled(false);
 
-    // Unhighlight all cards
     for (QFrame* card : m_websiteCards.values()) {
         highlightCard(card, false);
     }
@@ -1411,18 +1241,14 @@ void MainWindow::onWebsiteSelected(const QModelIndex &index) {
     if (index.isValid()) {
         m_currentWebsiteIndex = index.row();
 
-        // Get the website
         Website website = m_model->getWebsite(index.row());
 
-        // Populate the form
         populateFormFromWebsite(website);
 
-        // Enable edit/delete/launch buttons
         m_editButton->setEnabled(true);
         m_deleteButton->setEnabled(true);
         m_launchButton->setEnabled(true);
 
-        // Highlight the selected card and unhighlight others
         for (int i = 0; i < m_model->rowCount(); ++i) {
             if (m_websiteCards.contains(i)) {
                 highlightCard(m_websiteCards[i], i == index.row());
@@ -1439,37 +1265,28 @@ void MainWindow::onWebsiteDoubleClicked(const QModelIndex &index) {
 
 
 void MainWindow::onTabCloseRequested(int index) {
-    // Get the web view to be closed
     QWidget* widget = m_tabWidget->widget(index);
     QWebEngineView* webView = qobject_cast<QWebEngineView*>(widget);
 
 
 
 
-    // Clean up the profile if this specific tab has a separate profile
     if (webView && m_tabProfiles.contains(webView)) {
-        // This tab actually has a separate profile - clean it up
         cleanupTabProfile(webView);
     }
 
-    // Remove named profile reference if this tab uses a named profile
     if (webView && m_tabNamedProfiles.contains(webView)) {
-        // Just remove the reference - don't delete the profile itself
         m_tabNamedProfiles.remove(webView);
     }
 
-    // Remove the tab
     m_tabWidget->removeTab(index);
 
-    // Delete the widget with a short delay to allow pending operations to complete
     if (widget) {
         widget->deleteLater();
     }
 
-    // Update tab count in status bar
     updateTabCountStatus();
 
-    // If no tabs left, go back to dashboard
     if (m_tabWidget->count() == 0) {
         showDashboard();
         m_toggleViewAction->setText("Tabs: 0");
@@ -1477,16 +1294,13 @@ void MainWindow::onTabCloseRequested(int index) {
     } else {
         QTimer::singleShot(10, this, [this]() {
             if (QWebEngineView* currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
-                // Update WebView geometry and display
                 currentView->updateGeometry();
                 currentView->update();
 
-                // Update URL bar
                 if (m_urlBar) {
                     m_urlBar->setUrl(currentView->url().toString());
                 }
 
-                // Update window title
                 QString title = currentView->title();
                 if (!title.isEmpty()) {
                     setWindowTitle(title + " - Jasmine");
@@ -1494,10 +1308,8 @@ void MainWindow::onTabCloseRequested(int index) {
                     setWindowTitle("Jasmine - Web Browser");
                 }
 
-                // Give focus to the current tab
                 currentView->setFocus();
 
-                // Update container if needed
                 if (m_webViewContainer) {
                     m_webViewContainer->updateGeometry();
                     m_webViewContainer->update();
@@ -1516,7 +1328,6 @@ void MainWindow::populateFormFromWebsite(const Website &website) {
     m_passwordInput->setText(website.password);
     m_commentsInput->setPlainText(website.comments);
 
-    // Display the icon
     if (!website.favicon.isNull()) {
         m_iconLabel->setPixmap(website.favicon.pixmap(32, 32));
     } else {
@@ -1526,25 +1337,20 @@ void MainWindow::populateFormFromWebsite(const Website &website) {
 
 
 void MainWindow::showDashboard() {
-    // Save current web view size before switching
     if (m_stackedWidget->currentWidget() == m_webViewContainer) {
         m_savedWebViewSize = this->size();
     }
 
-    // Switch to dashboard
     m_stackedWidget->setCurrentWidget(m_dashboardWidget);
 
     if (this->isMaximized()) {
         this->setWindowState(Qt::WindowNoState);
     }
 
-    // Lock dashboard size
     this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
 
     m_stackedWidget->update();
 
-    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-right.svg"));
-    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
 
     m_toggleViewAction->setToolTip("Switch to Webview");
     setWindowTitle("Jasmine");
@@ -1556,14 +1362,11 @@ void MainWindow::showDashboard() {
 }
 
 void MainWindow::showWebViews() {
-    // Switch to web view
     m_stackedWidget->setCurrentWidget(m_webViewContainer);
 
-    // Allow resizing in web view
     this->setMinimumSize(0, 0);
     this->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
 
-    // Restore previous web view size if available, otherwise use dashboard size
     if (!m_savedWebViewSize.isEmpty()) {
         this->resize(m_savedWebViewSize);
     } else {
@@ -1574,8 +1377,6 @@ void MainWindow::showWebViews() {
 
     updateUrlBarState();
 
-    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/chevron-left.svg"));
-    //m_toggleViewAction->setIcon(QIcon(":/resources/icons/repeat.svg"));
 
     m_toggleViewAction->setToolTip("Switch to Dashboard");
     setWindowTitle("Jasmine - Web Browser");
@@ -1602,9 +1403,7 @@ QWebEngineView* MainWindow::getCurrentWebView() const {
 
 void MainWindow::updateReturnToWebViewButton() {
     bool hasOpenTabs = m_tabWidget->count() > 0;
-    //m_returnToWebViewButton->setVisible(hasOpenTabs);
     if (hasOpenTabs) {
-        //m_returnToWebViewButton->setText(QString("Return to Web View (%1 tabs)").arg(m_tabWidget->count()));
     }
 }
 
@@ -1616,13 +1415,10 @@ void MainWindow::saveModel() {
         QDataStream out(&file);
         out.setVersion(QDataStream::Qt_6_0);
 
-        // Get the list of websites
         QList<Website> websites = m_model->getWebsites();
 
-        // Write the count first
         out << quint32(websites.size());
 
-        // Write each website individually
         for (const Website &website : websites) {
             out << website;
         }
@@ -1641,11 +1437,9 @@ WebsiteListModel* MainWindow::loadModel() {
         QDataStream in(&file);
         in.setVersion(QDataStream::Qt_6_0);
 
-        // Read the count
         quint32 count;
         in >> count;
 
-        // Read each website
         QList<Website> websites;
         for (quint32 i = 0; i < count; ++i) {
             Website website;
@@ -1666,20 +1460,16 @@ QString MainWindow::getWebsitesFilePath() {
 
 
 void MainWindow::createMenus() {
-    // Create menus
     QMenu* fileMenu = menuBar()->addMenu("File");
     QMenu* editMenu = menuBar()->addMenu("Edit");
     QMenu* viewMenu = menuBar()->addMenu("View");
     QMenu* navigateMenu = menuBar()->addMenu("Navigate");
     QMenu* sessionMenu = menuBar()->addMenu("Sessions");
     QMenu* toolsMenu = menuBar()->addMenu("Tools");
-    //QMenu* helpMenu = menuBar()->addMenu("Help");
 
-    //security menu
     m_securityManager->setupSecurityMenu(menuBar());
     QMenu* helpMenu = menuBar()->addMenu("Help");
 
-    // Add existing toolbar actions to menus
     fileMenu->addAction(m_addCurrentSessionAction);
     fileMenu->addSeparator();
     fileMenu->addAction(m_addWebsiteFromUrlAction);
@@ -1692,24 +1482,19 @@ void MainWindow::createMenus() {
     editMenu->addSeparator();
     editMenu->addAction(m_addCurrentWebsiteAction);
 
-    // Create zoom submenu
     QMenu* zoomSubmenu = viewMenu->addMenu("Zoom");
 
-    // Create separate zoom actions for menu only
     QAction* menuZoomInAction = new QAction(QIcon(":/resources/icons/zoom-in.svg"), "Zoom In", this);
     QAction* menuZoomOutAction = new QAction(QIcon(":/resources/icons/zoom-out.svg"), "Zoom Out", this);
 
-    // Set shortcuts for menu zoom actions
     menuZoomInAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Up));
     menuZoomOutAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Down));
-    // Add actions to main window for global shortcuts
     this->addAction(menuZoomInAction);
     this->addAction(menuZoomOutAction);
 
     zoomSubmenu->addAction(menuZoomInAction);
     zoomSubmenu->addAction(menuZoomOutAction);
 
-    // Connect menu zoom actions
     connect(menuZoomInAction, &QAction::triggered, [this]() {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
             view->setZoomFactor(view->zoomFactor() + 0.1);
@@ -1751,7 +1536,6 @@ void MainWindow::createMenus() {
     navigateMenu->addAction(m_webReloadAction);
     navigateMenu->addAction(m_goHomeAction);
 
-    // Create new actions for sessions menu
     QAction* saveSessionAction = sessionMenu->addAction("Save Current Session");
     QAction* loadSessionAction = sessionMenu->addAction("Load Session");
     QAction* manageSessionsAction = sessionMenu->addAction("Manage Sessions");
@@ -1761,13 +1545,11 @@ void MainWindow::createMenus() {
     QAction* factoryResetAction = new QAction("Restore Factory Defaults", this);
     sessionMenu->addAction(factoryResetAction);
 
-    // Create new actions for tools menu
     QAction* separateProfilesAction = toolsMenu->addAction("Toggle Private Profile");
     QAction* themeAction = toolsMenu->addAction("Toggle Theme");
     toolsMenu->addSeparator();
     toolsMenu->addAction(m_open2faManagerAction);
 
-    // Create new actions for other menus
     QAction* exitAction = fileMenu->addAction("Exit");
     QAction* aboutAction = helpMenu->addAction("About");
     QAction* featuresAction = helpMenu->addAction("Features");
@@ -1784,10 +1566,8 @@ void MainWindow::createMenus() {
 
     QAction* supportusAction = helpMenu->addAction("Support Us");
 
-    // Set shortcuts
     exitAction->setShortcut(QKeySequence::Quit);
 
-    // Connect new session actions
     connect(saveSessionAction, &QAction::triggered, this, &MainWindow::onSaveSession);
     connect(loadSessionAction, &QAction::triggered, this, &MainWindow::onLoadSession);
     connect(manageSessionsAction, &QAction::triggered, this, &MainWindow::onManageSessions);
@@ -1795,7 +1575,6 @@ void MainWindow::createMenus() {
     connect(cleanSharedDataAction, &QAction::triggered, this, &MainWindow::onCleanSharedProfileData);
     connect(factoryResetAction, &QAction::triggered, this, &MainWindow::onRestoreFactoryDefaults);
 
-    // Connect tools actions
     connect(separateProfilesAction, &QAction::triggered, [this]() {
         m_separateProfilesToggle->toggle();
     });
@@ -1803,7 +1582,6 @@ void MainWindow::createMenus() {
         m_themeToggle->toggle();
     });
 
-    // Connect other actions
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
     connect(aboutAction, &QAction::triggered, [this]() {
         HelpMenuDialog dialog(HelpType::About, this);
@@ -1940,17 +1718,14 @@ void MainWindow::createMenus() {
         }
 
     });
-    // Cleaup at app startup checkbox
     toolsMenu->addSeparator();
     QAction* cleanupTempProfilesAction = toolsMenu->addAction("Clean Temporary Profiles on Startup");
     cleanupTempProfilesAction->setCheckable(true);
 
-    // Load setting and set checkbox state
     QSettings settings;
     bool cleanupEnabled = settings.value("cleanupTempProfilesOnStartup", false).toBool();
     cleanupTempProfilesAction->setChecked(cleanupEnabled);
 
-    // Connect to save setting when toggled
     connect(cleanupTempProfilesAction, &QAction::triggered, [this, cleanupTempProfilesAction](bool checked) {
 
         if (checked) {
@@ -1969,7 +1744,6 @@ void MainWindow::createMenus() {
         settings.setValue("cleanupTempProfilesOnStartup", checked);
         settings.sync();
     });
-    // AdBlocker toggle
     toolsMenu->addSeparator();
     /*
     QAction *toggleAdBlockAction = toolsMenu->addAction("Toggle Ad Blocker");
@@ -1983,13 +1757,10 @@ void MainWindow::createMenus() {
     QAction *toggleAdBlockAction = toolsMenu->addAction("Toggle Ad Blocker");
     toggleAdBlockAction->setCheckable(true);
 
-    // Load the saved state
-    //QSettings settings;
     bool adBlockEnabled = settings.value("adBlocker/enabled", false).toBool();
     toggleAdBlockAction->setChecked(adBlockEnabled);
     m_adBlocker->setEnabled(adBlockEnabled);  // Apply the loaded setting
 
-    // Connect with triggered signal for checkable action
     connect(toggleAdBlockAction, &QAction::triggered, this, [this](bool checked) {
         m_adBlocker->setEnabled(checked);
 
@@ -2000,23 +1771,19 @@ void MainWindow::createMenus() {
 
     toolsMenu->addSeparator();
 
-    //QAction *disableGpuAction = toolsMenu->addAction("Disable GPU Acceleration");
     QAction *disableGpuAction = toolsMenu->addAction("Disable GPU Acceleration (NVIDIA Fix)");
     disableGpuAction->setCheckable(true);
     disableGpuAction->setToolTip("Fix graphical issues on NVIDIA systems (requires restart)");
 
-    // Load the saved state (defaulting to false/unchecked)
 
     bool gpuDisabled = settings.value("gpu/disable_acceleration", false).toBool();
     disableGpuAction->setChecked(gpuDisabled);
 
-    // Connect with triggered signal
     connect(disableGpuAction, &QAction::triggered, this, [this](bool checked) {
         QSettings settings;
         settings.setValue("gpu/disable_acceleration", checked);
         settings.sync();
 
-        // Show restart notification
         QMessageBox msgBox(this);
         msgBox.setWindowTitle("Restart Required");
             msgBox.setText("This change will take effect after restarting the application.");
@@ -2102,20 +1869,16 @@ QStringList MainWindow::getAvailableSessions() {
 void MainWindow::deleteSession(const QString& name) {
 
     if (m_sessions.contains(name)) {
-        // Remove from sessions map
         m_sessions.remove(name);
 
-        // Clean up profile directories
         cleanupSessionProfileDirectories(name);
 
-        // Save sessions data
         saveSessionsData();
     }
 
 }
 
 void MainWindow::saveSessionsData() {
-    // Save using QSettings for basic data
     QSettings settings;
     settings.beginGroup("Sessions");
     settings.remove("");
@@ -2131,7 +1894,6 @@ void MainWindow::saveSessionsData() {
         settings.setValue("tabHasSeparateProfile", QVariantList(session.tabHasSeparateProfile.begin(), session.tabHasSeparateProfile.end()));
         settings.setValue("tabOriginalProfileNames", session.tabOriginalProfileNames);
 
-        // Add named profiles data
         settings.setValue("usingNamedProfiles", session.usingNamedProfiles);
         settings.setValue("selectedProfileName", session.selectedProfileName);
         settings.setValue("tabHasNamedProfile", QVariantList(session.tabHasNamedProfile.begin(), session.tabHasNamedProfile.end()));
@@ -2141,15 +1903,12 @@ void MainWindow::saveSessionsData() {
     }
     settings.endGroup();
 
-    // Create icons directory
     QString iconDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/session_icons/";
     QDir().mkpath(iconDir);
 
-    // Save each session's icon and tab icons
     for (auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         const QString& name = it.key();
         const SessionData& session = it.value();
-        // Save tab icons as PNG files
         for (int i = 0; i < session.openTabIcons.size(); i++) {
             const QIcon& icon = session.openTabIcons[i];
             if (!icon.isNull()) {
@@ -2168,26 +1927,33 @@ void MainWindow::loadSession(const QString& name) {
         return;
     }
 
+    if(player) {
+        player->hide();
+        streamButton->setChecked(false);
+
+    }
+
     SessionData session = m_sessions[name];
-    // Restore tabs based on their actual profile state
     for (int i = 0; i < session.openTabUrls.size(); i++) {
         QWebEngineView* webView = new QWebEngineView(m_tabWidget);
-        connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+        connect(webView, &QWebEngineView::urlChanged, this, [this, webView](const QUrl &url) {
             if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
                 if (sender() == currentView) {
                     m_urlBar->setUrl(url.toString());
                 }
+                onHistoryEnabled(webView);
+
             }
         });
 
+        //onHistoryEnabled(webView);
+
         QWebEngineProfile* profile;
 
-        // Check if this tab had a named profile
         bool tabHadNamedProfile = (i < session.tabHasNamedProfile.size()) ?
                                       session.tabHasNamedProfile[i] : false;
 
         if (tabHadNamedProfile) {
-            // This tab used a named profile
             QString profileName = session.tabNamedProfileNames[i];
 
             profile = getOrCreateNamedProfile(profileName);
@@ -2197,9 +1963,7 @@ void MainWindow::loadSession(const QString& name) {
                 m_tabNamedProfiles.remove(webView);
             });
         }
-        // Check if tab had separate profile
         else if (i < session.tabHasSeparateProfile.size() && session.tabHasSeparateProfile[i]) {
-            // Restore the tab's specific profile
             QString sessionProfileName = "Session_" + name + "_Tab_" + QString::number(i);
             QString sessionProfilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
                                          "/profiles/" + sessionProfileName;
@@ -2219,7 +1983,6 @@ void MainWindow::loadSession(const QString& name) {
             });
         }
         else {
-            // This tab used the shared profile
             profile = m_webProfile;
 
         }
@@ -2231,18 +1994,14 @@ void MainWindow::loadSession(const QString& name) {
         webView->setPage(page);
         setupCustomContextMenu(webView, profile);
 
-        // Add the tab
         int tabIndex = m_tabWidget->addTab(webView, session.openTabTitles[i]);
 
-        // Set favicon if available
         if (i < session.openTabIcons.size() && !session.openTabIcons[i].isNull()) {
             m_tabWidget->setTabIcon(tabIndex, session.openTabIcons[i]);
         }
 
-        // Load the URL
         webView->setUrl(QUrl(session.openTabUrls[i]));
 
-        // Connect iconChanged signal
         connect(webView, &QWebEngineView::iconChanged, [this, tabIndex, webView, name, i](const QIcon &icon) {
             m_tabWidget->setTabIcon(tabIndex, icon);
             if (m_sessions.contains(name) && i < m_sessions[name].openTabIcons.size()) {
@@ -2252,7 +2011,6 @@ void MainWindow::loadSession(const QString& name) {
         });
     }
 
-    // Update UI state
     if (m_tabWidget->count() > 0) {
         showWebViews();
         m_toggleViewAction->setText("To Dashboard");
@@ -2265,6 +2023,7 @@ void MainWindow::loadSession(const QString& name) {
     }
 
     m_currentSessionName = name;
+    m_urlBar->setVisible(showUrlBar);
     statusBar()->showMessage(QString("Session loaded: %1 (%2 tabs)").arg(name).arg(m_tabWidget->count()), 3000);
     updateTabCountStatus();
 }
@@ -2285,25 +2044,21 @@ void MainWindow::loadSessionsData() {
         session.usingSeparateProfiles = settings.value("usingSeparateProfiles", false).toBool();
         session.comments = settings.value("comments").toString();
 
-        // Load new per-tab profile data
         QVariantList tabHasProfileVariants = settings.value("tabHasSeparateProfile").toList();
         for (const QVariant& variant : tabHasProfileVariants) {
             session.tabHasSeparateProfile.append(variant.toBool());
         }
         session.tabOriginalProfileNames = settings.value("tabOriginalProfileNames").toStringList();
 
-        // Load named profiles data
         session.usingNamedProfiles = settings.value("usingNamedProfiles", false).toBool();
         session.selectedProfileName = settings.value("selectedProfileName", "").toString();
 
-        // Load tab named profile data
         QVariantList tabHasNamedProfileVariants = settings.value("tabHasNamedProfile").toList();
         for (const QVariant& variant : tabHasNamedProfileVariants) {
             session.tabHasNamedProfile.append(variant.toBool());
         }
         session.tabNamedProfileNames = settings.value("tabNamedProfileNames", QStringList()).toStringList();
 
-        // Initialize empty icons list
         for (int i = 0; i < session.openTabUrls.size(); i++) {
             session.openTabIcons.append(QIcon());
         }
@@ -2313,12 +2068,10 @@ void MainWindow::loadSessionsData() {
     }
     settings.endGroup();
 
-    // Load icons from files (existing code)...
     QString iconDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/session_icons/";
     for (auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         const QString& name = it.key();
         SessionData& session = it.value();
-        // Load session icon
         QString iconPath = iconDir + name + "_session.png";
         if (QFile::exists(iconPath)) {
             session.icon = QIcon(iconPath);
@@ -2327,7 +2080,6 @@ void MainWindow::loadSessionsData() {
             QPixmap pixmap = session.icon.pixmap(64, 64);
             pixmap.save(iconPath, "PNG");
         }
-        // Load tab icons
         session.openTabIcons.clear();
         for (int i = 0; i < session.openTabUrls.size(); i++) {
             QString tabIconPath = iconDir + name + "_tab_" + QString::number(i) + ".png";
@@ -2348,7 +2100,6 @@ void MainWindow::onSaveSession(){
                                          "Enter a name for this session:", QLineEdit::Normal,
                                          m_currentSessionName, &ok);
     if (ok && !name.isEmpty()) {
-        // Check if session already exists
         if (m_sessions.contains(name)) {
             QMessageBox::information(this, "Session Exists",
                                      QString("Session '%1' already exists. Please use a different name.").arg(name));
@@ -2408,7 +2159,6 @@ void MainWindow::saveSession(const QString& name) {
             if (m_tabNamedProfiles.contains(view)) {
             }
 
-            // First check for named profile
             if (m_tabNamedProfiles.contains(view)) {
                 QString profileName = m_tabNamedProfiles[view];
                 session.tabNamedProfileNames.append(profileName);
@@ -2444,7 +2194,6 @@ void MainWindow::saveSession(const QString& name) {
                                << "from" << currentPath << "to" << sessionProfilePath;
                 }
             }
-            // Then check for separate/private profile
             else if (m_tabProfiles.contains(view)) {
                 session.tabHasSeparateProfile.append(true);
                 session.tabHasNamedProfile.append(false);
@@ -2480,7 +2229,6 @@ void MainWindow::saveSession(const QString& name) {
                     session.tabOriginalProfileNames.append("");
                 }
             }
-            // Must be shared profile if not in either map
             else {
                 session.tabHasSeparateProfile.append(false);
                 session.tabHasNamedProfile.append(false);
@@ -2584,7 +2332,6 @@ void MainWindow::onManageSessions() {
 
 void MainWindow::onCleanAllData() {
 
-    // First check if there are any tabs open
     if (m_tabWidget->count() == 0) {
         QMessageBox::information(this, "No Tabs Open",
                                  "There are no tabs currently open to clean.");
@@ -2598,7 +2345,6 @@ void MainWindow::onCleanAllData() {
                               "You can clean the universal Shared profile in Menu->Sessions->'Clean Shared Profile Data'",
                               QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
 
-        // Clear only tab profiles (separate profiles)
         for (QWebEngineProfile* profile : m_tabProfiles.values()) {
             if (profile) {  // Check if profile pointer is valid
                 profile->clearAllVisitedLinks();
@@ -2609,7 +2355,6 @@ void MainWindow::onCleanAllData() {
             }
         }
 
-        // Show a status message
         statusBar()->showMessage("Session data for separate profiles has been cleared.", 3000);
     }
 }
@@ -2621,10 +2366,8 @@ QWebEngineProfile* MainWindow::createProfileForTab(int tabIndex, const QString& 
     QString profileName;
 
     if (!sessionName.isEmpty()) {
-        // If we have a session name, use a deterministic name based on that
         profileName = "Session_" + sessionName + "_Tab_" + QString::number(tabIndex);
     } else {
-        // Otherwise, use a unique name based on timestamp
         profileName = "TabProfile_" + QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss_zzz_") +
                       QString::number(QRandomGenerator::global()->bounded(1000));
     }
@@ -2654,7 +2397,6 @@ QWebEngineProfile* MainWindow::createProfileForTab(int tabIndex, const QString& 
 void MainWindow::cleanupTabProfile(QWebEngineView* webView) {
     if (!webView) return;
 
-    // Check if it's a per-tab private profile
     if (m_tabProfiles.contains(webView)) {
         QWebEngineProfile* profile = m_tabProfiles[webView];
         m_tabProfiles.remove(webView);
@@ -2672,7 +2414,6 @@ void MainWindow::cleanupTabProfile(QWebEngineView* webView) {
 
     }
 
-    // Remove named profile mapping (never delete named profiles)
     if (m_tabNamedProfiles.contains(webView)) {
         m_tabNamedProfiles.remove(webView);
     }
@@ -2685,16 +2426,11 @@ void MainWindow::cleanupTabProfile(QWebEngineView* webView) {
         QString profileName = profile->storageName();
 
 
-        // Remove from our map
         m_tabProfiles.remove(webView);
 
-        // NEVER delete profiles during the session - this avoids crashes
-        // Just mark them for potential cleanup on next app start
         if (!profileName.startsWith("Session_")) {
             profile->deleteLater();
 
-            // Instead of deleting, we'll just leave it for now
-            // We could implement a cleanup mechanism on app start if needed
         } else {
         }
     }
@@ -2703,7 +2439,6 @@ void MainWindow::cleanupTabProfile(QWebEngineView* webView) {
 */
 
 void MainWindow::ensureProfileDirectoriesExist() {
-    // Make sure the base profiles directory exists
     QString baseProfilesDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
     QDir dir(baseProfilesDir);
 
@@ -2713,7 +2448,6 @@ void MainWindow::ensureProfileDirectoriesExist() {
         }
     }
 
-    // Check permissions on the directory
     QFileInfo dirInfo(baseProfilesDir);
     if (!dirInfo.isWritable()) {
         qWarning() << "Profiles directory is not writable:" << baseProfilesDir;
@@ -2726,13 +2460,11 @@ bool MainWindow::copyProfileData(const QString& sourceDir, const QString& destDi
     QDir source(sourceDir);
     QDir dest(destDir);
 
-    // Make sure source exists
     if (!source.exists()) {
         qWarning() << "Source directory does not exist:" << sourceDir;
         return false;
     }
 
-    // Create destination if it doesn't exist
     if (!dest.exists()) {
         if (!dest.mkpath(".")) {
             qWarning() << "Failed to create destination directory:" << destDir;
@@ -2740,28 +2472,23 @@ bool MainWindow::copyProfileData(const QString& sourceDir, const QString& destDi
         }
     }
 
-    // Get list of all files and subdirectories
     QFileInfoList entries = source.entryInfoList(QDir::NoDotAndDotDot | QDir::Files | QDir::Dirs);
 
     bool success = true;
 
-    // Copy each entry
     for (const QFileInfo& entry : entries) {
         QString srcPath = entry.filePath();
         QString destPath = destDir + "/" + entry.fileName();
 
         if (entry.isDir()) {
-            // Recursively copy subdirectories
             if (!copyProfileData(srcPath, destPath)) {
                 success = false;
             }
         } else {
-            // Copy file
             if (QFile::exists(destPath)) {
                 QFile::remove(destPath);
             }
 
-            // Use QFile directly for better error handling
             QFile srcFile(srcPath);
             if (!srcFile.copy(destPath)) {
                 qWarning() << "Failed to copy file:" << srcPath << "to" << destPath;
@@ -2776,12 +2503,9 @@ bool MainWindow::copyProfileData(const QString& sourceDir, const QString& destDi
 
 
 void MainWindow::cleanupSessionProfileDirectories(const QString& sessionName) {
-    // Get the directories to check
     QStringList dirsToCheck;
-    // Add the app's profile directory
     QString baseProfilesDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
     dirsToCheck.append(baseProfilesDir);
-    // Add the Jasmine profiles directory if it's different
     QString webAppsProfilesDir = QDir::homePath() + "/.local/share/Jasmine/profiles";
     if (baseProfilesDir != webAppsProfilesDir) {
         dirsToCheck.append(webAppsProfilesDir);
@@ -2793,21 +2517,17 @@ void MainWindow::cleanupSessionProfileDirectories(const QString& sessionName) {
             continue;
         }
 
-        // Check the sessions subdirectory specifically for named profile symlinks
         QDir sessionsDir(dirPath + "/sessions");
         if (sessionsDir.exists()) {
             QStringList sessionEntries = sessionsDir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
             for (const QString& entry : sessionEntries) {
-                // Match patterns like "Session_g4-home_NamedProfile_home_Tab_0"
                 if (entry.startsWith("Session_" + sessionName + "_NamedProfile_")) {
                     QString fullPath = sessionsDir.absoluteFilePath(entry);
                     QFileInfo info(fullPath);
                     bool success = false;
                     if (info.isSymLink()) {
-                        // Remove symlink
                         success = QFile::remove(fullPath);
                     } else if (info.isDir()) {
-                        // Remove directory
                         QDir entryDir(fullPath);
                         success = entryDir.removeRecursively();
                     }
@@ -2818,10 +2538,8 @@ void MainWindow::cleanupSessionProfileDirectories(const QString& sessionName) {
             }
         }
 
-        // Get all entries in the main directory (both dirs and symlinks)
         QStringList entries = dir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
 
-        // Find and remove entries matching the original session patterns
         QString tabSessionPrefix = "Session_" + sessionName + "_Tab_";
         QString namedProfileSessionPrefix = "Session_" + sessionName + "_NamedProfile_";
 
@@ -2831,10 +2549,8 @@ void MainWindow::cleanupSessionProfileDirectories(const QString& sessionName) {
                 QFileInfo info(fullPath);
                 bool success = false;
                 if (info.isSymLink()) {
-                    // Remove symlink
                     success = QFile::remove(fullPath);
                 } else if (info.isDir()) {
-                    // Remove directory
                     QDir sessionDir(fullPath);
                     success = sessionDir.removeRecursively();
                 }
@@ -2850,18 +2566,15 @@ void MainWindow::cleanupSessionProfileDirectories(const QString& sessionName) {
 
 void MainWindow::prepareForShutdown() {
 
-    // Detach all profiles from our tracking map to prevent double-deletion
     QMap<QWebEngineView*, QWebEngineProfile*> profilesCopy = m_tabProfiles;
     m_tabProfiles.clear();
 
-    // Close all tabs without triggering our normal cleanup
     while (m_tabWidget->count() > 0) {
         QWidget* widget = m_tabWidget->widget(0);
        m_tabWidget ->removeTab(0);
         widget->deleteLater();
     }
 
-    // Wait a moment for tab deletion to complete
     QEventLoop loop;
     QTimer::singleShot(100, &loop, &QEventLoop::quit);
     loop.exec();
@@ -2889,14 +2602,22 @@ bool MainWindow::hasOpenTabs() const {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+    if (historyManager) {
+           historyManager->close();
+           delete historyManager;
+           historyManager = nullptr;
+       }
+       if (bookmarkManager) {
+           bookmarkManager->close();
+           delete bookmarkManager;
+           bookmarkManager = nullptr;
+    }
     prepareForShutdown();
     QMainWindow::closeEvent(event);
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
-    // Existing card click handling
     if (event->type() == QEvent::MouseButtonPress) {
-        // Handle website card clicks
         if (obj->property("websiteIndex").isValid()) {
             int index = obj->property("websiteIndex").toInt();
             QModelIndex modelIndex = m_model->index(index, 0);
@@ -2904,13 +2625,11 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
             onWebsiteSelected(modelIndex);
             return true;
         }
-        // Handle session card clicks
         if (obj->property("sessionName").isValid()) {
             QString sessionName = obj->property("sessionName").toString();
             onSessionSelected(sessionName);
             return true;
         }
-        // Handle radio card clicks
         if (obj->property("radioIndex").isValid()) {
             int index = obj->property("radioIndex").toInt();
             onRadioStationSelected(index);
@@ -2923,7 +2642,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
             return true;
         }
 
-        // Handle podcast card clicks
         if (obj->property("podcastIndex").isValid()) {
             int index = obj->property("podcastIndex").toInt();
             onPodcastShowSelected(index);
@@ -2931,19 +2649,16 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
         }
     }
 
-    // Block maximize attempts in dashboard mode
     if (obj == this) {
         if (event->type() == QEvent::WindowStateChange) {
             if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
                 if (this->isMaximized()) {
-                    // Immediately restore without timer to reduce flicker
                     this->showNormal();
                     this->resize(1130, 800);
                     return true;
                 }
             }
         }
-        // Also block resize events that would make window too large in dashboard
         else if (event->type() == QEvent::Resize) {
             if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
                 QResizeEvent* resizeEvent = static_cast<QResizeEvent*>(event);
@@ -2973,7 +2688,6 @@ void MainWindow::onLoadSession()
                                          "Select a session to load:", sessions, 0, false, &ok);
 
     if (ok && !name.isEmpty()) {
-        //loadSession(name);
         onSessionSelected(name);
 
         onLoadSelectedSession();
@@ -2981,23 +2695,16 @@ void MainWindow::onLoadSession()
 }
 
 void MainWindow::updateWebsiteIcon(int websiteIndex, const QIcon &icon) {
-    // Get the current website
     Website website = m_model->getWebsite(websiteIndex);
 
 
-    // Update the favicon
     website.favicon = icon;
 
-    // Update the website in the model
     m_model->setWebsite(websiteIndex, website);
 
-    // Save the model
     saveModel();
 
-    // Always update the website cards
-    // This ensures they'll be up-to-date when switching to the dashboard
     updateWebsiteCards();
-    // Also update any open tabs showing this website
     for (int i = 0; i < m_tabWidget->count(); i++) {
         QWebEngineView* webView = qobject_cast<QWebEngineView*>(m_tabWidget->widget(i));
         if (webView && webView->url().toString() == website.url) {
@@ -3015,17 +2722,14 @@ QFrame* MainWindow::createSessionDetailPanel() {
 
     layout->addSpacing(16);
 
-    // Title
     QLabel* titleLabel = new QLabel("Session Details");
     titleLabel->setObjectName("detailsPanelTitle");
     layout->addWidget(titleLabel);
 
-    // Form fields
     QFormLayout* formLayout = new QFormLayout();
     formLayout->setSpacing(12);
     formLayout->setLabelAlignment(Qt::AlignRight);
 
-    // Icon display
     QHBoxLayout* iconLayout = new QHBoxLayout();
     m_sessionIconLabel = new QLabel();
     m_sessionIconLabel->setObjectName("sessionIconLabel");
@@ -3049,19 +2753,15 @@ QFrame* MainWindow::createSessionDetailPanel() {
     iconLayout->addWidget(m_sessionGenerateIconButton);
     iconLayout->addStretch();
 
-    // Create form fields
     m_sessionNameInput = new QLineEdit();
     m_sessionNameInput->setToolTip("Tip: Using dashes '-' to separate name components improves card appearence");
 
     m_sessionTabsDisplay = new QListWidget();
     m_sessionTabsDisplay->setMinimumHeight(150);
 
-    // Session timestamp display
     m_sessionTimestampLabel = new QLabel();
-    // Set object names for styling
     m_sessionNameInput->setObjectName("formInput");
     m_sessionTabsDisplay->setObjectName("formList");
-    // Add fields to form
     formLayout->addRow("Icon:", iconLayout);
     formLayout->addRow("Name:", m_sessionNameInput);
     formLayout->addRow("Created:", m_sessionTimestampLabel);
@@ -3069,7 +2769,6 @@ QFrame* MainWindow::createSessionDetailPanel() {
 
     layout->addLayout(formLayout);
 
-    // Comments section at the bottom
 
     layout->addSpacing(16);
     m_sessionCommentsEdit = new QTextEdit();
@@ -3079,11 +2778,9 @@ QFrame* MainWindow::createSessionDetailPanel() {
     m_sessionCommentsEdit->setPlaceholderText("Add notes or comments about this session...");
     formLayout->addRow("Notes:", m_sessionCommentsEdit);
 
-    // Create action buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(8);
 
-    // Create buttons
     m_sessionUpdateButton = new QPushButton(" Update");
 
     m_sessionDeleteButton = new QPushButton(" Delete");
@@ -3095,34 +2792,24 @@ QFrame* MainWindow::createSessionDetailPanel() {
     m_sessionClearButton->setToolTip("Clear Form");
 
 
-    // Set icons
-    //m_sessionUpdateButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
-    //m_sessionDeleteButton->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
-    //m_sessionLoadButton->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
-    //m_sessionClearButton->setIcon(style()->standardIcon(QStyle::SP_DialogResetButton));
 
-    // Set object names for styling
     m_sessionUpdateButton->setObjectName("primaryButton");
     m_sessionLoadButton->setObjectName("primaryButton");
     m_sessionDeleteButton->setObjectName("secondaryButton");
     m_sessionClearButton->setObjectName("secondaryButton");
 
-    // Initially disable edit/delete/load buttons
     m_sessionDeleteButton->setEnabled(false);
     m_sessionLoadButton->setEnabled(false);
 
-    // Add buttons to layout
     buttonLayout->addWidget(m_sessionUpdateButton);
     buttonLayout->addWidget(m_sessionDeleteButton);
     buttonLayout->addWidget(m_sessionLoadButton);
     buttonLayout->addWidget(m_sessionClearButton);
 
-    // Add some spacing before buttons
     layout->addSpacing(16);
     layout->addLayout(buttonLayout);
     layout->addStretch();
 
-    // Connect signals
     connect(m_sessionUpdateButton, &QPushButton::clicked, this, &MainWindow::onUpdateSession);
     connect(m_sessionDeleteButton, &QPushButton::clicked, this, &MainWindow::onDeleteSession);
     connect(m_sessionLoadButton, &QPushButton::clicked, this, &MainWindow::onLoadSelectedSession);
@@ -3132,14 +2819,12 @@ QFrame* MainWindow::createSessionDetailPanel() {
         QPixmap pixmap = newIcon.pixmap(50, 50);
         m_sessionIconLabel->setPixmap(pixmap);
 
-        // Update the session data if we have a current session
         if (!m_currentSessionName.isEmpty()) {
             m_sessions[m_currentSessionName].icon = newIcon;
         }
     });
 
 
-    // Connect comments text edit to save changes
     return panel;
 }
 
@@ -3148,45 +2833,36 @@ QFrame* MainWindow::createSessionDetailPanel() {
 void MainWindow::populateSessionForm(const SessionData &session) {
     m_sessionNameInput->setText(session.name);
     m_sessionTimestampLabel->setText(session.timestamp.toString("yyyy-MM-dd hh:mm"));
-    // Display the session icon
     if (!session.icon.isNull()) {
         QPixmap pixmap = session.icon.pixmap(50, 50);
         m_sessionIconLabel->setPixmap(pixmap);
     } else {
-        // Clear the icon if none exists
         m_sessionIconLabel->clear();
         m_sessionIconLabel->setText("No Icon");
         m_sessionIconLabel->setAlignment(Qt::AlignCenter);
     }
-    // Display comments
     m_sessionCommentsEdit->setPlainText(session.comments);
-    // Clear and populate the tabs list
     m_sessionTabsDisplay->clear();
     QString iconDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/session_icons/";
     for (int i = 0; i < session.openTabUrls.size(); i++) {
         QString title = session.openTabTitles[i];
         QString url = session.openTabUrls[i];
-        // Determine profile type for this tab
         QString profileInfo;
         QString profileTooltip;
-        // Check if this tab has a named profile
         bool hasNamedProfile = (i < session.tabHasNamedProfile.size()) ?
                                    session.tabHasNamedProfile[i] : false;
         if (hasNamedProfile) {
-            // This tab uses a named profile
             QString profileName = (i < session.tabNamedProfileNames.size()) ?
                                       session.tabNamedProfileNames[i] : "Unknown";
             profileInfo = " [Named Profile: " + profileName + "]";
             profileTooltip = "Named Profile: " + profileName;
         } else {
-            // Check if this tab has a separate profile
             bool hasSeparateProfile = (i < session.tabHasSeparateProfile.size()) ?
                                           session.tabHasSeparateProfile[i] : false;
             if (hasSeparateProfile) {
                 profileInfo = " [Private Profile]";
                 profileTooltip = "Private Profile";
             } else {
-                // New logic: if tab has no named profile name, it's always shared
                 if (i < session.tabNamedProfileNames.size() && !session.tabNamedProfileNames[i].isEmpty()) {
                     profileInfo = " [Named Profile: " + session.tabNamedProfileNames[i] + "]";
                     profileTooltip = "Named Profile: " + session.tabNamedProfileNames[i];
@@ -3196,17 +2872,14 @@ void MainWindow::populateSessionForm(const SessionData &session) {
                 }
             }
         }
-        // Create item with title, URL, and profile info
         QListWidgetItem* item = new QListWidgetItem();
         item->setText(title + profileInfo + "\n" + url);
         item->setToolTip(url + "\nProfile: " + profileTooltip);
-        // Load saved tab icon first
         QString tabIconPath = iconDir + session.name + "_tab_" + QString::number(i) + ".png";
         if (QFile::exists(tabIconPath)) {
             QIcon tabIcon(tabIconPath);
             item->setIcon(tabIcon);
         } else {
-            // Try to find a matching website to get its favicon
             for (int j = 0; j < m_model->rowCount(); j++) {
                 Website website = m_model->getWebsite(j);
                 if (website.url == url && !website.favicon.isNull()) {
@@ -3217,7 +2890,6 @@ void MainWindow::populateSessionForm(const SessionData &session) {
         }
         m_sessionTabsDisplay->addItem(item);
     }
-    // Enable edit/delete/load buttons
     m_sessionDeleteButton->setEnabled(true);
     m_sessionLoadButton->setEnabled(true);
 }
@@ -3235,7 +2907,6 @@ void MainWindow::onSaveCurrentSession()
 
 void MainWindow::onDeleteSession()
 {
-    // Safeguard: Prevent deletion if there are open tabs
     if (m_tabWidget->count() > 0) {
         QMessageBox::warning(this, "Cannot Delete", "Cannot delete a session while tabs are open. Please close all tabs first.");
         return; // Do not proceed with deletion
@@ -3260,7 +2931,6 @@ void MainWindow::onLoadSelectedSession() {
         return;
     }
 
-    // Check if tabs are already open
     if (m_tabWidget->count() > 0) {
         QMessageBox::StandardButton reply = QMessageBox::question(this, "Tabs Already Open",
                                                                   "There are already open tabs. Do you want to append to the existing session?",
@@ -3269,7 +2939,6 @@ void MainWindow::onLoadSelectedSession() {
         if (reply == QMessageBox::Cancel) {
             return;
         } else if (reply == QMessageBox::No) {
-            // Close all current tabs
             while (m_tabWidget->count() > 0) {
                 onTabCloseRequested(0);
             }
@@ -3284,16 +2953,13 @@ void MainWindow::onClearSessionForm() {
     m_sessionTimestampLabel->clear();
     m_sessionIconLabel->clear();
     m_sessionIconLabel->setText("No Icon");
-    //m_sessionIconLabel->setAlignment(Qt::AlignCenter);
     m_sessionCommentsEdit->clear();
     m_sessionTabsDisplay->clear();
 
-    // Disable edit/delete/load buttons
     m_sessionUpdateButton->setEnabled(false);
     m_sessionDeleteButton->setEnabled(false);
     m_sessionLoadButton->setEnabled(false);
 
-    // Clear current selection
     m_currentSessionName = "";
 }
 
@@ -3304,17 +2970,12 @@ void MainWindow::onSessionSelected(const QString &sessionName) {
         m_sessionDeleteButton->setEnabled(true);
         m_sessionLoadButton->setEnabled(true);
 
-        //
-        // Get the session data
         SessionData session = m_sessions[sessionName];
 
-        // Populate the session form
         populateSessionForm(session);
 
-        // Store the current session name for later use
         m_currentSessionName = sessionName;
 
-        // Highlight the selected card and unhighlight others
         for (const QString &name : m_sessionCards.keys()) {
             if (m_sessionCards[name]) {
                 highlightCard(m_sessionCards[name], name == sessionName);
@@ -3328,60 +2989,41 @@ QToolBar* MainWindow::createToolbar() {
     toolbar->setMovable(false);
     toolbar->setIconSize(QSize(24, 24));
 
-    // Web navigation actions - always visible
     m_webBackAction = toolbar->addAction(QIcon(":/resources/icons/arrow-left.svg"), "Back");
     m_webForwardAction = toolbar->addAction(QIcon(":/resources/icons/arrow-right.svg"), "Forward");
     m_webReloadAction = toolbar->addAction(QIcon(":/resources/icons/refresh-cw.svg"), "Reload");
     m_goHomeAction = toolbar->addAction(QIcon(":/resources/icons/home.svg"), "Home");
-    // Add separator
     toolbar->addSeparator();
 
-    // Add session and website actions - always visible
-    //m_addCurrentSessionAction = toolbar->addAction(QIcon(":/resources/icons/save.svg"), "Save Current Session");
     m_addWebsiteFromUrlAction = toolbar->addAction(QIcon(":/resources/icons/file-plus.svg"), "Create Website from Current Url");
-    //m_addCurrentWebsiteAction = toolbar->addAction(QIcon(":/resources/icons/plus.svg"), "Open Currently Selected Website");
 
-    // Add separator
-    //toolbar->addSeparator();
 
-    // Add zoom actions - always visible
     m_zoomInAction = toolbar->addAction(QIcon(":/resources/icons/zoom-in.svg"), "Zoom In");
     m_zoomInAction->setVisible(false);
     m_zoomOutAction = toolbar->addAction(QIcon(":/resources/icons/zoom-out.svg"), "Zoom Out");
     m_zoomOutAction->setVisible(false);
 
-    //toolbar->addSeparator();
 
-    // Add copy URL action - always visible
     m_copyUrlAction = toolbar->addAction(QIcon(":/resources/icons/copy.svg"), "Copy Tab URL");
 
-    // Add separator
-    //toolbar->addSeparator();
 
     m_addCurrentWebsiteAction = toolbar->addAction(QIcon(":/resources/icons/plus.svg"), "Open Currently Selected Website");
 
     m_addCurrentSessionAction = toolbar->addAction(QIcon(":/resources/icons/save.svg"), "Save Current Session");
 
-    //toolbar->addSeparator();
-    //m_toggleViewAction = new QAction(QIcon(":/resources/icons/monitor.svg"), "Dashboard");
-    //m_toggleViewAction = new QAction(QIcon(":/resources/icons/chevron-right.svg"), "Dashboard");
     m_toggleViewAction = new QAction(QIcon(":/resources/icons/repeat.svg"), "Dashboard");
 
     m_toggleViewAction->setToolTip("Switch between Dashboard and Web View");
 
-    // Create a custom tool button that will display both icon and text
     toggleButton = new QToolButton();
     toggleButton->setDefaultAction(m_toggleViewAction);
     toggleButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
 
 
-    // Add the button to the toolbar
     toolbar->addWidget(toggleButton);
 
-    //toolbar->addSeparator();
 
-    // Add tab count label
     m_tabCountLabel = new QLabel(":0", this);
     m_tabCountLabel->setVisible(false);
     m_tabCountLabel->setAlignment(Qt::AlignCenter);
@@ -3390,17 +3032,13 @@ QToolBar* MainWindow::createToolbar() {
 
     toolbar->addSeparator();
 
-    //close tabs
-    // Add close all tabs button - always visible
     m_closeAllTabsAction = toolbar->addAction(QIcon(":/resources/icons/x.svg"), "Close All Tabs");
     m_closeAllTabsAction->setToolTip("Close All Open Tabs");
 
-    //seperateprofiles toggle
     toolbar->addSeparator();
     QLabel *profileLabel = new QLabel("Private:");
     toolbar->addWidget(profileLabel);
 
-    // Create modern toggle switch
     m_separateProfilesToggle = new QPushButton();
     m_separateProfilesToggle->setCheckable(true);
     m_separateProfilesToggle->setFixedSize(50, 25);
@@ -3409,7 +3047,6 @@ QToolBar* MainWindow::createToolbar() {
         "QPushButton {"
         "    border: 2px solid #ccc;"
         "    border-radius: 12px;"
-        //"    background-color: #8e8e93;"
         "    background-color: #b0b0b0;"        // Pure gray (equal RGB values)
         "    text-align: center;"
         "    color: #ffffff;"
@@ -3427,7 +3064,6 @@ QToolBar* MainWindow::createToolbar() {
     m_separateProfilesToggle->setToolTip("Use Private profile when launching tabs");
     toolbar->addWidget(m_separateProfilesToggle);
 
-    // Create a placeholder profile selector
     profileSelector = new QComboBox(this);
     profileSelector->setMaximumWidth(100);
     profileSelector->addItem("Loading...");
@@ -3437,8 +3073,6 @@ QToolBar* MainWindow::createToolbar() {
 
     toolbar->addSeparator();
 
-    //theme togle
-    // Add theme toggle switch
     m_themeToggle = new QPushButton();
     m_themeToggle->setCheckable(true);
     m_themeToggle->setFixedSize(50, 25);
@@ -3457,13 +3091,11 @@ QToolBar* MainWindow::createToolbar() {
         "    color: white;"
         "}"
         );
-    //m_themeToggle->setText("☀️");
     m_themeToggle->setIcon(QIcon(":/resources/icons/sun.svg"));
 
     m_themeToggle->setToolTip("Toggle Dark/Light Theme");
     toolbar->addWidget(m_themeToggle);
 
-    // Connect theme toggle
 
     connect(m_themeToggle, &QPushButton::toggled, [this](bool dark) {
 
@@ -3481,38 +3113,27 @@ QToolBar* MainWindow::createToolbar() {
     }
     });
 
-    //toolbar->addSeparator();
     m_downloadsAction = toolbar->addAction(QIcon(":/resources/icons/download.svg"), "Downloads");
     m_downloadsAction->setToolTip("Show Downloads");
     m_originalDownloadIcon = m_downloadsAction->icon(); // Store current icon
 
-    //screenshot
-    //toolbar->addSeparator();
     m_screenshotAction = toolbar->addAction(QIcon(":/resources/icons/camera.svg"), "Screenshot");
     m_screenshotAction->setToolTip("Take Screenshot of Current Tab");
 
-    // Connect screenshot action
     connect(m_screenshotAction, &QAction::triggered, this, &MainWindow::takeScreenshot);
 
-    //open downloads location
-    //toolbar->addSeparator();
     m_openDownloadsFolderAction = toolbar->addAction(QIcon(":/resources/icons/folder.svg"), "Open Downloads Folder");
     m_openDownloadsFolderAction->setToolTip("Open Downloads Folder");
     m_openDownloadsFolderAction->setVisible(false);
-    //2FA
-    //toolbar->addSeparator();
     m_open2faManagerAction = toolbar->addAction(QIcon(":/resources/icons/shield.svg"), "2FAManager");
     m_open2faManagerAction->setToolTip("Open 2FA Manager");
     connect(m_open2faManagerAction, &QAction::triggered, this, &MainWindow::on_Open2faManager);
 
-    // Open Copied Link in New Tab action
-    //toolbar->addSeparator();
     m_openCopiedLinkAction = toolbar->addAction(QIcon(":/resources/icons/link.svg"), "Open Copied Link in New Tab");
     m_openCopiedLinkAction->setVisible(false);
     m_openCopiedLinkAction->setToolTip("Open copied link in a new tab - F11");
     m_openCopiedLinkAction->setShortcut(QKeySequence(Qt::Key_F11));
     m_openCopiedLinkAction->setShortcutContext(Qt::ApplicationShortcut);
-    // Connect the action
     connect(m_openCopiedLinkAction, &QAction::triggered, [this]() {
         QString clipboardText = QGuiApplication::clipboard()->text().trimmed();
         QRegularExpression urlRegex(R"(^(https?|ftp)://[^\s/$.?#].[^\s]*$)", QRegularExpression::CaseInsensitiveOption);
@@ -3524,12 +3145,9 @@ QToolBar* MainWindow::createToolbar() {
         }
     });
 
-    // URLBar toggle action
-    //toolbar->addSeparator();
     m_toggleUrlBarAction = toolbar->addAction(QIcon(":/resources/icons/eye.svg"), "Show URL Bar");
     m_toggleUrlBarAction->setToolTip("Toggle URL Bar Visibility");
 
-    // Connect the toggle
     connect(m_toggleUrlBarAction, &QAction::triggered, [this]() {
         QWidget* current = m_stackedWidget->currentWidget();
 
@@ -3543,7 +3161,6 @@ QToolBar* MainWindow::createToolbar() {
         m_urlBar->setVisible(!m_urlBar->isVisible());
         updateUrlBarState(); // Update state after toggle
     });
-    // end urlbar
 
     connect(m_openDownloadsFolderAction, &QAction::triggered, this, &MainWindow::openDownloadsFolder);
 
@@ -3554,15 +3171,12 @@ QToolBar* MainWindow::createToolbar() {
         m_separateProfilesToggle->setText(checked ? "ON" : "OFF");
         m_separateProfilesToggle->setToolTip(checked ? "Using private profile" : "Using shared profile");
 
-        // Disable the profile selector if separate profiles are enabled
         if (profileSelector) {
             profileSelector->setEnabled(!checked);
 
-            // Add a tooltip explaining why it's disabled
             if (checked) {
                 profileSelector->setToolTip("Named profiles are disabled when separate profiles are enabled");
 
-                // Reset to default profile if separate profiles are enabled
                 profileSelector->setCurrentIndex(0); // Assuming "Default" is at index 0
                 m_usingNamedProfiles = false;
                 m_selectedProfileName = "";
@@ -3575,7 +3189,6 @@ QToolBar* MainWindow::createToolbar() {
 
 
 
-    // Connect close all tabs action
     connect(m_closeAllTabsAction, &QAction::triggered, [this]() {
 
         int tabCount = m_tabWidget->count();
@@ -3590,26 +3203,20 @@ QToolBar* MainWindow::createToolbar() {
                 msgBox.setText(QString("You are about to close %1 tab(s). Do you want to proceed?").arg(tabCount));
                 msgBox.setIcon(QMessageBox::Question);
 
-                // Create a checkbox
                 QCheckBox* dontShowCheckBox = new QCheckBox("Don't show this again");
 
-                // Add checkbox to message box (using layout)
                 msgBox.setCheckBox(dontShowCheckBox);
 
-                // Add buttons
                 QPushButton* proceedButton = msgBox.addButton("Proceed", QMessageBox::AcceptRole);
                 QPushButton* cancelButton = msgBox.addButton("Cancel", QMessageBox::RejectRole);
                 msgBox.setDefaultButton(cancelButton);
 
-                // Show message box
                 msgBox.exec();
 
-                // Save checkbox state
                 if (dontShowCheckBox->isChecked()) {
                     settings.setValue("dontShowCloseAllWarning", true);
                 }
 
-                // If user clicked Cancel, return
                 if (msgBox.clickedButton() != proceedButton) {
                     return;
                 }
@@ -3620,12 +3227,10 @@ QToolBar* MainWindow::createToolbar() {
         }
     });
 
-    // Connect downloads action
     connect(m_downloadsAction, &QAction::triggered, [this]() {
         downloadManager->showDownloadsWindow();
     });
 
-    // Connect web navigation actions
     connect(m_webBackAction, &QAction::triggered, [this]() {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget()))
             view->back();
@@ -3639,8 +3244,6 @@ QToolBar* MainWindow::createToolbar() {
             view->reload();
     });
 
-    // Connect new actions
-    //connect(m_addCurrentSessionAction, &QAction::triggered, this, &MainWindow::onSaveCurrentSession);
     connect(m_addCurrentSessionAction, &QAction::triggered, this, &MainWindow::onSaveSession);
 
     connect(m_addCurrentWebsiteAction, &QAction::triggered, this, &MainWindow::onLaunchWebsite);
@@ -3665,15 +3268,12 @@ QToolBar* MainWindow::createToolbar() {
         }
     });
 
-    // Connect toggle view action
     connect(m_toggleViewAction, &QAction::triggered, this, &MainWindow::toggleView);
 
     connect(m_goHomeAction, &QAction::triggered, this, [this]() {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
-            // Get the initial URL from the web view's history
             QWebEngineHistory *history = view->history();
             if (history->count() > 0) {
-                // Go to the first item in history (the initial URL)
                 QWebEngineHistoryItem firstItem = history->itemAt(0);
                 view->load(firstItem.url());
             }
@@ -3694,7 +3294,6 @@ QToolBar* MainWindow::createToolbar() {
                                                   QLineEdit::Normal,
                                                   "", &ok);
             if (ok && !title.isEmpty()) {
-                // Check if website already exists
                 for (int i = 0; i < m_model->rowCount(); ++i) {
                     Website existing = m_model->getWebsite(i);
                     if (existing.url == currentUrl) {
@@ -3703,7 +3302,6 @@ QToolBar* MainWindow::createToolbar() {
                     }
                 }
 
-                // Create new website
                 Website newWebsite;
                 newWebsite.url = currentUrl;
                 newWebsite.title = title;
@@ -3717,8 +3315,6 @@ QToolBar* MainWindow::createToolbar() {
             }
         }
     });
-    //toolbar->addSeparator();
-    //search
     streamButton = new QPushButton(this);
     streamButton->setIcon(QIcon(":/resources/icons/rss.svg"));
     streamButton->setToolTip("Open Ad-Free Player\n\n"
@@ -3750,30 +3346,53 @@ QToolBar* MainWindow::createToolbar() {
 
     });
 
-    // Create hidden line edit
     m_searchLineEdit = new QLineEdit();
     m_searchLineEdit->setObjectName("searchLineEdit");
     m_searchLineEdit->setMaximumWidth(80);
 
     m_searchLineEdit->setPlaceholderText("Search");
-    m_searchLineEdit->setToolTip("Search Cards");
+    //m_searchLineEdit->setToolTip("Search Cards");
+    m_searchLineEdit->setToolTip(
+        "Search in current view:\n"
+        "• Dashboard: Search cards (websites, sessions, radio, IPTV, podcasts) by title\n"
+        "• WebView: Find text on the current page (case insensitive, real-time highlighting)"
+    );
 
     m_searchLineEdit->setEnabled(false);
-    connect(m_searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchCards);
+    //connect(m_searchLineEdit, &QLineEdit::textChanged, this, &MainWindow::searchCards);
+    connect(m_searchLineEdit, &QLineEdit::textChanged, this, [this](const QString& text){
+        if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
+            searchCards(text);
+        }else{
+            findInPage(text);
+        }
+    });
 
-    // Add to toolbar
     toolbar->addAction(searchAction);
     toolbar->addWidget(m_searchLineEdit);
 
+    toolbar->addSeparator();
+    createMenuButton();
 
     highlightButtons(buttonsHighlighted);
 
     return toolbar;
 }
 
+void MainWindow::findInPage(const QString& text)
+{
+    QWebEngineView* view = getCurrentWebView();
+    if (!view) return;
+
+    if (text.isEmpty()) {
+        view->findText("", QWebEnginePage::FindFlags());
+    } else {
+        view->findText(text, QWebEnginePage::FindFlags());
+    }
+}
+
 void MainWindow::toggleView() {
     if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
-        // Currently in dashboard, switch to web view
         m_stackedWidget->setCurrentWidget(m_webViewContainer);
         /*
         if (m_isDarkTheme) {
@@ -3785,28 +3404,24 @@ void MainWindow::toggleView() {
         m_toggleViewAction->setToolTip("Switch to Dashboard");
         setWindowTitle("Jasmine - Web Browser");
 
-        // Allow resizing in web view
         this->setMinimumSize(0, 0);
         this->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
 
-        // Restore previous web view size if available, otherwise use dashboard size
         if (!m_savedWebViewSize.isEmpty()) {
             this->resize(m_savedWebViewSize);
         } else {
             this->resize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
         }
-
+        m_urlBar->setVisible(showUrlBar);
         m_stackedWidget->update();
 
     } else {
-        // Currently in web view, switch to dashboard
         m_savedWebViewSize = this->size();
         m_stackedWidget->setCurrentWidget(m_dashboardWidget);
         if (this->isMaximized()) {
             this->setWindowState(Qt::WindowNoState);
         }
 
-        // Lock dashboard size - prevents all resizing including drag
         this->setFixedSize(DASHBOARD_WIDTH, DASHBOARD_HEIGHT);
         /*
         if (m_isDarkTheme) {
@@ -3837,43 +3452,33 @@ void MainWindow::onAddCurrentWebsite()
 
 void MainWindow::updateTabCountStatus() {
     int tabCount = m_tabWidget->count();
-    // Update the tab count label
-    //m_tabCountLabel->setText(QString("Tabs: %1").arg(tabCount));
     m_toggleViewAction->setText(QString("Tabs: %1").arg(tabCount));
-    // Update status bar with tab count
     if (tabCount > 0) {
         statusBar()->showMessage(QString("%1 tab%2 open").arg(tabCount).arg(tabCount > 1 ? "s" : ""), 3000);
     } else {
         statusBar()->showMessage("No tabs open", 3000);
     }
 
-    // ALWAYS keep the toggle button enabled
     m_toggleViewAction->setEnabled(true);
 
 }
 
 
 void MainWindow::selectFirstItemIfNoneSelected() {
-    // For websites tab
     if (m_leftPanelTabs->currentIndex() == 0) {
         if (m_currentWebsiteIndex == -1 && m_model->rowCount() > 0) {
-            // Select the first website
             QModelIndex firstIndex = m_model->index(0, 0);
             onWebsiteSelected(firstIndex);
         } else if (m_currentWebsiteIndex >= 0 && m_currentWebsiteIndex < m_model->rowCount()) {
-            // Reselect the previously selected website
             QModelIndex index = m_model->index(m_currentWebsiteIndex, 0);
             onWebsiteSelected(index);
         }
     }
-    // For sessions tab
     else if (m_leftPanelTabs->currentIndex() == 1) {
         if (m_currentSessionName.isEmpty() && !m_sessions.isEmpty()) {
-            // Select the first session
             QString firstName = m_sessions.keys().first();
             onSessionSelected(firstName);
         } else if (!m_currentSessionName.isEmpty() && m_sessions.contains(m_currentSessionName)) {
-            // Reselect the previously selected session
             onSessionSelected(m_currentSessionName);
         }
     }
@@ -3881,10 +3486,8 @@ void MainWindow::selectFirstItemIfNoneSelected() {
 
 
 QIcon MainWindow::generateRandomSvgIcon() {
-    // Random number generator
     QRandomGenerator *rng = QRandomGenerator::global();
 
-    // Choose a color scheme (analogous colors)
     int baseHue = rng->bounded(360);
     QColor color1, color2, color3;
 
@@ -3892,19 +3495,16 @@ QIcon MainWindow::generateRandomSvgIcon() {
     color2.setHsv((baseHue + 30) % 360, 180 + rng->bounded(75), 180 + rng->bounded(75));
     color3.setHsv((baseHue + 60) % 360, 180 + rng->bounded(75), 180 + rng->bounded(75));
 
-    // Choose a pattern type
     int patternType = rng->bounded(5);
 
     QString svgContent = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\">";
 
-    // Background
     svgContent += QString("<rect width=\"64\" height=\"64\" fill=\"%1\" />").arg(color1.name());
 
     switch (patternType) {
 
 
     case 0: {
-        // Gradient with shapes
         svgContent += QString(
                           "<defs>"
                           "  <linearGradient id=\"grad\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">"
@@ -3915,7 +3515,6 @@ QIcon MainWindow::generateRandomSvgIcon() {
                           "<rect width=\"64\" height=\"64\" fill=\"url(#grad)\" />"
                           ).arg(color1.name()).arg(color2.name());
 
-        // Add some shapes
         int numShapes = 3 + rng->bounded(5);
         for (int i = 0; i < numShapes; i++) {
             int x = rng->bounded(64);
@@ -3923,13 +3522,11 @@ QIcon MainWindow::generateRandomSvgIcon() {
             int size = 10 + rng->bounded(20);
 
             if (rng->bounded(2) == 0) {
-                // Rectangle
                 svgContent += QString("<rect x=\"%1\" y=\"%2\" width=\"%3\" height=\"%3\" "
                                       "fill=\"%4\" opacity=\"0.7\" transform=\"rotate(%5,%1,%2)\" />")
                                   .arg(x).arg(y).arg(size).arg(color3.name())
                                   .arg(rng->bounded(360));
             } else {
-                // Triangle
                 int x2 = x + size;
                 int y2 = y;
                 int x3 = x + (size/2);
@@ -3944,11 +3541,9 @@ QIcon MainWindow::generateRandomSvgIcon() {
     }
 
     case 1: {
-        // Wavy pattern - horizontal OR vertical
         bool isVertical = rng->bounded(2) == 0;
 
         if (isVertical) {
-            // Vertical waves
             svgContent += QString(
                               "<defs>"
                               "  <pattern id=\"pattern1\" patternUnits=\"userSpaceOnUse\" width=\"20\" height=\"20\">"
@@ -3960,7 +3555,6 @@ QIcon MainWindow::generateRandomSvgIcon() {
                               "</defs>"
                               ).arg(color2.name()).arg(color3.name());
         } else {
-            // Horizontal waves (your original)
             svgContent += QString(
                               "<defs>"
                               "  <pattern id=\"pattern1\" patternUnits=\"userSpaceOnUse\" width=\"20\" height=\"20\">"
@@ -3973,7 +3567,6 @@ QIcon MainWindow::generateRandomSvgIcon() {
                               ).arg(color2.name()).arg(color3.name());
         }
 
-        // Apply patterns (same for both)
         svgContent += QString(
                           "<rect width=\"64\" height=\"64\" fill=\"%1\" />"
                           "<rect width=\"64\" height=\"64\" fill=\"url(#pattern1)\" opacity=\"0.7\" />"
@@ -3984,7 +3577,6 @@ QIcon MainWindow::generateRandomSvgIcon() {
 
 
     case 2: {
-        // Geometric mosaic
         int gridSize = 4 + rng->bounded(4); // 4x4 to 7x7 grid
         int cellSize = 64 / gridSize;
 
@@ -3993,13 +3585,11 @@ QIcon MainWindow::generateRandomSvgIcon() {
                 int shapeType = rng->bounded(3);
                 QColor cellColor;
 
-                // Choose color based on position
                 int colorChoice = (x + y) % 3;
                 if (colorChoice == 0) cellColor = color1;
                 else if (colorChoice == 1) cellColor = color2;
                 else cellColor = color3;
 
-                // Adjust brightness randomly
                 int h, s, v;
                 cellColor.getHsv(&h, &s, &v);
                 v = qMin(255, v + rng->bounded(-30, 30));
@@ -4009,25 +3599,20 @@ QIcon MainWindow::generateRandomSvgIcon() {
                 int yPos = y * cellSize;
 
                 if (shapeType == 0) {
-                    // Square
                     svgContent += QString("<rect x=\"%1\" y=\"%2\" width=\"%3\" height=\"%3\" fill=\"%4\" />")
                                       .arg(xPos).arg(yPos).arg(cellSize).arg(cellColor.name());
                 } else if (shapeType == 1) {
-                    // Circle
                     svgContent += QString("<circle cx=\"%1\" cy=\"%2\" r=\"%3\" fill=\"%4\" />")
                                       .arg(xPos + cellSize/2).arg(yPos + cellSize/2)
                                       .arg(cellSize/2).arg(cellColor.name());
                 } else {
-                    // Triangle
                     if (rng->bounded(2) == 0) {
-                        // Top-left to bottom-right diagonal
                         svgContent += QString("<polygon points=\"%1,%2 %3,%4 %5,%6\" fill=\"%7\" />")
                                           .arg(xPos).arg(yPos)
                                           .arg(xPos + cellSize).arg(yPos + cellSize)
                                           .arg(xPos).arg(yPos + cellSize)
                                           .arg(cellColor.name());
                     } else {
-                        // Top-right to bottom-left diagonal
                         svgContent += QString("<polygon points=\"%1,%2 %3,%4 %5,%6\" fill=\"%7\" />")
                                           .arg(xPos + cellSize).arg(yPos)
                                           .arg(xPos).arg(yPos + cellSize)
@@ -4041,8 +3626,6 @@ QIcon MainWindow::generateRandomSvgIcon() {
     }
 
     case 3: {
-        // Abstract art
-        // Background gradient
         svgContent += QString(
                           "<defs>"
                           "  <radialGradient id=\"grad\" cx=\"50%\" cy=\"50%\" r=\"50%\" fx=\"50%\" fy=\"50%\">"
@@ -4053,7 +3636,6 @@ QIcon MainWindow::generateRandomSvgIcon() {
                           "<rect width=\"64\" height=\"64\" fill=\"url(#grad)\" />"
                           ).arg(color1.name()).arg(color2.name());
 
-        // Add random bezier curves
         int numCurves = 3 + rng->bounded(5);
         for (int i = 0; i < numCurves; i++) {
             int x1 = rng->bounded(64);
@@ -4073,7 +3655,6 @@ QIcon MainWindow::generateRandomSvgIcon() {
         break;
     }
     case 4: {
-        // Mandala pattern
         int centerX = 32, centerY = 32;
         int layers = 3 + rng->bounded(3); // 3-5 layers
 
@@ -4088,13 +3669,10 @@ QIcon MainWindow::generateRandomSvgIcon() {
                 int x = centerX + radius * cos(angle);
                 int y = centerY + radius * sin(angle);
 
-                // Draw petal shapes
                 if (layer % 2 == 0) {
-                    // Circles
                     svgContent += QString("<circle cx=\"%1\" cy=\"%2\" r=\"%3\" fill=\"%4\" opacity=\"0.8\" />")
                                       .arg(x).arg(y).arg(3 + layer).arg(layerColor.name());
                 } else {
-                    // Diamond shapes
                     svgContent += QString("<polygon points=\"%1,%2 %3,%4 %5,%6 %7,%8\" fill=\"%9\" opacity=\"0.7\" />")
                                       .arg(x).arg(y-4).arg(x+4).arg(y).arg(x).arg(y+4).arg(x-4).arg(y)
                                       .arg(layerColor.name());
@@ -4102,14 +3680,12 @@ QIcon MainWindow::generateRandomSvgIcon() {
             }
         }
 
-        // Center circle
         svgContent += QString("<circle cx=\"32\" cy=\"32\" r=\"6\" fill=\"%1\" />").arg(color2.name());
         break;
         }
     }
     svgContent += "</svg>";
 
-    // Convert SVG to icon
     QSvgRenderer renderer(svgContent.toUtf8());
     QPixmap pixmap(64, 64);
     pixmap.fill(Qt::transparent);
@@ -4125,7 +3701,6 @@ void MainWindow::onUpdateSession() {
         return;
     }
 
-    // Check if name changed and warn about new icon
     QString newName = m_sessionNameInput->text().trimmed();
     if (newName.isEmpty()) {
         QMessageBox::information(this, "Session Update",
@@ -4133,10 +3708,8 @@ void MainWindow::onUpdateSession() {
         return;
     }
 
-    // Update the session data
     m_sessions[m_currentSessionName].comments = m_sessionCommentsEdit->toPlainText();
 
-    // If name changed, handle the map key change
     if (newName != m_currentSessionName && !newName.isEmpty()) {
         SessionData sessionData = m_sessions[m_currentSessionName];
         sessionData.name = newName;
@@ -4145,20 +3718,16 @@ void MainWindow::onUpdateSession() {
         m_currentSessionName = newName;
     }
 
-    // Save the current icon to disk
     QString iconDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/session_icons/";
     QDir().mkpath(iconDir);
     QString iconPath = iconDir + m_currentSessionName + "_session.png";
     QPixmap pixmap = m_sessions[m_currentSessionName].icon.pixmap(64, 64);
     pixmap.save(iconPath, "PNG");
 
-    // Save to disk
     saveSessionsData();
 
-    // Update UI
     updateSessionCards();
 
-    // Success message
     QMessageBox::information(this, "Success", "Session successfully updated!");
 }
 
@@ -4213,13 +3782,11 @@ void MainWindow::openDownloadsFolder(){
 
     QDir downloadsDir(JASMINE_CONSTANTS::downloadsDirPath);
 
-    // Create directory if it doesn't exist
     if (!downloadsDir.exists()) {
         downloadsDir.mkpath(".");
     }
 
 #ifdef FLATPAK_BUILD
-    // Show helpful message for Flatpak users
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Downloads Location");
     msgBox.setText(QString("Your downloads are saved to:\n\n%1\n\n"
@@ -4234,7 +3801,6 @@ void MainWindow::openDownloadsFolder(){
         QApplication::clipboard()->setText(JASMINE_CONSTANTS::downloadsDirPath);
     }
 #else
-    // Open in system file manager
     QDesktopServices::openUrl(QUrl::fromLocalFile(JASMINE_CONSTANTS::downloadsDirPath));
 #endif
 }
@@ -4246,7 +3812,6 @@ QString MainWindow::loadDarkTheme(){
         QString stylesheet = stream.readAll();
         styleFile.close();
 
-        // Switch to white icons for dark theme
         m_webBackAction->setIcon(QIcon(":/resources/icons-white/arrow-left.svg"));
         m_webForwardAction->setIcon(QIcon(":/resources/icons-white/arrow-right.svg"));
         m_webReloadAction->setIcon(QIcon(":/resources/icons-white/refresh-cw.svg"));
@@ -4259,7 +3824,7 @@ QString MainWindow::loadDarkTheme(){
         m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons-white/link.svg"));
         streamButton->setIcon(QIcon(":/resources/icons-white/rss.svg"));
         searchAction->setIcon(QIcon(":/resources/icons-white/search.svg"));
-
+        menuButton->setIcon(QIcon(":/resources/icons-white/menu.svg"));
         /*
         if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
             m_toggleViewAction->setIcon(QIcon(":/resources/icons-white/chevron-right.svg"));
@@ -4305,7 +3870,6 @@ QString MainWindow::loadLightTheme(){
         QString stylesheet = stream.readAll();
         styleFile.close();
 
-        // Switch to black icons for light theme
         m_webBackAction->setIcon(QIcon(":/resources/icons/arrow-left.svg"));
         m_webForwardAction->setIcon(QIcon(":/resources/icons/arrow-right.svg"));
         m_webReloadAction->setIcon(QIcon(":/resources/icons/refresh-cw.svg"));
@@ -4318,6 +3882,7 @@ QString MainWindow::loadLightTheme(){
         m_openCopiedLinkAction->setIcon(QIcon(":/resources/icons/link.svg"));
         streamButton->setIcon(QIcon(":/resources/icons/rss.svg"));
         searchAction->setIcon(QIcon(":/resources/icons/search.svg"));
+        menuButton->setIcon(QIcon(":/resources/icons/menu.svg"));
 
         /*
         if (m_stackedWidget->currentWidget() == m_dashboardWidget) {
@@ -4367,7 +3932,6 @@ void MainWindow::onCleanSharedProfileData() {
                               "Are you sure you want to clean shared profile browsing data? This will affect tabs using the shared profile but not separate profiles.",
                               QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
 
-        // Clear only the shared profile
         m_webProfile->clearAllVisitedLinks();
         m_webProfile->clearHttpCache();
         m_webProfile->cookieStore()->deleteAllCookies();
@@ -4391,7 +3955,6 @@ void MainWindow::onRestoreFactoryDefaults() {
                                                              QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        // Final confirmation
         QMessageBox::StandardButton finalReply = QMessageBox::critical(this,
                                                                        "FINAL WARNING",
                                                                        "🚨 LAST CHANCE!\n\nThis will delete ALL your data permanently.\n\nProceed with factory reset?",
@@ -4408,7 +3971,6 @@ void MainWindow::on_Open2faManager()
 {
     if (!m_twoFAManager) {
         m_twoFAManager = new TwoFAManager(this);
-        // Apply current theme to the new window
         if (!styleSheet().isEmpty()) {  // If dark theme is active
             m_twoFAManager->setStyleSheet(styleSheet());
         }
@@ -4424,27 +3986,20 @@ void MainWindow::on_Open2faManager()
 
 
 void MainWindow::performFactoryReset() {
-    // 1. Clear the model
     m_model->setWebsites(QList<Website>());
 
-    // 2. Clear sessions
     m_sessions.clear();
 
-    // 3. Clear QSettings
     QSettings settings;
     settings.clear();
     settings.sync();
-    //clean security manager
     m_securityManager->clearSecuritySettings();
 
-    // 4. Clear browsing data
     onCleanAllData();
 
-    // 5. Delete directories - use the already-set values!
     QString appDataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir(appDataDir).removeRecursively();
 
-    // No need for orgName/appName - QStandardPaths uses the values from main.cpp!
 
     statusBar()->showMessage("Factory reset complete. Please restart the application.", 5000);
     QApplication::quit();
@@ -4462,7 +4017,6 @@ void MainWindow::updateUrlBarState() {
 
 
 
-    // Update tooltip based on current state
     if (inWebView) {
         m_toggleUrlBarAction->setToolTip(urlBarVisible ? "Hide URL Bar" : "Show URL Bar");
         m_toggleUrlBarAction->setText(urlBarVisible ? "Hide URL Bar" : "Show URL Bar"); // Added this line
@@ -4474,14 +4028,13 @@ void MainWindow::connectUrlBar() {
 
     connect(m_urlBar, &URLBar::urlChanged, this, [this](const QString &url) {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
-            // Tab exists, load URL in current tab
             view->load(QUrl(url));
-            //createNewTabWithUrlFromLink(url,view);
+            onHistoryEnabled(view);
 
         } else {
-            // No tabs open, create a new tab with this URL
             createNewTabWithUrl(url);
         }
+
     });
 
     connect(m_urlBar, &URLBar::backRequested, this, [this]() {
@@ -4501,10 +4054,8 @@ void MainWindow::connectUrlBar() {
 
     connect(m_urlBar, &URLBar::homeRequested, this, [this]() {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
-            // Get the initial URL from the web view's history
             QWebEngineHistory *history = view->history();
             if (history->count() > 0) {
-                // Go to the first item in history (the initial URL)
                 QWebEngineHistoryItem firstItem = history->itemAt(0);
                 view->load(firstItem.url());
             }
@@ -4536,7 +4087,6 @@ void MainWindow::connectUrlBar() {
                                                   QLineEdit::Normal,
                                                   "", &ok);
             if (ok && !title.isEmpty()) {
-                // Check if website already exists
                 for (int i = 0; i < m_model->rowCount(); ++i) {
                     Website existing = m_model->getWebsite(i);
                     if (existing.url == currentUrl) {
@@ -4545,7 +4095,6 @@ void MainWindow::connectUrlBar() {
                     }
                 }
 
-                // Create new website
                 Website newWebsite;
                 newWebsite.url = currentUrl;
                 newWebsite.title = title;
@@ -4568,14 +4117,18 @@ void MainWindow::connectUrlBar() {
 
 void MainWindow::createNewTabWithUrl(const QString &url) {
     QWebEngineView *webView = new QWebEngineView(m_tabWidget);
-    // URL sync connection
-    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+    connect(webView, &QWebEngineView::urlChanged, this, [this, webView](const QUrl &url) {
         if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
             if (sender() == currentView) {
                 m_urlBar->setUrl(url.toString());
             }
+            onHistoryEnabled(webView);
+
         }
+
     });
+   // onHistoryEnabled(webView);
+
     connect(webView, &QWebEngineView::titleChanged, this, [this, webView](const QString &title) {
         int tabIndex = m_tabWidget->indexOf(webView);
         if (tabIndex != -1) {
@@ -4587,7 +4140,6 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
 
         }
     });
-    // Determine which profile to use
     QWebEngineProfile *profile;
 
 
@@ -4605,7 +4157,6 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
 
 
 
-    // Create page with the selected profile
     page = new MyWebPage(profile, webView);
 
     configurePage(page);
@@ -4614,31 +4165,23 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
     webView->setPage(page);
     setupCustomContextMenu(webView, profile);
 
-    // Add new tab
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
     showWebViews();
     m_tabWidget->setCurrentIndex(tabIndex);
-    // Load the URL
-    //webView->setUrl(QUrl(url));
     QString finalUrl;
     QString processedUrl = url;
-    // Add https:// if no protocol is specified
     if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://") && !processedUrl.startsWith("file://")) {
         processedUrl = "https://" + processedUrl;
     }
     QUrl testUrl(processedUrl);
-    // Check if it looks like a URL (has dots, no spaces, etc.)
     if (testUrl.isValid() && processedUrl.contains('.') && !processedUrl.contains(' ')) {
         finalUrl = processedUrl;
     } else {
-        // Treat as search term - use URLBar's selected search engine
         QUrl searchBase = m_urlBar->getSearchUrl();
         QString searchTerm = QUrl::toPercentEncoding(url);
         finalUrl = searchBase.toString() + searchTerm;
     }
-    // Load the final URL
     webView->setUrl(QUrl(finalUrl));
-    // Connect to the destroyed signal to clean up the profile
     connect(webView, &QObject::destroyed, this, [this, webView]() {
         cleanupTabProfile(webView);
     });
@@ -4647,14 +4190,18 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
 
 void MainWindow::createNewTab() {
     QWebEngineView *webView = new QWebEngineView(m_tabWidget);
-    // URL sync connection
-    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+    connect(webView, &QWebEngineView::urlChanged, this, [this, webView](const QUrl &url) {
         if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
             if (sender() == currentView) {
                 m_urlBar->setUrl(url.toString());
             }
+            onHistoryEnabled(webView);
+
         }
+
     });
+    //onHistoryEnabled(webView);
+
     connect(webView, &QWebEngineView::titleChanged, this, [this, webView](const QString &title) {
         int tabIndex = m_tabWidget->indexOf(webView);
         if (tabIndex != -1) {
@@ -4666,7 +4213,6 @@ void MainWindow::createNewTab() {
 
         }
     });
-    // Determine which profile to use
     QWebEngineProfile *profile;
 
 
@@ -4683,31 +4229,26 @@ void MainWindow::createNewTab() {
     }
 
 
-    // Create page with the selected profile
     page = new MyWebPage(profile, webView);
     configurePage(page);
     webView->setPage(page);
     setupCustomContextMenu(webView, profile);
 
-    // Add new tab
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
     showWebViews();
     m_tabWidget->setCurrentIndex(tabIndex);
-    // Load the selected search engine URL
     QUrl searchEngineUrl = m_urlBar->getSearchUrl();
     webView->setUrl(searchEngineUrl);
 
     connect(webView, &QWebEngineView::iconChanged, this, [this, webView](const QIcon &icon) {
 
 
-        // Update the tab icon
         int tabIndex = m_tabWidget->indexOf(webView);
         if (tabIndex != -1) {
             m_tabWidget->setTabIcon(tabIndex, icon);
         }
     });
 
-    // Connect to the destroyed signal to clean up the profile
     connect(webView, &QObject::destroyed, this, [this, webView]() {
         cleanupTabProfile(webView);
     });
@@ -4715,7 +4256,6 @@ void MainWindow::createNewTab() {
 
 
 void MainWindow::cleanupTempProfiles() {
-    //Do not perform cleaning if checkbox unchecked
     QSettings settings;
     bool shouldCleanup = settings.value("cleanupTempProfilesOnStartup", false).toBool();
     if (!shouldCleanup) {
@@ -4726,24 +4266,19 @@ void MainWindow::cleanupTempProfiles() {
     QDir profilesDir(profilesPath);
     if (!profilesDir.exists()) return;
 
-    // Get ALL entries in profiles directory
     QStringList allEntries = profilesDir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
 
     for (const QString& entry : allEntries) {
-        // Skip the "named" directory which contains named profiles
         if (entry == "named") continue;
 
-        // Skip the "sessions" directory which contains session symlinks
         if (entry == "sessions") continue;
 
         QString fullPath = profilesDir.absoluteFilePath(entry);
         QFileInfo info(fullPath);
 
-        // If it's a directory (not a symlink) and no symlinks point to it -> DELETE
         if (info.isDir() && !info.isSymLink() && !hasSymlinksPointingTo(fullPath)) {
             QDir dir(fullPath);
             if (dir.removeRecursively()) {
-                // Successfully removed
             }
         }
     }
@@ -4756,7 +4291,6 @@ bool MainWindow::hasSymlinksPointingTo(const QString& targetPath) {
     QString profilesPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
     QDir profilesDir(profilesPath);
 
-    // Get all Session_* entries (these could be symlinks)
     QStringList sessions = profilesDir.entryList(QStringList() << "Session_*", QDir::AllEntries | QDir::NoDotAndDotDot);
 
     for (const QString& session : sessions) {
@@ -4770,21 +4304,11 @@ bool MainWindow::hasSymlinksPointingTo(const QString& targetPath) {
 
 void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
 {
-    // === Profile Settings ===
 
 
-    // Set user agent (uncomment to override default)
-    // profile->setHttpUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
-    // Enable persistent storage (cookies, cache, etc.)
-    // profile->setPersistentStoragePath(QDir::homePath() + "/.myapp/browser_data");
-    // profile->setPersistentCookiesPolicy(QWebEngineProfile::AllowPersistentCookies);
 
-    // Configure cache
-    // profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
-    // profile->setCachePath(QDir::homePath() + "/.myapp/browser_cache");
 
-    // Set download path
 
 
     QString appDirPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/Jasmine";
@@ -4797,10 +4321,8 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     profile->setDownloadPath(JASMINE_CONSTANTS::downloadsDirPath);
 #endif
 
-    // === General WebEngine Settings ===
     QWebEngineSettings* settings = profile->settings();
 
-    // --- JavaScript ---
     settings->setAttribute(QWebEngineSettings::JavascriptEnabled, true); // Enable JavaScript
     settings->setAttribute(QWebEngineSettings::JavascriptCanOpenWindows, true); // Block popups (set true for compatibility, but can be abused)
     settings->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, false); // v Allow JS clipboard access (potential privacy risk)
@@ -4808,16 +4330,13 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     settings->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, false); // Allow JS to activate windows (can be abused for popups)
     settings->setAttribute(QWebEngineSettings::ReadingFromCanvasEnabled, true); //  Allow reading from canvas (can be used for fingerprinting)
 
-    // --- Content ---
     settings->setAttribute(QWebEngineSettings::AutoLoadImages, true); //  Load images automatically
-    // Enable auto loading of icons for pages (favicons)
     settings->setAttribute(QWebEngineSettings::AutoLoadIconsForPage, true);
     settings->setAttribute(QWebEngineSettings::WebGLEnabled, true); // Enable WebGL (potential fingerprinting vector)
     settings->setAttribute(QWebEngineSettings::PluginsEnabled, true); // Enable plugins (can be a security risk)
     settings->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true); // Allow fullscreen API
     settings->setAttribute(QWebEngineSettings::PdfViewerEnabled, true); // Enable built-in PDF viewer
 
-    // --- Privacy & Security ---
     settings->setAttribute(QWebEngineSettings::LocalStorageEnabled, true); // Enable HTML5 local storage (can be used for tracking)
     settings->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, false); // Allow local files to access remote URLs (security risk)
     settings->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, false); //  Allow local files to access other local files (security risk)
@@ -4825,12 +4344,10 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     settings->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, false); // Disable hyperlink auditing (privacy improvement)
     settings->setAttribute(QWebEngineSettings::DnsPrefetchEnabled, true); //  Enable DNS prefetching (improves speed, but can leak visited domains)
 
-    // --- Media ---
     settings->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false); // Allow autoplay (can be annoying)
     settings->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, true); // Allow screen capture (security risk if abused)
     settings->setAttribute(QWebEngineSettings::WebRTCPublicInterfacesOnly, true); // Restrict WebRTC to public interfaces (privacy improvement)
 
-    // --- UI/UX ---
     settings->setAttribute(QWebEngineSettings::ShowScrollBars, true); // Show scrollbars
     settings->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled, false); // Do not focus on navigation by default
     settings->setAttribute(QWebEngineSettings::PrintElementBackgrounds, true); // Print backgrounds
@@ -4841,7 +4358,6 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     settings->setAttribute(QWebEngineSettings::ErrorPageEnabled, true); // Show error pages
     settings->setAttribute(QWebEngineSettings::ForceDarkMode, false); // Do not force dark mode
 
-    // --- Fonts ---
     settings->setFontFamily(QWebEngineSettings::StandardFont, "Arial");
     settings->setFontFamily(QWebEngineSettings::FixedFont, "Courier New");
     settings->setFontFamily(QWebEngineSettings::SerifFont, "Times New Roman");
@@ -4850,37 +4366,19 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     settings->setFontSize(QWebEngineSettings::DefaultFixedFontSize, 13);
     settings->setFontSize(QWebEngineSettings::MinimumFontSize, 10);
 
-    // --- Additional/Optional Settings (commented out for reference) ---
 
-    // Enable accelerated 2D canvas for better performance
     settings->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, true);
 
 
 
-    // Enable hyperlink auditing (ping attribute, optional)
-    //settings->setAttribute(QWebEngineSettings::HyperlinkAuditingEnabled, true);
-
-    // Enable navigation on drop (drag-and-drop URLs)
-    //settings->setAttribute(QWebEngineSettings::NavigateOnDropEnabled, true);
-
-    // Set Unknown URL Scheme Policy (handle custom protocols, e.g., mailto:)
-    //settings->setUnknownUrlSchemePolicy(QWebEngineSettings::AllowUnknownUrlSchemesFromUserInteraction);
-
-    // Optionally, set image animation policy (Qt 6.8+)
-    // settings->setImageAnimationPolicy(QWebEngineSettings::ImageAnimationPolicy::Allow);
 
 
-    // --- Custom URL Scheme Handlers (uncomment and implement as needed) ---
-    // m_webProfile->installUrlSchemeHandler("app", new AppSchemeHandler(this));
 
-    // --- Client Certificate Storage (uncomment and implement as needed) ---
-    // m_webProfile->setClientCertificateStore(...);
 
-    // --- Custom Request Interceptor (uncomment and implement as needed) ---
-    // RequestInterceptor* interceptor = new RequestInterceptor(this);
-    // m_webProfile->setUrlRequestInterceptor(interceptor);
 
-    // --- Proxy Configuration (uncomment and configure as needed) ---
+
+
+
     /*
     QNetworkProxy proxy;
     proxy.setType(QNetworkProxy::HttpProxy);
@@ -4889,7 +4387,6 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     QNetworkProxy::setApplicationProxy(proxy);
     */
 
-    // --- Spell Checker (Qt 5.8+) ---
     /*
     #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
     profile->setSpellCheckEnabled(true);
@@ -4897,11 +4394,6 @@ void MainWindow::configureBrowserSettings(QWebEngineProfile* profile)
     #endif
     */
 
-    // --- Security Notes ---
-    // - Enabling LocalContentCanAccessRemoteUrls and LocalContentCanAccessFileUrls can expose local files or allow local HTML to make network requests. Only enable if you trust your content.
-    // - PluginsEnabled and WebGLEnabled can increase attack surface or fingerprinting risk.
-    // - Allowing JavaScript clipboard access, screen capture, or autoplay can be abused by malicious sites.
-    // - Review all enabled features for your application's threat model.
 }
 
 
@@ -4910,38 +4402,29 @@ void MainWindow::injectAdBlockScript(MyWebPage *page)
 {
     if (!page || !m_adBlocker || !m_adBlocker->isEnabled()) return;
 
-    // Connect to the loadFinished signal
     connect(page, &QWebEnginePage::loadFinished, this, [this, page](bool ok) {
-        // Check again in case ad blocker was disabled between page creation and load completion
         if (ok && m_adBlocker && m_adBlocker->isEnabled()) {
-            // Inject the ad-blocking script
             page->runJavaScript(AdBlockScript::getScript());
         }
     });
 }
 
-/////////////////////////////////////////////
 QWebEngineProfile* MainWindow::getOrCreateNamedProfile(const QString& name) {
-    // Return existing profile if we have it
     if (m_namedProfiles.contains(name)) {
         return m_namedProfiles[name];
     }
 
-    // Create a new named profile
     QString profilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
                           "/profiles/named/" + name;
 
     QWebEngineProfile* profile = new QWebEngineProfile(name, this);
-    // add attributes
     configureProfile(profile);
 
-    // Configure the profile
     profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
     profile->setPersistentStoragePath(profilePath);
     profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
     profile->setCachePath(profilePath + "/cache");
 
-    // Store in our map
     m_namedProfiles[name] = profile;
 
     return profile;
@@ -4950,31 +4433,22 @@ QWebEngineProfile* MainWindow::getOrCreateNamedProfile(const QString& name) {
 void MainWindow::saveNamedProfilesData() {
     QSettings settings;
 
-    // Save list of profile names
     QStringList profileNames = m_namedProfiles.keys();
     settings.setValue("namedProfiles/profiles", profileNames);
 
-    // Save whether named profiles are being used
     settings.setValue("namedProfiles/usingNamedProfiles", m_usingNamedProfiles);
 
-    // Save selected profile
-    //settings.setValue("namedProfiles/selectedProfile", m_selectedProfileName);
 }
 
 void MainWindow::loadNamedProfilesData() {
     QSettings settings;
 
-    // Load whether named profiles are being used
     m_usingNamedProfiles = settings.value("namedProfiles/usingNamedProfiles", false).toBool();
 
-    // Load selected profile
-    //m_selectedProfileName = settings.value("namedProfiles/selectedProfile", "").toString();
     m_selectedProfileName = "";
 
-    // Load list of profile names
     profileNames = settings.value("namedProfiles/profiles", QStringList()).toStringList();
 
-    // Create profile objects for each name
     for (const QString& name : profileNames) {
         getOrCreateNamedProfile(name);
     }
@@ -4991,11 +4465,9 @@ void MainWindow::setupNamedProfilesUI() {
         profileSelector->addItem(name, name);
     }
 
-    // Add special items
     profileSelector->addItem("New Profile...", "new");
     profileSelector->addItem("Manage Profiles...", "manage");
 
-    // Set current profile
     if (!m_selectedProfileName.isEmpty()) {
         int index = profileSelector->findData(m_selectedProfileName);
         if (index >= 0) {
@@ -5004,33 +4476,26 @@ void MainWindow::setupNamedProfilesUI() {
     }
     profileSelector->setEnabled(true);
 
-    // Connect signals
     connect(profileSelector, QOverload<int>::of(&QComboBox::activated), this, [this](int index) {
         QString data = profileSelector->itemData(index).toString();
 
         if (data == "new") {
-            // Create new profile
             bool ok;
             QString name = QInputDialog::getText(this, "New Profile",
                                                  "Enter profile name:",
                                                  QLineEdit::Normal, "", &ok);
             if (ok && !name.isEmpty()) {
-                // Create the profile
                 getOrCreateNamedProfile(name);
 
-                // Update the selector
                 profileSelector->insertItem(profileSelector->count() - 2, name, name);
                 profileSelector->setCurrentIndex(profileSelector->count() - 3);
 
-                // Set as selected
                 m_selectedProfileName = name;
                 m_usingNamedProfiles = true;
 
-                // Save settings
                 saveNamedProfilesData();
             }
 
-            // Reset to previous selection
             int prevIndex = profileSelector->findData(m_selectedProfileName);
             if (prevIndex >= 0) {
                 profileSelector->setCurrentIndex(prevIndex);
@@ -5041,7 +4506,6 @@ void MainWindow::setupNamedProfilesUI() {
         else if (data == "manage") {
             showProfileManager();
 
-            // Reset to previous selection
             int prevIndex = profileSelector->findData(m_selectedProfileName);
             if (prevIndex >= 0) {
                 profileSelector->setCurrentIndex(prevIndex);
@@ -5050,7 +4514,6 @@ void MainWindow::setupNamedProfilesUI() {
             }
         }
         else {
-            // Normal profile selection
             m_selectedProfileName = data;
             m_usingNamedProfiles = !data.isEmpty();
             saveNamedProfilesData();
@@ -5065,12 +4528,10 @@ void MainWindow::showProfileManager() {
     dialog.setWindowTitle("Manage Profiles");
     QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
-    // Create list widget
     QListWidget* profileList = new QListWidget(&dialog);
     profileList->addItems(m_namedProfiles.keys());
     layout->addWidget(profileList);
 
-    // Create buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     QPushButton* newButton = new QPushButton("New", &dialog);
     QPushButton* deleteButton = new QPushButton("Delete", &dialog);
@@ -5080,41 +4541,32 @@ void MainWindow::showProfileManager() {
     buttonLayout->addWidget(cleanButton);
     layout->addLayout(buttonLayout);
 
-    // Add close button
     QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
     connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::accept);
     layout->addWidget(buttonBox);
 
-    // Connect new button
     connect(newButton, &QPushButton::clicked, &dialog, [this, profileList]() {
-        // Create new profile
         bool ok;
         QString name = QInputDialog::getText(this, "New Profile",
                                              "Enter profile name:",
                                              QLineEdit::Normal, "", &ok);
         if (ok && !name.isEmpty()) {
-            // Check if profile already exists
             if (m_namedProfiles.contains(name)) {
                 QMessageBox::warning(this, "Profile Exists",
                                      "A profile with this name already exists.");
                 return;
             }
 
-            // Create the profile
             getOrCreateNamedProfile(name);
 
-            // Update the list
             profileList->addItem(name);
 
-            // Update the selector in main window
             profileSelector->insertItem(profileSelector->count() - 2, name, name);
 
-            // Save settings
             saveNamedProfilesData();
         }
     });
 
-    // Connect delete button
     connect(deleteButton, &QPushButton::clicked, &dialog, [this, profileList]() {
         QListWidgetItem* item = profileList->currentItem();
         if (!item) {
@@ -5125,24 +4577,19 @@ void MainWindow::showProfileManager() {
 
         QString name = item->text();
 
-        // Get profile directory path
         QString namedProfilePath = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation))
                                        .filePath("profiles/named/" + name);
         QString sessionsDir = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation))
                                   .filePath("profiles/sessions");
 
-        // Check if profile is in use by checking for symlinks
         QDir dir(sessionsDir);
         if (dir.exists()) {
-            // Get all session directories
             QStringList sessions = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
 
-            // Check each session for symlinks to this profile
             for (const QString& session : sessions) {
                 QString sessionPath = QDir(sessionsDir).filePath(session);
                 QFileInfo linkInfo(sessionPath);
 
-                // If it's a symlink and points to our profile, the profile is in use
                 if (linkInfo.isSymLink() && linkInfo.symLinkTarget() == namedProfilePath) {
                     QMessageBox::warning(this, "Profile In Use",
                                          "Profile '" + name + "' is currently in use by active sessions and cannot be deleted.");
@@ -5151,20 +4598,16 @@ void MainWindow::showProfileManager() {
             }
         }
 
-        // Confirm deletion
         QMessageBox::StandardButton reply = QMessageBox::question(this, "Delete Profile",
                                                                   "Are you sure you want to delete profile '" + name + "'?\n"
                                                                                                                        "This will permanently delete all data for this profile.",
                                                                   QMessageBox::Yes | QMessageBox::No);
 
         if (reply == QMessageBox::Yes) {
-            // Remove from map (m_namedProfiles is a QMap<QString, QWebEngineProfile*>)
             QWebEngineProfile* profile = m_namedProfiles.take(name);
             if (profile) {
-                // Delete the profile object
                 profile->deleteLater();
 
-                // Delete the profile directory
                 QDir profileDir(namedProfilePath);
                 if (profileDir.exists()) {
                     if (!profileDir.removeRecursively()) {
@@ -5173,10 +4616,8 @@ void MainWindow::showProfileManager() {
                     }
                 }
 
-                // Remove from list
                 delete item;
 
-                // Remove from selector in main window
                 for (int i = 0; i < profileSelector->count(); i++) {
                     if (profileSelector->itemData(i).toString() == name) {
                         profileSelector->removeItem(i);
@@ -5184,20 +4625,17 @@ void MainWindow::showProfileManager() {
                     }
                 }
 
-                // If this was the selected profile, switch to default
                 if (m_selectedProfileName == name) {
                     m_selectedProfileName = "";
                     m_usingNamedProfiles = false;
                     profileSelector->setCurrentIndex(0);
                 }
 
-                // Save settings
                 saveNamedProfilesData();
             }
         }
     });
 
-    // Connect clean button
     connect(cleanButton, &QPushButton::clicked, &dialog, [this, profileList]() {
         QListWidgetItem* item = profileList->currentItem();
         if (!item) {
@@ -5210,14 +4648,12 @@ void MainWindow::showProfileManager() {
         QWebEngineProfile* profile = m_namedProfiles.value(name);
         if (!profile) return;
 
-        // Confirm cleaning
         QMessageBox::StandardButton reply = QMessageBox::question(this, "Clean Profile",
                                                                   "Are you sure you want to clean all data for profile '" + name + "'?\n"
                                                                                                                                    "This will delete cookies, cache, and browsing history.",
                                                                   QMessageBox::Yes | QMessageBox::No);
 
         if (reply == QMessageBox::Yes) {
-            // Clean all data directly
             profile->cookieStore()->deleteAllCookies();
             profile->clearHttpCache();
             profile->clearAllVisitedLinks();
@@ -5257,7 +4693,6 @@ void MainWindow::enterTheaterMode(QWebEngineView* webView)
     m_theaterWebView = webView;
     m_lastTabIndex = m_tabWidget->indexOf(webView);
 
-    // Maximize the main window, but do not go fullscreen
     showMaximized();
     showWebViews();
 
@@ -5275,7 +4710,6 @@ void MainWindow::exitTheaterMode(QWebEngineView* webView)
     if (!m_isInTheaterMode || !m_theaterWebView)
         return;
 
-    //showNormal();
     showDashboard();
     showWebViews();
 
@@ -5286,7 +4720,6 @@ void MainWindow::exitTheaterMode(QWebEngineView* webView)
     m_tabWidget->tabBar()->setVisible(true);
 
 
-    // Clean up state
     m_isInTheaterMode = false;
     m_theaterWebView = nullptr;
 }
@@ -5299,8 +4732,6 @@ void MainWindow::configureProfile(QWebEngineProfile *profile)
     profile->setUrlRequestInterceptor(interceptor);
     if (m_adBlocker && m_adBlocker->isEnabled()) {
         profile->setUrlRequestInterceptor(m_adBlocker);
-        //setupVideoAdBlocking(profile);
-        //auto cosmetic = new CosmeticFilterInjector(profile);
 
     }
 
@@ -5329,7 +4760,8 @@ void MainWindow::configurePage(MyWebPage *page)
                 pendingRequests.insert(request);
 
                 switch(feature) {
-                //case QWebEnginePage::Geolocation:
+
+                 //case QWebEnginePage::Geolocation:
 
                 //case QWebEnginePage::MediaAudioCapture:
 
@@ -5378,32 +4810,27 @@ void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*p
 
     QMenu menu;
 
-    // Navigation
     menu.addAction("Back", view, &QWebEngineView::back);
     menu.addAction("Forward", view, &QWebEngineView::forward);
     menu.addAction("Reload", view, &QWebEngineView::reload);
     menu.addAction("Stop", view, &QWebEngineView::stop);
     menu.addSeparator();
 
-    // Edit actions
     QAction *cutAction = menu.addAction("Cut");
     QAction *copyAction = menu.addAction("Copy");
     QAction *pasteAction = menu.addAction("Paste");
     QAction *selectAllAction = menu.addAction("Select All");
     menu.addSeparator();
 
-    // Link-specific actions (only show if there's a link)
     bool hasLink = request->linkUrl().isValid();
     QAction *copyLinkAction = nullptr;
     QAction *openTabAction = nullptr;
     QAction *searchAction = nullptr;
 
-    //QAction *openWindowAction = nullptr;
 
     if (hasLink) {
         copyLinkAction = menu.addAction("Copy link address");
         openTabAction = menu.addAction("Open link in new tab(Preserves calling tab's profile)");
-        //openWindowAction = menu.addAction("Open link in new window");
         menu.addSeparator();
     }
 
@@ -5415,7 +4842,6 @@ void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*p
 
     }
 
-    // Check if context menu was triggered on media content (image, video, audio)
     bool hasMediaContent = (request->mediaType() != QWebEngineContextMenuRequest::MediaTypeNone);
     QAction *copyImageAction = nullptr;
     QAction *saveImageAction = nullptr;
@@ -5426,19 +4852,15 @@ void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*p
         menu.addSeparator();
     }
 
-    // Page actions
     menu.addAction("View page source", [view, this]() {
         devToolsView->resize(1000, 800);
         devToolsView->show();
 
-        // Create a page for it using the same profile
         QWebEnginePage *sourcePage = new QWebEnginePage(view->page()->profile(), devToolsView);
         devToolsView->setPage(sourcePage);
 
-        // Attach it as the "devtools" page (Qt uses this connection internally)
         view->page()->setDevToolsPage(sourcePage);
 
-        // Trigger the built-in View Source action
         view->page()->triggerAction(QWebEnginePage::ViewSource);
     });
 
@@ -5448,21 +4870,17 @@ void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*p
             devToolsView->resize(1000, 800);
             devToolsView->show();
 
-            // attach devtools to this new page
             view->page()->setDevToolsPage(devToolsPage);
 
-            // trigger inspect mode
             view->page()->triggerAction(QWebEnginePage::InspectElement);
         view->page()->triggerAction(QWebEnginePage::InspectElement);
     });
 
     QAction *selected = menu.exec(view->mapToGlobal(pos));
     if (!selected) {
-        // User canceled the menu, do nothing
         return;
     }
 
-    // Handle selections
     if (selected == cutAction) {
         view->triggerPageAction(QWebEnginePage::Cut);
     }
@@ -5482,10 +4900,6 @@ void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*p
     else if (selected == openTabAction && hasLink) {
         createNewTabWithUrlFromLink(request->linkUrl().toString(), view);
     }
-    //else if (selected == openWindowAction && hasLink) {
-        // Implement open in new window functionality
-    //    createNewTabWithUrlFromLink(request->linkUrl().toString(), view);
-    //}
     else if (selected == copyImageAction && hasMediaContent) {
         view->triggerPageAction(QWebEnginePage::CopyImageToClipboard);
     }
@@ -5493,7 +4907,6 @@ void MainWindow::onWebViewContextMenu(const QPoint &pos, QWebEngineProfile * /*p
     else if (selected == saveImageAction && hasMediaContent) {
         QUrl imageUrl = request->mediaUrl();
         if (imageUrl.isValid()) {
-            // This will trigger the downloadRequested signal automatically
             view->page()->download(imageUrl);
         }
     }
@@ -5509,10 +4922,8 @@ void MainWindow::setupCustomContextMenu(QWebEngineView *view, QWebEngineProfile 
 {
     if (!view) return;
 
-    // Allow custom context menu
     view->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    // Connect the signal to the slot
     connect(view, &QWidget::customContextMenuRequested, this,
                 [this, view, profile](const QPoint &pos){
                     onWebViewContextMenu(pos, profile);
@@ -5521,7 +4932,6 @@ void MainWindow::setupCustomContextMenu(QWebEngineView *view, QWebEngineProfile 
 
 
 void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView *originView) {
-    // Determine profile
     QWebEngineProfile *profile = nullptr;
 
     if (originView) {
@@ -5530,19 +4940,21 @@ void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView 
         profile = m_webProfile; // fallback shared
     }
 
-    // Configure profile safely
     configureProfile(profile);
 
-    // Create new web view and page
     QWebEngineView *webView = new QWebEngineView(m_tabWidget);
 
-    connect(webView, &QWebEngineView::urlChanged, this, [this](const QUrl &url) {
+    connect(webView, &QWebEngineView::urlChanged, this, [this, webView](const QUrl &url) {
            if (QWebEngineView *currentView = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
-               if (sender() == currentView) {
+              if (sender() == currentView) {
                    m_urlBar->setUrl(url.toString());
                }
+              onHistoryEnabled(webView);
+
            }
        });
+
+    //onHistoryEnabled(webView);
 
     connect(webView, &QWebEngineView::titleChanged, this, [this, webView](const QString &title) {
         int tabIndex = m_tabWidget->indexOf(webView);
@@ -5562,7 +4974,6 @@ void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView 
     webView->setPage(page);
     setupCustomContextMenu(webView, profile);
 
-    // Keep profile maps in sync for proper cleanup
     if (originView) {
         if (m_tabNamedProfiles.contains(originView)) {
             QString name = m_tabNamedProfiles[originView];
@@ -5570,44 +4981,34 @@ void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView 
         } else if (m_tabProfiles.contains(originView)) {
             m_tabProfiles[webView] = m_tabProfiles[originView]; // inherit private profile
         } else {
-            // shared profile → mark as nullptr for cleanup logic
-            //m_tabProfiles[webView] = nullptr;
         }
     } else {
-        // No origin → shared profile
-        //m_tabProfiles[webView] = nullptr;
     }
 
-    // Add tab
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
     showWebViews();
 
     m_tabWidget->setCurrentIndex(tabIndex);
 
-    // Load the URL
-    //first diff between legit url and search term
     QString finalUrl;
     QString processedUrl = url;
-    // Add https:// if no protocol is specified
     if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://") && !processedUrl.startsWith("file://")) {
         processedUrl = "https://" + processedUrl;
     }
     QUrl testUrl(processedUrl);
-    // Check if it looks like a URL (has dots, no spaces, etc.)
     if (testUrl.isValid() && processedUrl.contains('.') && !processedUrl.contains(' ')) {
         finalUrl = processedUrl;
     } else {
-        // Treat as search term - use URLBar's selected search engine
         QUrl searchBase = m_urlBar->getSearchUrl();
         QString searchTerm = QUrl::toPercentEncoding(url);
         finalUrl = searchBase.toString() + searchTerm;
     }
 
     webView->setUrl(QUrl(finalUrl));
+
     connect(webView, &QWebEngineView::iconChanged, this, [this, webView](const QIcon &icon) {
 
 
-            // Update the tab icon
             int tabIndex = m_tabWidget->indexOf(webView);
             if (tabIndex != -1) {
                 m_tabWidget->setTabIcon(tabIndex, icon);
@@ -5615,7 +5016,6 @@ void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView 
     });
 
 
-    // Ensure proper cleanup on tab destruction
     connect(webView, &QObject::destroyed, this, [this, webView]() {
         cleanupTabProfile(webView);
     });
@@ -5623,45 +5023,36 @@ void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView 
 }
 
 
-
-
 void MainWindow::setupVideoAdBlocking(QWebEngineProfile *profile)
 {
-    // Check if scripts already exist to avoid duplicates
     static bool scriptsInitialized = false;
     if (scriptsInitialized) {
         return;
     }
     scriptsInitialized = true;
 
-    // YouTube-specific ad blocking
     QWebEngineScript youtubeScript;
     youtubeScript.setSourceCode(R"(
         (function() {
             function blockYouTubeAds() {
-                // Skip buttons
                 const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern');
                 if (skipBtn) {
                     skipBtn.click();
                 }
 
-                // Remove ad containers
                 const adContainers = document.querySelectorAll('.video-ads, .ad-container, .ytp-ad-module, .ytp-ad-overlay-container');
                 adContainers.forEach(container => {
                     container.style.display = 'none';
                     container.remove();
                 });
 
-                // Block ad markers in progress bar
                 const adMarkers = document.querySelectorAll('.ytp-ad-marker-container');
                 adMarkers.forEach(marker => marker.remove());
             }
 
-            // Run frequently
             setInterval(blockYouTubeAds, 500);
             document.addEventListener('DOMContentLoaded', blockYouTubeAds);
 
-            // MutationObserver for dynamic content
             const observer = new MutationObserver(blockYouTubeAds);
             observer.observe(document.body, { childList: true, subtree: true });
         })();
@@ -5673,7 +5064,6 @@ void MainWindow::setupVideoAdBlocking(QWebEngineProfile *profile)
     youtubeScript.setRunsOnSubFrames(true);
     profile->scripts()->insert(youtubeScript);
 
-    // General video ad blocking
     QWebEngineScript generalScript;
     generalScript.setSourceCode(R"(
         document.addEventListener('DOMContentLoaded', function() {
@@ -5720,7 +5110,6 @@ void MainWindow::highlightButtons(bool highlighted)
 
         m_addCurrentSessionAction->setIcon(QIcon(":/resources/icons-white/save.svg"));
 
-        // Find the button and style it
         QToolButton* saveButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentSessionAction));
         if (saveButton) {
             saveButton->setStyleSheet(
@@ -5740,10 +5129,8 @@ void MainWindow::highlightButtons(bool highlighted)
 
         m_addCurrentWebsiteAction->setIcon(QIcon(":/resources/icons-white/plus.svg"));
 
-        // Find the button and style it
         QToolButton* websiteButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentWebsiteAction));
         if (websiteButton) {
-            //websiteButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);  // Show text beside icon
             websiteButton->setStyleSheet(
                         "QToolButton {"
                         "   background-color: #b0b0b0;"  /* Darker gray-beige */
@@ -5766,7 +5153,6 @@ void MainWindow::highlightButtons(bool highlighted)
 
         if(!m_isDarkTheme) m_addCurrentSessionAction->setIcon(QIcon(":/resources/icons/save.svg"));
 
-        // Find the button and style it
         QToolButton* saveButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentSessionAction));
         if (saveButton) {
             saveButton->setStyleSheet("");
@@ -5774,10 +5160,8 @@ void MainWindow::highlightButtons(bool highlighted)
 
         if(!m_isDarkTheme) m_addCurrentWebsiteAction->setIcon(QIcon(":/resources/icons/plus.svg"));
 
-        // Find the button and style it
         QToolButton* websiteButton = qobject_cast<QToolButton*>(toolbar->widgetForAction(m_addCurrentWebsiteAction));
         if (websiteButton) {
-            //websiteButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);  // Show text beside icon
             websiteButton->setStyleSheet("");
                         }
 
@@ -5786,7 +5170,6 @@ void MainWindow::highlightButtons(bool highlighted)
 }
 
 
-///////radio
 void MainWindow::createRadioTab()
 {
     m_radioScrollArea = new QScrollArea();
@@ -5809,12 +5192,8 @@ void MainWindow::createRadioTab()
     radioDetailsPanel->setMinimumWidth(200);
     detailsStack->addWidget(radioDetailsPanel);  // Index 2
 
-    // Load saved stations
-    //loadRadioStations();
 
-    // Update grid if there are stations
     if (!m_radioStations.isEmpty()) {
-        //updateRadioGrid();
     }
 }
 
@@ -5826,20 +5205,16 @@ QFrame* MainWindow::createRadioDetailPanel() {
     QVBoxLayout* layout = new QVBoxLayout(panel);
     layout->setContentsMargins(16, 16, 16, 16);
 
-    // Title
     QLabel* titleLabel = new QLabel("Radio Station");
     titleLabel->setObjectName("detailsPanelTitle");
     layout->addWidget(titleLabel);
 
-    // Form layout for station details
     QFormLayout* formLayout = new QFormLayout();
     formLayout->setSpacing(12);
     formLayout->setLabelAlignment(Qt::AlignRight);
 
-    // Station icon with generate button
     QHBoxLayout* iconLayout = new QHBoxLayout();
 
-    // Station icon (display only, like website favicon)
     m_radioIconLabel = new QLabel();
     m_radioIconLabel->setFixedSize(64, 64);
     m_radioIconLabel->setAlignment(Qt::AlignCenter);
@@ -5861,37 +5236,30 @@ QFrame* MainWindow::createRadioDetailPanel() {
 
     formLayout->addRow("Icon:", iconLayout);
 
-    // Station name - QLineEdit (editable)
     m_radioNameEdit = new QLineEdit();
     m_radioNameEdit->setPlaceholderText("Station name");
     formLayout->addRow("Name:", m_radioNameEdit);
 
-    // Stream URL - QLineEdit (editable)
     m_radioStreamUrlEdit = new QLineEdit();
     m_radioStreamUrlEdit->setPlaceholderText("Stream URL");
     formLayout->addRow("Stream URL:", m_radioStreamUrlEdit);
 
-    // Country - QLineEdit (editable)
     m_radioCountryEdit = new QLineEdit();
     m_radioCountryEdit->setPlaceholderText("Country code (e.g., GR)");
     formLayout->addRow("Country:", m_radioCountryEdit);
 
-    // Genre - QLineEdit (editable)
     m_radioGenreEdit = new QLineEdit();
     m_radioGenreEdit->setPlaceholderText("Genre (e.g., Rock, News, Pop)");
     formLayout->addRow("Genre:", m_radioGenreEdit);
 
-    // Bitrate - QLineEdit (editable)
     m_radioBitrateEdit = new QLineEdit();
     m_radioBitrateEdit->setPlaceholderText("Bitrate in kbps");
     formLayout->addRow("Bitrate:", m_radioBitrateEdit);
 
-    // Codec - QLineEdit (editable)
     m_radioCodecEdit = new QLineEdit();
     m_radioCodecEdit->setPlaceholderText("Codec (MP3, AAC, etc.)");
     formLayout->addRow("Codec:", m_radioCodecEdit);
 
-    // Comments - QTextEdit (like website panel)
     m_radioCommentsEdit = new QTextEdit();
     m_radioCommentsEdit->setPlaceholderText("Optional comments about this station");
     m_radioCommentsEdit->setMinimumHeight(80);
@@ -5899,11 +5267,9 @@ QFrame* MainWindow::createRadioDetailPanel() {
 
     layout->addLayout(formLayout);
 
-    // Control buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(8);
     buttonLayout->addStretch();
-    // Add Update and Delete buttons (like website panel)
 
     QPushButton* m_radioAddButton = new QPushButton("Add");
     m_radioAddButton->setToolTip("Add new  station");
@@ -5952,7 +5318,6 @@ QFrame* MainWindow::createRadioDetailPanel() {
     layout->addLayout(buttonLayoutX);
     layout->addStretch();
 
-    // Connect signals
     connect(m_radioPlayButton, &QPushButton::clicked, this, &MainWindow::onRadioPlayClicked);
     connect(m_radioStopButton, &QPushButton::clicked, this, &MainWindow::onRadioStopClicked);
     connect(m_radioUpdateButton, &QPushButton::clicked, this, &MainWindow::onRadioUpdateClicked);
@@ -5964,18 +5329,15 @@ QFrame* MainWindow::createRadioDetailPanel() {
     connect(m_radioGenerateIconButton, &QPushButton::clicked, [this]() {
         if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
             QString stationName = m_radioStations[m_currentRadioIndex].name;
-            // Generate a simple colored icon with first letter
 
             QIcon newIcon = generateRandomSvgIcon();
             QPixmap pixmap = newIcon.pixmap(64, 64);
             m_radioIconLabel->setPixmap(pixmap);
 
-            // Save the generated icon
             QString iconPath = JASMINE_CONSTANTS::iconDir + "/" +
                               m_radioStations[m_currentRadioIndex].stationuuid + "_generated.png";
             pixmap.save(iconPath);
 
-            // Update station with local path
             m_radioStations[m_currentRadioIndex].iconUrl = iconPath;
             saveRadioStations();
             updateRadioGrid();
@@ -5987,13 +5349,11 @@ QFrame* MainWindow::createRadioDetailPanel() {
 
 
 
-// Slots for radio playback
 
 
 void MainWindow::onRadioUpdateClicked()
 {
     if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
-        // Update the station with values from form
         m_radioStations[m_currentRadioIndex].name = m_radioNameEdit->text().trimmed();
         m_radioStations[m_currentRadioIndex].streamUrl = m_radioStreamUrlEdit->text().trimmed();
         m_radioStations[m_currentRadioIndex].countrycode = m_radioCountryEdit->text().trimmed();
@@ -6035,7 +5395,6 @@ void MainWindow::onRadioDeleteClicked()
 
 void MainWindow::onRadioClearClicked()
 {
-    // Clear all input fields
     m_radioNameEdit->clear();
     m_radioStreamUrlEdit->clear();
     m_radioCountryEdit->clear();
@@ -6043,25 +5402,20 @@ void MainWindow::onRadioClearClicked()
     m_radioCodecEdit->clear();
     m_radioCommentsEdit->clear();
 
-    // Clear the icon display
     m_radioIconLabel->clear();
     m_radioIconLabel->setText("No Icon");
 
-    // Reset the selected index (no station selected)
     m_currentRadioIndex = -1;
 
-    // Remove highlight from all cards
     for (auto card : m_radioCards) {
         highlightCard(card, false);
     }
 
-    // Clear any status messages
     statusBar()->showMessage("Form cleared.", 2000);
 }
 
 void MainWindow::onRadioAddClicked()
 {
-    // Get data from the detail panel line edits
     QString name = m_radioNameEdit->text().trimmed();
     QString streamUrl = m_radioStreamUrlEdit->text().trimmed();
     QString country = m_radioCountryEdit->text().trimmed();
@@ -6070,7 +5424,6 @@ void MainWindow::onRadioAddClicked()
     QString codec = m_radioCodecEdit->text().trimmed();
     QString comments = m_radioCommentsEdit->toPlainText().trimmed();
 
-    // Validate required fields
     if (name.isEmpty()) {
         QMessageBox::warning(this, "Invalid Name", "Please enter a station name.");
         return;
@@ -6080,7 +5433,6 @@ void MainWindow::onRadioAddClicked()
         return;
     }
 
-    // Create new station
     RadioStation newStation;
     newStation.stationuuid = QUuid::createUuid().toString();
     newStation.name = name;
@@ -6094,19 +5446,14 @@ void MainWindow::onRadioAddClicked()
     newStation.isPlaying = false;
     newStation.iconUrl = "";  // Will be set later if needed
 
-    // Add to vector
     m_radioStations.append(newStation);
 
-    // Save to disk
     saveRadioStations();
 
-    // Update the grid (this will call createRadioCard for ALL stations, including the new one)
     updateRadioGrid();
 
-    // Clear the form
     onRadioClearClicked();
 
-    // Select the newly added station
     onRadioStationSelected(m_radioStations.size() - 1);
 
     statusBar()->showMessage("Radio station added successfully.", 3000);
@@ -6132,7 +5479,6 @@ void MainWindow::onRadioPlayClicked() {
             player->raise();
 
 
-            // Add playing property to current card
             if (m_radioCards.contains(m_currentRadioIndex)) {
                 m_radioCards[m_currentRadioIndex]->setProperty("playing", true);
                 m_radioCards[m_currentRadioIndex]->style()->unpolish(m_radioCards[m_currentRadioIndex]);
@@ -6171,7 +5517,6 @@ void MainWindow::onRadioStationSelected(int index) {
     m_radioNameEdit->setText(station.name);
     m_radioStreamUrlEdit->setText(station.streamUrl);
     QString countryName = CountryMapper::getCountryNameFromCode(station.countrycode);
-    //m_radioCountryEdit->setText(station.countrycode);
     m_radioCountryEdit->setText(countryName);
     m_radioGenreEdit->setText(station.genre);
     m_radioBitrateEdit->setText(QString::number(station.bitrate));
@@ -6179,7 +5524,6 @@ void MainWindow::onRadioStationSelected(int index) {
     m_radioCommentsEdit->setPlainText(station.comments);
 
 
-    // Load icon from local path
     if (!station.iconUrl.isEmpty() && QFile::exists(station.iconUrl)) {
         QPixmap pixmap(station.iconUrl);
         if (!pixmap.isNull()) {
@@ -6190,7 +5534,6 @@ void MainWindow::onRadioStationSelected(int index) {
     } else {
         m_radioIconLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(64, 64));
     }
-    // Highlight the selected card (like website does)
     for (int i = 0; i < m_radioCards.size(); ++i) {
         highlightCard(m_radioCards[i], i == index);
     }
@@ -6198,7 +5541,6 @@ void MainWindow::onRadioStationSelected(int index) {
 
 void MainWindow::updateRadioGrid()
 {
-    // Clear existing cards
     QLayoutItem* item;
     while ((item = m_radioGrid->takeAt(0)) != nullptr) {
         if (item->widget()) {
@@ -6208,7 +5550,6 @@ void MainWindow::updateRadioGrid()
     }
     m_radioCards.clear();
 
-    // If no stations, show a message
     if (m_radioStations.isEmpty()) {
         QLabel* emptyLabel = new QLabel("No radio stations added yet.\n\nUse Tools → Browse Radio Stations to add some.");
         emptyLabel->setAlignment(Qt::AlignCenter);
@@ -6219,7 +5560,6 @@ void MainWindow::updateRadioGrid()
         return;
     }
 
-    // Add radio cards
     int row = 0;
     int col = 0;
     int maxCols = 3;
@@ -6236,17 +5576,13 @@ void MainWindow::updateRadioGrid()
         }
     }
 
-    // Add stretch at the end
     m_radioGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
 
-    // Restore selection if there was one
     if (m_currentRadioIndex >= 0 && m_currentRadioIndex < m_radioStations.size()) {
-        // Card map has been rebuilt, need to re-highlight
         for (int i = 0; i < m_radioCards.size(); ++i) {
             highlightCard(m_radioCards[i], i == m_currentRadioIndex);
         }
     } else if (!m_radioStations.isEmpty()) {
-        // No selection, select first
         onRadioStationSelected(0);
     }
 }
@@ -6260,24 +5596,19 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
     card->setObjectName("radioCard");
     card->setFixedSize(200, 200);
     card->setCursor(Qt::ArrowCursor);
-    // Add shadow effect
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
     shadow->setBlurRadius(10);
     shadow->setColor(QColor(0, 0, 0, 30));
     shadow->setOffset(0, 2);
     card->setGraphicsEffect(shadow);
 
-    // Create layout
     QVBoxLayout* layout = new QVBoxLayout(card);
     layout->setContentsMargins(15, 15, 15, 15);
 
-    // Create a horizontal layout for title and icon
     QHBoxLayout* titleLayout = new QHBoxLayout();
 
-    // Add icon (default radio icon for now)
     QLabel* iconLabel = new QLabel();
     iconLabel->setFixedSize(16, 16);
-    //iconLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(16, 16));
 
     if (!station.iconUrl.isEmpty() && QFile::exists(station.iconUrl)) {
         QPixmap pixmap(station.iconUrl);
@@ -6292,7 +5623,6 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
 
     titleLayout->addWidget(iconLabel);
 
-    // Title (station name)
     QLabel* titleLabel = new QLabel(station.name);
     titleLabel->setObjectName("cardTitle");
     titleLabel->setWordWrap(true);
@@ -6301,17 +5631,14 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
 
     layout->addLayout(titleLayout);
 
-    // Info line (country + bitrate)
     QLabel* infoLabel = new QLabel(QString("%1 · %2").arg(station.countrycode, station.genre));
     infoLabel->setObjectName("cardInfo");
     infoLabel->setWordWrap(true);
     layout->addWidget(infoLabel);
 
-    // Add action buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setContentsMargins(0, 8, 0, 0);
 
-    // Play button
     QPushButton* playBtn = new QPushButton();
     playBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
     playBtn->setToolTip("Play Station");
@@ -6319,7 +5646,6 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
     playBtn->setCursor(Qt::PointingHandCursor);
     playBtn->setObjectName("cardButton");
 
-    // Stop button
     QPushButton* stopBtn = new QPushButton();
     stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
     stopBtn->setToolTip("Stop Station");
@@ -6327,7 +5653,6 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
     stopBtn->setCursor(Qt::PointingHandCursor);
     stopBtn->setObjectName("cardButton");
 
-    // Delete button
     QPushButton* deleteBtn = new QPushButton();
     deleteBtn->setIcon(style()->standardIcon(QStyle::SP_TrashIcon));
     deleteBtn->setToolTip("Delete Station");
@@ -6341,7 +5666,6 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
     buttonLayout->addStretch();
     layout->addLayout(buttonLayout);
 
-    // Connect button signals
     connect(playBtn, &QPushButton::clicked, [this, index]() {
         onRadioStationSelected(index);
         onRadioPlayClicked();
@@ -6358,7 +5682,6 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
             saveRadioStations();
             updateRadioGrid();
             if (m_radioStations.isEmpty()) {
-                // Clear detail panel
                 m_radioNameEdit->clear();
                 m_radioStreamUrlEdit->clear();
                 m_radioCountryEdit->clear();
@@ -6370,7 +5693,6 @@ QFrame* MainWindow::createRadioCard(const RadioStation& station, int index)
         }
     });
 
-    // Connect card click (for selection without playing)
     card->installEventFilter(this);
     card->setProperty("radioIndex", index);
 
@@ -6392,10 +5714,8 @@ void MainWindow::saveRadioStations()
         QDataStream out(&file);
         out.setVersion(QDataStream::Qt_6_0);
 
-        // Write the count first
         out << quint32(m_radioStations.size());
 
-        // Write each station individually
         for (const RadioStation &station : m_radioStations) {
             out << station.stationuuid;
             out << station.name;
@@ -6423,14 +5743,11 @@ void MainWindow::loadRadioStations()
         QDataStream in(&file);
         in.setVersion(QDataStream::Qt_6_0);
 
-        // Read the count
         quint32 count;
         in >> count;
 
-        // Clear existing stations
         m_radioStations.clear();
 
-        // Read each station
         for (quint32 i = 0; i < count; ++i) {
             RadioStation station;
             in >> station.stationuuid;
@@ -6458,7 +5775,6 @@ void MainWindow::onAddRadioStationFromDialog(const RadioStation &station)
 {
 
 
-    // Check if station already exists (by stationuuid)
     for (const auto &existing : m_radioStations) {
         if (existing.stationuuid == station.stationuuid) {
             statusBar()->showMessage("Station already exists in your collection.", 3000);
@@ -6466,22 +5782,17 @@ void MainWindow::onAddRadioStationFromDialog(const RadioStation &station)
         }
     }
 
-    // Add the station
     m_radioStations.append(station);
 
-    // Save to disk
     saveRadioStations();
 
-    // Update the grid
     updateRadioGrid();
 
-    // Switch to radio tab (index 2)
     if (m_leftPanelTabs && m_leftPanelTabs->count() > 2) {
         m_leftPanelTabs->setCurrentIndex(2);
     }
 
 
-    // Select the newly added station
     onRadioStationSelected(m_radioStations.size() - 1);
 
     statusBar()->showMessage(QString("Added: %1").arg(station.name), 3000);
@@ -6494,7 +5805,6 @@ void MainWindow::searchCards(const QString& text)
     int currentTab = m_leftPanelTabs->currentIndex();
 
     if (currentTab == 0) {
-        // Website cards
         for (int i = 0; i < m_websiteCards.size(); ++i) {
             QFrame* card = m_websiteCards[i];
             QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
@@ -6502,7 +5812,6 @@ void MainWindow::searchCards(const QString& text)
             card->setVisible(matches);
         }
     } else if (currentTab == 1) {
-        // Session cards
         for (int i = 0; i < m_sessionCards.size(); ++i) {
             QFrame* card = m_sessionCards.values()[i];
             QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
@@ -6510,7 +5819,6 @@ void MainWindow::searchCards(const QString& text)
             card->setVisible(matches);
         }
     } else if (currentTab == 2) {
-        // Radio cards
         for (int i = 0; i < m_radioCards.size(); ++i) {
             QFrame* card = m_radioCards[i];
             QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
@@ -6518,7 +5826,6 @@ void MainWindow::searchCards(const QString& text)
             card->setVisible(matches);
         }
     } else if (currentTab == 3) {
-        // IPTV cards
         for (int i = 0; i < m_iptvCards.size(); ++i) {
             QFrame* card = m_iptvCards[i];
             QLabel* titleLabel = card->findChild<QLabel*>("cardTitle");
@@ -6534,7 +5841,6 @@ void MainWindow::searchCards(const QString& text)
     int currentTab = m_leftPanelTabs->currentIndex();
 
     if (currentTab == 0) {
-        // Website cards
         QVector<bool> visible(m_websiteCards.size(), false);
         for (int i = 0; i < m_websiteCards.size(); ++i) {
             QFrame* card = m_websiteCards[i];
@@ -6546,11 +5852,9 @@ void MainWindow::searchCards(const QString& text)
         relayoutCards(m_websitesGrid, m_websiteCards, visible);
 
     } else if (currentTab == 1) {
-        // Session cards
         QVector<bool> visible(m_sessionCards.size(), false);
         QList<QFrame*> sessionCardList = m_sessionCards.values();
 
-        // Create a temporary map with indices
         QMap<int, QFrame*> tempMap;
         for (int i = 0; i < sessionCardList.size(); ++i) {
             tempMap[i] = sessionCardList[i];
@@ -6565,7 +5869,6 @@ void MainWindow::searchCards(const QString& text)
         }
             relayoutCards(m_sessionsGrid, tempMap, visible);
     } else if (currentTab == 2) {
-        // Radio cards
         QVector<bool> visible(m_radioCards.size(), false);
         for (int i = 0; i < m_radioCards.size(); ++i) {
             QFrame* card = m_radioCards[i];
@@ -6577,7 +5880,6 @@ void MainWindow::searchCards(const QString& text)
         relayoutCards(m_radioGrid, m_radioCards, visible);
 
     } else if (currentTab == 3) {
-        // IPTV cards
         QVector<bool> visible(m_iptvCards.size(), false);
         for (int i = 0; i < m_iptvCards.size(); ++i) {
             QFrame* card = m_iptvCards[i];
@@ -6588,7 +5890,6 @@ void MainWindow::searchCards(const QString& text)
         }
         relayoutCards(m_iptvGrid, m_iptvCards, visible);
     } else if (currentTab == 4) {
-    // Podcast cards
     QVector<bool> visible(m_podcastCards.size(), false);
     for (int i = 0; i < m_podcastCards.size(); ++i) {
         QFrame* card = m_podcastCards[i];
@@ -6618,7 +5919,6 @@ void MainWindow::showNotification(const QString& msg, int duration)
 
     }
 
-//////////////////////////// IPTV
 
 void MainWindow::createIPTVTab()
 {
@@ -6667,7 +5967,6 @@ QFrame* MainWindow::createIPTVDetailPanel()
     formLayout->setSpacing(12);
     formLayout->setLabelAlignment(Qt::AlignRight);
 
-    // Icon with generate button
     QHBoxLayout* iconLayout = new QHBoxLayout();
     m_iptvIconLabel = new QLabel();
     m_iptvIconLabel->setFixedSize(64, 64);
@@ -6686,7 +5985,6 @@ QFrame* MainWindow::createIPTVDetailPanel()
     iconLayout->addStretch();
     formLayout->addRow("Icon:", iconLayout);
 
-    // Editable fields
     m_iptvNameEdit = new QLineEdit();
     m_iptvNameEdit->setPlaceholderText("Channel name");
     formLayout->addRow("Name:", m_iptvNameEdit);
@@ -6710,7 +6008,6 @@ QFrame* MainWindow::createIPTVDetailPanel()
 
     layout->addLayout(formLayout);
 
-    // Buttons row 1: Play, Stop
     QHBoxLayout* buttonLayout1 = new QHBoxLayout();
     buttonLayout1->setSpacing(8);
     m_iptvPlayButton = new QPushButton("Play");
@@ -6722,9 +6019,7 @@ QFrame* MainWindow::createIPTVDetailPanel()
     buttonLayout1->addWidget(m_iptvPlayButton);
     buttonLayout1->addWidget(m_iptvStopButton);
     buttonLayout1->addStretch();
-    //layout->addLayout(buttonLayout1);
 
-    // Buttons row 2: Add, Update, Delete, Clear
     QHBoxLayout* buttonLayout2 = new QHBoxLayout();
     buttonLayout2->setSpacing(8);
     m_iptvAddButton = new QPushButton("Add");
@@ -6746,7 +6041,6 @@ QFrame* MainWindow::createIPTVDetailPanel()
 
     layout->addStretch();
 
-    // Connect signals
     connect(m_iptvPlayButton, &QPushButton::clicked, this, &MainWindow::onIPTVPlayClicked);
     connect(m_iptvStopButton, &QPushButton::clicked, this, &MainWindow::onIPTVStopClicked);
     connect(m_iptvAddButton, &QPushButton::clicked, this, &MainWindow::onIPTVAddClicked);
@@ -6782,7 +6076,6 @@ QFrame* MainWindow::createIPTVCard(const IPTVChannel& channel, int index)
     card->setCursor(Qt::ArrowCursor);
     card->installEventFilter(this);
 
-    // Shadow effect
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
     shadow->setBlurRadius(10);
     shadow->setColor(QColor(0, 0, 0, 30));
@@ -6792,7 +6085,6 @@ QFrame* MainWindow::createIPTVCard(const IPTVChannel& channel, int index)
     QVBoxLayout* layout = new QVBoxLayout(card);
     layout->setContentsMargins(15, 15, 15, 15);
 
-    // Title row with icon
     QHBoxLayout* titleLayout = new QHBoxLayout();
     QLabel* iconLabel = new QLabel();
     iconLabel->setFixedSize(16, 16);
@@ -6811,14 +6103,12 @@ QFrame* MainWindow::createIPTVCard(const IPTVChannel& channel, int index)
     }
     titleLayout->addWidget(iconLabel);
 
-    // Channel name
     QLabel* titleLabel = new QLabel(channel.name);
     titleLabel->setObjectName("cardTitle");
     titleLabel->setWordWrap(true);
     titleLayout->addWidget(titleLabel, 1);
     layout->addLayout(titleLayout);
 
-    // Info line (category + country)
     QString infoText = channel.category;
     if (!channel.country.isEmpty()) {
         infoText += (infoText.isEmpty() ? "" : " · ") + channel.country;
@@ -6829,7 +6119,6 @@ QFrame* MainWindow::createIPTVCard(const IPTVChannel& channel, int index)
     infoLabel->setWordWrap(true);
     layout->addWidget(infoLabel);
 
-    // Action buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setContentsMargins(0, 8, 0, 0);
 
@@ -6860,7 +6149,6 @@ QFrame* MainWindow::createIPTVCard(const IPTVChannel& channel, int index)
     buttonLayout->addStretch();
     layout->addLayout(buttonLayout);
 
-    // Connect signals
     connect(playBtn, &QPushButton::clicked, [this, index]() {
         onIPTVStationSelected(index);
         onIPTVPlayClicked();
@@ -6883,7 +6171,6 @@ QFrame* MainWindow::createIPTVCard(const IPTVChannel& channel, int index)
 
 void MainWindow::updateIPTVGrid()
 {
-    // Clear existing cards
     QLayoutItem* item;
     while ((item = m_iptvGrid->takeAt(0)) != nullptr) {
         if (item->widget()) {
@@ -6893,7 +6180,6 @@ void MainWindow::updateIPTVGrid()
     }
     m_iptvCards.clear();
 
-    // If no channels, show message
     if (m_iptvChannels.isEmpty()) {
         QLabel* emptyLabel = new QLabel("No IPTV channels added yet.\n\nUse Tools → Browse IPTV Channels to add some.");
         emptyLabel->setAlignment(Qt::AlignCenter);
@@ -6904,7 +6190,6 @@ void MainWindow::updateIPTVGrid()
         return;
     }
 
-    // Add cards
     int row = 0;
     int col = 0;
     int maxCols = 3;
@@ -6921,10 +6206,8 @@ void MainWindow::updateIPTVGrid()
         }
     }
 
-    // Add stretch
     m_iptvGrid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
 
-    // Restore selection
     if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
         for (int i = 0; i < m_iptvCards.size(); ++i) {
             highlightCard(m_iptvCards[i], i == m_currentIPTVIndex);
@@ -6997,7 +6280,6 @@ void MainWindow::loadIPTVChannels()
     }
 }
 
-////// slot functions
 
 void MainWindow::onIPTVStationSelected(int index)
 {
@@ -7012,7 +6294,6 @@ void MainWindow::onIPTVStationSelected(int index)
     m_iptvCountryEdit->setText(channel.country);
     m_iptvCommentsEdit->setPlainText(channel.comments);
 
-    // Check if we have a valid local icon (either from download or user-generated)
     bool hasLocalIcon = !channel.localLogoPath.isEmpty() && QFile::exists(channel.localLogoPath);
 
     if (hasLocalIcon) {
@@ -7020,25 +6301,19 @@ void MainWindow::onIPTVStationSelected(int index)
         if (!pixmap.isNull()) {
             m_iptvIconLabel->setPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         } else {
-            // Local path exists but file is corrupted - use default
             m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
-            // Only download if there's a URL and no user-generated icon exists
             if (!channel.logoUrl.isEmpty() && channel.localLogoPath.isEmpty()) {
                 downloadIPTVIconIfNeeded(index);
             }
         }
     } else {
-        // No local icon - show default
         m_iptvIconLabel->setPixmap(QIcon::fromTheme("video-x-generic").pixmap(64, 64));
 
-        // Only download if there's a logoUrl AND user hasn't generated a custom icon
-        // (localLogoPath empty means no user-generated icon yet)
         if (!channel.logoUrl.isEmpty() && channel.localLogoPath.isEmpty()) {
             downloadIPTVIconIfNeeded(index);
         }
     }
 
-    // Highlight selected card
     for (int i = 0; i < m_iptvCards.size(); ++i) {
         highlightCard(m_iptvCards[i], i == index);
     }
@@ -7097,7 +6372,6 @@ void MainWindow::onIPTVUpdateClicked()
 void MainWindow::onIPTVDeleteClicked()
 {
     if (m_currentIPTVIndex >= 0 && m_currentIPTVIndex < m_iptvChannels.size()) {
-        // Delete local icon file
         QString iconPath = m_iptvChannels[m_currentIPTVIndex].localLogoPath;
         if (!iconPath.isEmpty() && QFile::exists(iconPath)) {
             QFile::remove(iconPath);
@@ -7153,7 +6427,6 @@ void MainWindow::onIPTVPlayClicked()
             player->show();
             player->raise();
 
-            // Add playing property to current card ONLY
             if (m_iptvCards.contains(m_currentIPTVIndex)) {
                 m_iptvCards[m_currentIPTVIndex]->setProperty("playing", true);
                 m_iptvCards[m_currentIPTVIndex]->style()->unpolish(m_iptvCards[m_currentIPTVIndex]);
@@ -7188,7 +6461,6 @@ void MainWindow::onAddIPTVChannelsFromDialog(const QVector<IPTVChannel>& channel
 {
     int addedCount = 0;
     for (const IPTVChannel& channel : channels) {
-        // Check for duplicates by name
         bool exists = false;
         for (const auto& existing : m_iptvChannels) {
             if (existing.name == channel.name && existing.streamUrl == channel.streamUrl) {
@@ -7215,14 +6487,11 @@ void MainWindow::onAddIPTVChannelsFromDialog(const QVector<IPTVChannel>& channel
 
 void MainWindow::relayoutCards(QGridLayout* grid, const QMap<int, QFrame*>& cards, const QVector<bool>& visible)
 {
-    // Remove all widgets from grid
     QLayoutItem* item;
     while ((item = grid->takeAt(0)) != nullptr) {
-        // Don't delete widgets, just remove from layout
         delete item;
     }
 
-    // Add back only visible cards in order
     int row = 0;
     int col = 0;
     int maxCols = 3;
@@ -7238,7 +6507,6 @@ void MainWindow::relayoutCards(QGridLayout* grid, const QMap<int, QFrame*>& card
         }
     }
 
-    // Add stretch at the end
     grid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
 }
 
@@ -7248,17 +6516,14 @@ void MainWindow::downloadIPTVIconIfNeeded(int index)
 
     IPTVChannel& channel = m_iptvChannels[index];
 
-    // Don't download if there's already a local icon
     if (!channel.localLogoPath.isEmpty() && QFile::exists(channel.localLogoPath)) {
         return;
     }
 
-    // Don't download if no URL to download from
     if (channel.logoUrl.isEmpty()) {
         return;
     }
 
-    // Download the icon
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
     QNetworkReply *reply = nam->get(QNetworkRequest(QUrl(channel.logoUrl)));
 
@@ -7277,7 +6542,6 @@ void MainWindow::downloadIPTVIconIfNeeded(int index)
                 m_iptvChannels[index].localLogoPath = iconPath;
                 saveIPTVChannels();
 
-                // Update UI if this channel is still selected
                 if (m_currentIPTVIndex == index) {
                     QPixmap pixmap(iconPath);
                     if (!pixmap.isNull()) {
@@ -7285,7 +6549,6 @@ void MainWindow::downloadIPTVIconIfNeeded(int index)
                     }
                 }
 
-                // Update the card
                 if (m_iptvCards.contains(index)) {
                     QLabel* iconLabel = m_iptvCards[index]->findChild<QLabel*>();
                     if (iconLabel) {
@@ -7304,9 +6567,7 @@ void MainWindow::downloadIPTVIconIfNeeded(int index)
 
 void MainWindow::sortAllCards()
 {
-    // Helper lambda to sort cards by title
     auto sortCards = [](QMap<int, QFrame*> cards, QGridLayout* grid) {
-        // Collect card data with their titles
         QVector<QPair<QString, QFrame*>> cardList;
         for (auto it = cards.begin(); it != cards.end(); ++it) {
             QFrame* card = it.value();
@@ -7315,19 +6576,16 @@ void MainWindow::sortAllCards()
             cardList.append({title, card});
         }
 
-        // Sort alphabetically by title
         std::sort(cardList.begin(), cardList.end(),
             [](const QPair<QString, QFrame*>& a, const QPair<QString, QFrame*>& b) {
                 return a.first.compare(b.first, Qt::CaseInsensitive) < 0;
             });
 
-        // Remove all widgets from grid
         QLayoutItem* item;
         while ((item = grid->takeAt(0)) != nullptr) {
             delete item;
         }
 
-        // Add cards back in sorted order
         int row = 0;
         int col = 0;
         int maxCols = 3;
@@ -7340,17 +6598,14 @@ void MainWindow::sortAllCards()
             }
         }
 
-        // Add stretch at the end
         grid->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), row, maxCols);
     };
 
-    // Sort website cards
     if (!m_websiteCards.isEmpty()) {
         sortCards(m_websiteCards, m_websitesGrid);
     }
 
     /*
-    // Sort session cards (convert QMap<QString, QFrame*> to indexed map)
     if (!m_sessionCards.isEmpty()) {
         QMap<int, QFrame*> indexedSessionCards;
         QList<QFrame*> sessionList = m_sessionCards.values();
@@ -7359,7 +6614,6 @@ void MainWindow::sortAllCards()
         }
         sortCards(indexedSessionCards, m_sessionsGrid);
 
-        // Rebuild m_sessionCards with sorted order (optional)
         QMap<QString, QFrame*> newSessionCards;
         for (int i = 0; i < sessionList.size(); ++i) {
             QFrame* card = sessionList[i];
@@ -7371,18 +6625,15 @@ void MainWindow::sortAllCards()
     */
 
 
-    // Sort radio cards
     if (!m_radioCards.isEmpty()) {
         sortCards(m_radioCards, m_radioGrid);
     }
 
-    // Sort IPTV cards
     if (!m_iptvCards.isEmpty()) {
         sortCards(m_iptvCards, m_iptvGrid);
     }
 }
 
-//////////////////////////// podcasts
 
 void MainWindow::createPodcastTab()
 {
@@ -7425,7 +6676,6 @@ QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
     card->setCursor(Qt::ArrowCursor);
     card->installEventFilter(this);
 
-    // Shadow effect
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
     shadow->setBlurRadius(10);
     shadow->setColor(QColor(0, 0, 0, 30));
@@ -7435,7 +6685,6 @@ QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
     QVBoxLayout* layout = new QVBoxLayout(card);
     layout->setContentsMargins(15, 10, 15, 10);
     layout->setSpacing(2);  // Reduce spacing between elements
-    // Artwork
     QLabel* artworkLabel = new QLabel();
     artworkLabel->setFixedSize(60, 60);
     artworkLabel->setAlignment(Qt::AlignCenter);
@@ -7453,9 +6702,7 @@ QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
     }
     layout->addWidget(artworkLabel, 0, Qt::AlignCenter);
 
-    // Title
 
-    // Title with ellipsis for long names
     QString shortTitle = show.title;
     int maxChars = 35;  // Adjust as needed
     if (shortTitle.length() > maxChars) {
@@ -7469,15 +6716,12 @@ QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
     titleLabel->setMaximumHeight(40);
     layout->addWidget(titleLabel);
 
-    // Author + episode count
-    //QLabel* infoLabel = new QLabel(QString("%1 · %2 eps").arg(show.author, QString::number(show.episodeCount)));
     QLabel* infoLabel = new QLabel(QString("%1 eps").arg(QString::number(show.episodeCount)));
 
     infoLabel->setObjectName("cardInfo");
     infoLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(infoLabel);
 
-    // Buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     buttonLayout->setContentsMargins(0, 8, 0, 0);
 
@@ -7485,13 +6729,11 @@ QFrame* MainWindow::createPodcastCard(const PodcastShow& show, int index)
     viewBtn->setToolTip("View episodes");
     viewBtn->setFlat(true);
     viewBtn->setObjectName("cardButton");
-    //viewBtn->setVisible(false);
     QPushButton* unsubscribeBtn = new QPushButton("Unsub");
     unsubscribeBtn->setToolTip("Unsubscribe");
     unsubscribeBtn->setFlat(true);
     unsubscribeBtn->setObjectName("cardButton");
 
-    //buttonLayout->addWidget(viewBtn);
     buttonLayout->addStretch();
     buttonLayout->addWidget(unsubscribeBtn);
     buttonLayout->addStretch();
@@ -7518,7 +6760,6 @@ QFrame* MainWindow::createPodcastDetailPanel()
     QVBoxLayout* layout = new QVBoxLayout(panel);
     layout->setContentsMargins(16, 16, 16, 16);
 
-    // ========== ARTWORK SECTION ==========
 
     /*
     QHBoxLayout* artworkLayout = new QHBoxLayout();
@@ -7535,9 +6776,7 @@ QFrame* MainWindow::createPodcastDetailPanel()
 
     */
 
-    // In createPodcastDetailPanel(), replace the artwork section:
 
-    // Artwork with generate button
     QHBoxLayout* artworkLayout = new QHBoxLayout();
     artworkLayout->addStretch();
 
@@ -7559,7 +6798,6 @@ QFrame* MainWindow::createPodcastDetailPanel()
 
     layout->addLayout(artworkLayout);
 
-    // Connect the button
     connect(generateIconButton, &QPushButton::clicked, [this]() {
         if (m_currentPodcastIndex >= 0 && m_currentPodcastIndex < m_podcastShows.size()) {
             QMessageBox::StandardButton reply = QMessageBox::warning(
@@ -7591,44 +6829,36 @@ QFrame* MainWindow::createPodcastDetailPanel()
 
     layout->addSpacing(8);
 
-    // ========== PODCAST INFORMATION SECTION ==========
     QLabel* infoTitle = new QLabel("Podcast Information");
     infoTitle->setObjectName("detailsPanelSubtitle");
-    //layout->addWidget(infoTitle);
 
     QFormLayout* formLayout = new QFormLayout();
     formLayout->setSpacing(12);
     formLayout->setLabelAlignment(Qt::AlignRight);
 
-    // Title
     m_podcastTitleLabel = new QLabel();
     m_podcastTitleLabel->setWordWrap(true);
     formLayout->addRow("Title:", m_podcastTitleLabel);
 
-    // Author / Publisher
     m_podcastAuthorLabel = new QLabel();
     m_podcastAuthorLabel->setWordWrap(true);
     formLayout->addRow("Author:", m_podcastAuthorLabel);
 
-    // Category
     m_podcastCategoryLabel = new QLabel();
     m_podcastCategoryLabel->setWordWrap(true);
     formLayout->addRow("Category:", m_podcastCategoryLabel);
 
-    // Feed URL
     m_podcastFeedUrlLabel = new QLabel();
     m_podcastFeedUrlLabel->setWordWrap(true);
     m_podcastFeedUrlLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     formLayout->addRow("Feed URL:", m_podcastFeedUrlLabel);
 
-    // Website URL
     m_podcastWebsiteLabel = new QLabel();
     m_podcastWebsiteLabel->setWordWrap(true);
     m_podcastWebsiteLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     m_podcastWebsiteLabel->setOpenExternalLinks(true);
     formLayout->addRow("Website:", m_podcastWebsiteLabel);
 
-    // Episode count & Last updated
     QHBoxLayout* statsLayout = new QHBoxLayout();
     m_podcastEpisodeCountLabel = new QLabel();
     m_podcastLastUpdatedLabel = new QLabel();
@@ -7637,19 +6867,14 @@ QFrame* MainWindow::createPodcastDetailPanel()
     statsLayout->addStretch();
     formLayout->addRow("Stats:", statsLayout);
 
-    // Description
     m_podcastDescriptionLabel = new QLabel();
     m_podcastDescriptionLabel->setWordWrap(true);
     m_podcastDescriptionLabel->setMinimumHeight(60);
     m_podcastDescriptionLabel->setAlignment(Qt::AlignTop);
-    //formLayout->addRow("Description:", m_podcastDescriptionLabel);
 
-    // Comments section with toggle button
     QVBoxLayout* commentsLayout = new QVBoxLayout();
 
-    // Button row
     QHBoxLayout* buttonRow = new QHBoxLayout();
-    //buttonRow->addStretch();
 
     QPushButton* commentsToggleButton = new QPushButton("Show Notes");
     commentsToggleButton->setCheckable(true);
@@ -7659,20 +6884,17 @@ QFrame* MainWindow::createPodcastDetailPanel()
     buttonRow->addWidget(commentsToggleButton);
     commentsLayout->addLayout(buttonRow);
 
-    // Comments text edit (initially invisible)
     m_podcastCommentsEdit = new QTextEdit();
     m_podcastCommentsEdit->setPlaceholderText("Add your personal notes about this podcast...");
     m_podcastCommentsEdit->setMaximumHeight(100);
     m_podcastCommentsEdit->setVisible(false);
     commentsLayout->addWidget(m_podcastCommentsEdit);
     formLayout->addRow(commentsLayout);
-    // Connect toggle button
     connect(commentsToggleButton, &QPushButton::toggled, [this, commentsToggleButton](bool checked) {
         m_podcastCommentsEdit->setVisible(checked);
         commentsToggleButton->setText(checked ? "Hide Notes" : "Show Notes");
     });
 
-    // Auto-save comments
     connect(m_podcastCommentsEdit, &QTextEdit::textChanged, [this]() {
         if (m_currentPodcastIndex >= 0 && m_currentPodcastIndex < m_podcastShows.size()) {
             m_podcastShows[m_currentPodcastIndex].comments = m_podcastCommentsEdit->toPlainText();
@@ -7683,7 +6905,6 @@ QFrame* MainWindow::createPodcastDetailPanel()
 
     layout->addSpacing(8);
 
-    // ========== EPISODE LIST SECTION ==========
     QLabel* episodesLabel = new QLabel("Episodes");
     episodesLabel->setObjectName("detailsPanelSubtitle");
     layout->addWidget(episodesLabel);
@@ -7693,7 +6914,6 @@ QFrame* MainWindow::createPodcastDetailPanel()
     m_podcastEpisodeList->setAlternatingRowColors(true);
     layout->addWidget(m_podcastEpisodeList);
 
-    // ========== PLAYBACK CONTROLS SECTION ==========
     QLabel* playbackTitle = new QLabel("Playback");
     playbackTitle->setObjectName("detailsPanelSubtitle");
     layout->addWidget(playbackTitle);
@@ -7728,7 +6948,6 @@ QFrame* MainWindow::createPodcastDetailPanel()
     layout->addLayout(buttonLayout);
     layout->addStretch();
 
-    // ========== SIGNAL CONNECTIONS ==========
     connect(m_podcastRefreshButton, &QPushButton::clicked, this, &MainWindow::onPodcastRefreshClicked);
     connect(m_podcastUnsubscribeButton, &QPushButton::clicked, this, &MainWindow::onPodcastUnsubscribeClicked);
     connect(m_podcastPlayButton, &QPushButton::clicked, [this]() {
@@ -7747,7 +6966,6 @@ QFrame* MainWindow::createPodcastDetailPanel()
 
 void MainWindow::updatePodcastGrid()
 {
-    // Clear existing cards
     QLayoutItem* item;
     while ((item = m_podcastGrid->takeAt(0)) != nullptr) {
         if (item->widget()) {
@@ -7810,7 +7028,6 @@ void MainWindow::savePodcasts()
             out << show.comments;
             out << show.episodeCount;
             out << show.isSubscribed;
-            // Save episodes
             out << quint32(show.episodes.size());
             for (const PodcastEpisode& ep : show.episodes) {
                 out << ep.guid;
@@ -7879,7 +7096,6 @@ void MainWindow::loadPodcasts()
     }
 }
 
-////// podcast slots
 
 void MainWindow::onPodcastShowSelected(int index)
 {
@@ -7888,7 +7104,6 @@ void MainWindow::onPodcastShowSelected(int index)
     m_currentPodcastIndex = index;
     const PodcastShow& show = m_podcastShows[index];
 
-    // Update artwork
     if (!show.localArtworkPath.isEmpty() && QFile::exists(show.localArtworkPath)) {
         QPixmap pixmap(show.localArtworkPath);
         if (!pixmap.isNull()) {
@@ -7903,20 +7118,17 @@ void MainWindow::onPodcastShowSelected(int index)
         m_podcastArtworkLabel->setPixmap(QIcon::fromTheme("audio-x-generic").pixmap(120, 120));
     }
 
-    // Update podcast information
     m_podcastTitleLabel->setText(show.title);
     m_podcastAuthorLabel->setText(show.author);
     m_podcastCategoryLabel->setText(show.category);
     m_podcastFeedUrlLabel->setText(show.feedUrl);
 
-    // Website link
     if (!show.websiteUrl.isEmpty()) {
         m_podcastWebsiteLabel->setText(QString("<a href=\"%1\">%1</a>").arg(show.websiteUrl));
     } else {
         m_podcastWebsiteLabel->setText("Not available");
     }
 
-    // Episode count and last updated
     m_podcastEpisodeCountLabel->setText(QString("%1 episodes").arg(show.episodes.size()));
     if (show.lastUpdated.isValid()) {
         m_podcastLastUpdatedLabel->setText(QString("Updated: %1").arg(show.lastUpdated.toString("yyyy-MM-dd")));
@@ -7927,7 +7139,6 @@ void MainWindow::onPodcastShowSelected(int index)
     m_podcastDescriptionLabel->setText(show.description);
     m_podcastCommentsEdit->setPlainText(show.comments);
 
-    // Populate episode list
     m_podcastEpisodeList->clear();
     for (const PodcastEpisode& episode : show.episodes) {
         QString durationStr = QString("%1:%2")
@@ -7944,7 +7155,6 @@ void MainWindow::onPodcastShowSelected(int index)
         m_podcastEpisodeList->addItem(item);
     }
 
-    // Restore playing episode highlight if this podcast is currently playing
     if (m_currentPlayingPodcastIndex == index && m_currentPlayingEpisodeIndex >= 0) {
         QListWidgetItem* currentItem = m_podcastEpisodeList->item(m_currentPlayingEpisodeIndex);
         if (currentItem) {
@@ -7956,7 +7166,6 @@ void MainWindow::onPodcastShowSelected(int index)
         }
     }
 
-    // Highlight selected card
     for (int i = 0; i < m_podcastCards.size(); ++i) {
         highlightCard(m_podcastCards[i], i == index);
     }
@@ -7969,7 +7178,6 @@ void MainWindow::onPodcastRefreshClicked()
     QString feedUrl = m_podcastShows[m_currentPodcastIndex].feedUrl;
     if (feedUrl.isEmpty()) return;
 
-    // Show loading indicator
     statusBar()->showMessage("Refreshing podcast feed...", 2000);
 
     QNetworkAccessManager* nam = new QNetworkAccessManager(this);
@@ -8003,7 +7211,6 @@ void MainWindow::onPodcastUnsubscribeClicked()
     );
 
     if (reply == QMessageBox::Yes) {
-        // Delete local artwork
         QString artworkPath = m_podcastShows[m_currentPodcastIndex].localArtworkPath;
         if (!artworkPath.isEmpty() && QFile::exists(artworkPath)) {
             QFile::remove(artworkPath);
@@ -8037,23 +7244,19 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
     const PodcastEpisode& episode = m_podcastShows[m_currentPodcastIndex].episodes[episodeIndex];
     if (!episode.audioUrl.isEmpty()) {
 
-        // Store currently playing episode
         m_currentPlayingPodcastIndex = m_currentPodcastIndex;
         m_currentPlayingEpisodeIndex = episodeIndex;
 
-        // Clear playing flag from all podcast cards
         for (QFrame* card : m_podcastCards) {
             card->setProperty("playing", false);
             card->style()->polish(card);
         }
 
-        // Set playing flag on current podcast card
         if (m_podcastCards.contains(m_currentPodcastIndex)) {
             m_podcastCards[m_currentPodcastIndex]->setProperty("playing", true);
             m_podcastCards[m_currentPodcastIndex]->style()->polish(m_podcastCards[m_currentPodcastIndex]);
         }
 
-        // Unhighlight all episodes in the list
         for (int i = 0; i < m_podcastEpisodeList->count(); ++i) {
             QListWidgetItem* item = m_podcastEpisodeList->item(i);
             QFont font = item->font();
@@ -8062,14 +7265,12 @@ void MainWindow::onPodcastPlayEpisodeClicked(int episodeIndex)
             item->setForeground(QBrush());  // Empty brush = default color
         }
 
-        // Highlight the currently playing episode
         QListWidgetItem* currentItem = m_podcastEpisodeList->item(episodeIndex);
         if (currentItem) {
             QFont font = currentItem->font();
             font.setBold(true);
             currentItem->setFont(font);
             currentItem->setForeground(QColor(170, 102, 255)); // Purple
-            //currentItem->setForeground(QColor(0, 212, 255));  // Cyan
 
         }
 
@@ -8103,13 +7304,11 @@ void MainWindow::onPodcastStopClicked()
 
 
 
-    // Clear playing flag from all podcast cards
     for (QFrame* card : m_podcastCards) {
         card->setProperty("playing", false);
         card->style()->polish(card);
     }
 
-    // Unhighlight all episodes in the list
 
     for (int i = 0; i < m_podcastEpisodeList->count(); ++i) {
         QListWidgetItem* item = m_podcastEpisodeList->item(i);
@@ -8134,7 +7333,6 @@ void MainWindow::onPodcastStopClicked()
 
 void MainWindow::onAddPodcastFromDialog(const PodcastShow &show)
 {
-    // Check if already subscribed
     for (const auto& existing : m_podcastShows) {
         if (existing.feedUrl == show.feedUrl) {
             statusBar()->showMessage("Already subscribed to this podcast.", 3000);
@@ -8142,7 +7340,6 @@ void MainWindow::onAddPodcastFromDialog(const PodcastShow &show)
         }
     }
 
-    // Add new show
     PodcastShow newShow = show;
     newShow.isSubscribed = true;
     newShow.episodes.clear();
@@ -8152,7 +7349,6 @@ void MainWindow::onAddPodcastFromDialog(const PodcastShow &show)
     savePodcasts();
     updatePodcastGrid();
 
-    // Fetch episodes from RSS feed
     QNetworkAccessManager* nam = new QNetworkAccessManager(this);
     QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(newShow.feedUrl)));
 
@@ -8167,7 +7363,6 @@ void MainWindow::onAddPodcastFromDialog(const PodcastShow &show)
         nam->deleteLater();
     });
 
-    // Switch to podcast tab
     if (m_leftPanelTabs->count() > 4) {
         m_leftPanelTabs->setCurrentIndex(4);
     }
@@ -8336,7 +7531,6 @@ void MainWindow::importPodcastSubscriptions()
                 QString websiteUrl = xml.attributes().value("htmlUrl").toString();
 
                 if (!feedUrl.isEmpty()) {
-                    // Check if already subscribed
                     bool exists = false;
                     for (const auto& existing : m_podcastShows) {
                         if (existing.feedUrl == feedUrl) {
@@ -8356,14 +7550,12 @@ void MainWindow::importPodcastSubscriptions()
                         m_podcastShows.append(newShow);
                         importedCount++;
 
-                    // Fetch the RSS feed to get artwork, description, etc.
                        QNetworkAccessManager* nam = new QNetworkAccessManager(this);
                        QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(feedUrl)));
                        int newIndex = m_podcastShows.size() - 1;
 
                        connect(reply, &QNetworkReply::finished, [this, reply, nam, newIndex]() {
                            if (reply->error() == QNetworkReply::NoError) {
-                               // This will update episodes, artwork, description
                                parseRSSFeed(reply->readAll(), newIndex);
                                savePodcasts();
                                updatePodcastGrid();
@@ -8444,3 +7636,163 @@ void MainWindow::refreshAllPodcasts()
         });
     }
 }
+
+void MainWindow::createMenuButton()
+{
+    menuButton = new QToolButton(this);
+    menuButton->setIcon(QIcon(":/resources/icons/menu.svg"));
+    menuButton->setPopupMode(QToolButton::InstantPopup);
+    menuButton->setAutoRaise(true);
+    menuButton->setToolTip("Menu");
+
+    QMenu* menu = new QMenu(this);
+
+    enableHistoryAction = new QAction("Enable History&Bookmarks", menu);
+    enableHistoryAction->setCheckable(true);
+    enableHistoryAction->setChecked(historyEnabled);
+    connect(enableHistoryAction, &QAction::toggled, this, [this](bool checked){
+        QSettings settings;
+        settings.setValue("history_enabled", checked);
+        settings.sync();
+        historyEnabled = checked;
+    });
+
+    menu->addAction(enableHistoryAction);
+    menu->addSeparator();
+
+    // Bookmark action
+    QAction* addBookmarkAction = menu->addAction("Bookmark Current Tab");
+    addBookmarkAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
+
+    connect(addBookmarkAction, &QAction::triggered, this, [this]{
+        if(!historyEnabled) {
+            QMessageBox::information(this, "Bookmark Disabled",
+                                             "Please enable 'History & Bookmarks' from the menu first.");
+                    return;
+        }
+        bookmarkManager->addButton()->click();
+       // showNotification("Bookmark Request Received!",4000);
+    });
+    menu->addSeparator();
+
+    QAction* bookmarksAction = new QAction("Open Bookmark Manager", this);
+    bookmarksAction->setShortcut(QKeySequence("Ctrl+B"));
+    connect(bookmarksAction, &QAction::triggered, this, [this]() {
+        //historyManager->hide();
+        bookmarkManager->show();
+        bookmarkManager->raise();
+    });
+    menu->addAction(bookmarksAction);
+    menu->addSeparator();
+
+    // History action
+    QAction* historyAction = new QAction("Open History Manager", this);
+    historyAction->setShortcut(QKeySequence("Ctrl+H"));
+    connect(historyAction, &QAction::triggered, this, [this]() {
+       // bookmarkManager->hide();
+        historyManager->show();
+        historyManager->raise();
+    });
+    menu->addAction(historyAction);
+
+    menu->addSeparator();
+    showUrlBarAction = new QAction("Always Show Url Bar in Webview", menu);
+    showUrlBarAction->setCheckable(true);
+    showUrlBarAction->setChecked(showUrlBar);
+    connect(showUrlBarAction, &QAction::toggled, this, [this](bool checked){
+        QSettings settings;
+        settings.setValue("showurlbar_enabled", checked);
+        settings.sync();
+        showUrlBar = checked;
+    });
+    menu->addAction(showUrlBarAction);
+
+    menuButton->setMenu(menu);
+    toolbar->addWidget(menuButton);
+}
+
+/*
+void MainWindow::onHistoryEnabled(QWebEngineView *view)
+{
+
+    if(historyEnabled){
+        // Check if already connected
+           if (m_historyConnections.contains(view)) {
+               return;  // Already connected, do nothing
+           }
+     QMetaObject::Connection conn = connect(view, &QWebEngineView::loadFinished, [this, view] {
+            QUrl url = view->url();
+            historyManager->addEntry(url.toString(), view->title(), QIcon());
+            bookmarkManager->setCurrentUrl(url.toString(), view->title());
+
+    });
+    m_historyConnections[view] = conn;
+    }else{
+        if (m_historyConnections.contains(view)) {
+            disconnect(m_historyConnections[view]);
+            m_historyConnections.remove(view);
+        }
+    }
+}
+*/
+
+/*
+void MainWindow::onHistoryEnabled(QWebEngineView *view)
+{
+    if (historyEnabled) {
+        connect(view, &QWebEngineView::loadFinished, [this, view] {
+            QUrl url = view->url();
+            historyManager->addEntry(url.toString(), view->title(), QIcon());
+            bookmarkManager->setCurrentUrl(url.toString(), view->title());
+        });
+    }
+}
+*/
+
+
+void MainWindow::onHistoryEnabled(QWebEngineView *view)
+{
+    if (!historyEnabled || !view) return;
+
+    QUrl url = view->url();
+    if (url.toString().isEmpty() || url.toString() == "about:blank") return;
+
+    QString host = url.host();
+    if (host.contains("youtube.com") || host.contains("youtu.be") ||
+        host.contains("vimeo.com") || host.contains("dailymotion.com") ||
+        host.contains("twitch.tv") || host.contains("tiktok.com") ||
+        host.contains("facebook.com") || host.contains("fb.com") ||
+        host.contains("x.com") || host.contains("twitter.com") ||
+        host.contains("instagram.com") || host.contains("reddit.com") ||
+        host.contains("linkedin.com") || host.contains("rumble.com") ||
+        host.contains("odysee.com") || host.contains("bitchute.com")) {
+
+        QTimer::singleShot(3000, [this, view, url]() {
+            if (url == view->url()) {
+                historyManager->addEntry(url.toString(), view->title(), QIcon());
+                bookmarkManager->setCurrentUrl(url.toString(), view->title());
+            }
+        });
+    } else {
+        historyManager->addEntry(url.toString(), view->title(), QIcon());
+        bookmarkManager->setCurrentUrl(url.toString(), view->title());
+    }
+}
+
+/*
+void MainWindow::onHistoryEnabled(QWebEngineView *view)
+{
+    if (!historyEnabled || !view) return;
+
+    QUrl url = view->url();
+    if (url.toString().isEmpty() || url.toString() == "about:blank") return;
+
+    // Delay for ALL URLs - ensures title is ready
+    QTimer::singleShot(3000, [this, view, url]() {
+        if (url == view->url()) {
+            historyManager->addEntry(url.toString(), view->title(), QIcon());
+            bookmarkManager->setCurrentUrl(url.toString(), view->title());
+        }
+    });
+}
+*/

@@ -26,7 +26,6 @@ ExtensionManager::ExtensionManager(QWebEngineProfile *profile, QObject *parent)
         return;
     }
 
-    // Ensure sandbox is disabled to prevent crashes
     qputenv("QTWEBENGINE_DISABLE_SANDBOX", "1");
 
     m_extManager = m_profile->extensionManager();
@@ -35,9 +34,6 @@ ExtensionManager::ExtensionManager(QWebEngineProfile *profile, QObject *parent)
         return;
     }
 
-    // Connect to the actual signals from the documentation [citation:1][citation:3]
-    //connect(m_extManager, &QWebEngineExtensionManager::extensionsChanged,
-      //      this, &ExtensionManager::onExtensionsChanged);
     connect(m_extManager, &QWebEngineExtensionManager::installFinished,
             this, &ExtensionManager::onInstallFinished);
     connect(m_extManager, &QWebEngineExtensionManager::loadFinished,
@@ -121,7 +117,6 @@ bool ExtensionManager::loadFromZip(const QString &zipPath)
 {
     if (!m_initialized || !m_extManager) return false;
 
-    // installExtension takes QString path [citation:3][citation:9]
     m_extManager->installExtension(zipPath);
     return true;
 }
@@ -130,7 +125,6 @@ bool ExtensionManager::loadFromFolder(const QString &folderPath)
 {
     if (!m_initialized || !m_extManager) return false;
 
-    // For unpacked extensions, use installExtension (it handles both) [citation:1]
     m_extManager->installExtension(folderPath);
     return true;
 }
@@ -142,12 +136,10 @@ void ExtensionManager::loadPreinstalled(const QString &directory)
         return;
     }
 
-    // Look for .zip, .crx files
     QStringList filters;
     filters << "*.zip" << "*.crx";
     QStringList files = extensionsDir.entryList(filters, QDir::Files);
 
-    // Also look for subdirectories (unpacked extensions)
     QStringList dirs = extensionsDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
 
     for (const QString &file : files) {
@@ -157,7 +149,6 @@ void ExtensionManager::loadPreinstalled(const QString &directory)
 
     for (const QString &dir : dirs) {
         QString fullPath = extensionsDir.absoluteFilePath(dir);
-        // Check if it has manifest.json before loading
         if (QFile::exists(fullPath + "/manifest.json")) {
             loadFromFolder(fullPath);
         }
@@ -174,7 +165,6 @@ bool ExtensionManager::enableExtension(const QString &id)
         return false;
     }
 
-    // setExtensionEnabled takes QWebEngineExtensionInfo, not QString [citation:3][citation:9]
     m_extManager->setExtensionEnabled(info, true);
     return true;
 }
@@ -203,7 +193,6 @@ bool ExtensionManager::removeExtension(const QString &id)
         return false;
     }
 
-    // uninstallExtension takes QWebEngineExtensionInfo [citation:3]
     m_extManager->uninstallExtension(info);
     return true;
 }
@@ -235,7 +224,6 @@ QList<QAction*> ExtensionManager::createToolbarButtons(QWidget *parent)
     for (const ExtensionData &ext : m_extensions) {
         if (!ext.enabled) continue;
 
-        // Note: No icon available from API, use a default or name-based
         QAction *action = new QAction(ext.name, parent);  // No icon parameter
         action->setData(ext.id);
         action->setToolTip(QString("%1\n%2").arg(ext.name, ext.description));
@@ -304,7 +292,6 @@ void ExtensionManager::onInstallFinished(const QWebEngineExtensionInfo &extensio
     m_extensions[extension.id()] = data;
     emit extensionInstalled(data);
 
-    // Auto-enable based on saved settings
     if (m_settings && m_settings->value("Extensions/" + extension.id() + "/enabled", true).toBool()) {
         enableExtension(extension.id());
     }

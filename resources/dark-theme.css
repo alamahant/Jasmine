@@ -30,7 +30,7 @@ QTabWidget QScrollArea, QTabWidget QScrollArea > QWidget {
 }
 
 QTabBar::tab {
-    padding: 8px 16px;
+    padding: 5px 16px;
     background: #2d2d2d;
     border: none;
     color: #ffffff;
@@ -1142,3 +1142,27 @@ QListWidget::item:hover:!selected {
     background-color: #3d3d3d;
 }
 
+
+/* Bookmark Manager - force white text on all form fields */
+BookmarkManager QLineEdit,
+BookmarkManager QTextEdit,
+BookmarkManager QComboBox {
+    color: #ffffff !important;
+}
+
+BookmarkManager QLineEdit::placeholder,
+BookmarkManager QTextEdit::placeholder {
+    color: #808080 !important;
+}
+
+HistoryManager QLineEdit,
+HistoryManager QDateEdit,
+HistoryManager QTextEdit,
+HistoryManager QComboBox {
+    color: #ffffff !important;
+}
+
+HistoryManager QLineEdit::placeholder,
+HistoryManager QDateEdit::placeholder {
+    color: #808080 !important;
+}

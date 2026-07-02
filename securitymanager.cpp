@@ -34,19 +34,16 @@ bool SecurityManager::isPasswordProtectionEnabled() const
 void SecurityManager::onTogglePasswordProtection(bool enabled)
 {
     if (enabled) {
-        // Show info about enabling password protection
         QMessageBox::information(m_parent, "Password Protection",
                                  "🔒 Enabling Password Protection\n\n"
                                  "Jasmine will now require a master password on startup.\n"
                                  "This helps protect your saved websites and data.");
 
-        // Enabling password protection - need to set master password
         if (!m_settings.contains("security/masterPasswordHash")) {
             setMasterPassword();
         }
         m_settings.setValue("security/passwordProtectionEnabled", true);
     } else {
-        // Disabling password protection
         int ret = QMessageBox::question(m_parent, "Disable Password Protection",
                                         "Are you sure you want to disable password protection?\n"
                                         "This will make your data accessible without a password.",
@@ -56,7 +53,6 @@ void SecurityManager::onTogglePasswordProtection(bool enabled)
         if (ret == QMessageBox::Yes) {
             m_settings.setValue("security/passwordProtectionEnabled", false);
         } else {
-            // User cancelled, revert the action
             m_requirePasswordAction->setChecked(true);
         }
     }
@@ -66,7 +62,6 @@ void SecurityManager::onTogglePasswordProtection(bool enabled)
 void SecurityManager::onTogglePasswordProtection(bool enabled)
 {
     if (enabled) {
-        // Show info about enabling password protection, with Cancel option
         QMessageBox msgBox(QMessageBox::Information,
                            "Password Protection",
                            "🔒 Enabling Password Protection\n\n"
@@ -76,16 +71,12 @@ void SecurityManager::onTogglePasswordProtection(bool enabled)
                            m_parent);
         int infoResult = msgBox.exec();
         if (infoResult != QMessageBox::Ok) {
-            // User cancelled or closed dialog, revert the toggle
             m_requirePasswordAction->setChecked(false);
             return;
         }
 
-        // Enabling password protection - need to set master password if not set
         if (!m_settings.contains("security/masterPasswordHash")) {
             setMasterPassword();
-            // If user cancels in setMasterPassword, it will revert the toggle and return
-            // So we should check if the password was actually set
             if (!m_settings.contains("security/masterPasswordHash")) {
                 m_requirePasswordAction->setChecked(false);
                 return;
@@ -95,7 +86,6 @@ void SecurityManager::onTogglePasswordProtection(bool enabled)
         m_settings.setValue("security/passwordProtectionEnabled", true);
 
     } else {
-        // Disabling password protection, with Cancel option
         QMessageBox msgBox(QMessageBox::Question,
                            "Disable Password Protection",
                            "Are you sure you want to disable password protection?\n"
@@ -107,7 +97,6 @@ void SecurityManager::onTogglePasswordProtection(bool enabled)
         if (ret == QMessageBox::Yes) {
             m_settings.setValue("security/passwordProtectionEnabled", false);
         } else {
-            // User cancelled or chose No, revert the action
             m_requirePasswordAction->setChecked(true);
             return;
         }
@@ -150,14 +139,12 @@ void SecurityManager::setMasterPassword(bool isEdit)
                                              QLineEdit::Password, "", &ok);
 
     if (!ok) {
-        // User cancelled, disable the checkbox
         m_requirePasswordAction->setChecked(false);
         return;
     }
 
 
 
-    // Confirm password
     QString confirmPassword = QInputDialog::getText(m_parent, "Confirm Master Password",
                                                     "Confirm your master password:",
                                                     QLineEdit::Password, "", &ok);
@@ -169,7 +156,6 @@ void SecurityManager::setMasterPassword(bool isEdit)
         return;
     }
 
-    // Save hashed password
     QString hashedPassword = hashPassword(password);
     m_settings.setValue("security/masterPasswordHash", hashedPassword);
 
@@ -181,7 +167,6 @@ void SecurityManager::setMasterPassword(bool isEdit)
 
 void SecurityManager::setMasterPassword(bool isEdit)
 {
-    // Show security notice with Cancel option
     QMessageBox msgBox(QMessageBox::Information,
                        "Set Master Password",
                        "⚠️ IMPORTANT SECURITY NOTICE ⚠️\n\n"
@@ -194,12 +179,10 @@ void SecurityManager::setMasterPassword(bool isEdit)
                        m_parent);
     int noticeResult = msgBox.exec();
     if (noticeResult != QMessageBox::Ok) {
-        // User cancelled or closed dialog
         m_requirePasswordAction->setChecked(false);
         return;
     }
 
-    // Prompt for new password
     bool ok = false;
     QString password = QInputDialog::getText(
         m_parent,
@@ -210,12 +193,10 @@ void SecurityManager::setMasterPassword(bool isEdit)
         &ok
         );
     if (!ok) {
-        // User cancelled or closed dialog
         m_requirePasswordAction->setChecked(false);
         return;
     }
 
-    // Confirm password
     ok = false;
     QString confirmPassword = QInputDialog::getText(
         m_parent,
@@ -226,7 +207,6 @@ void SecurityManager::setMasterPassword(bool isEdit)
         &ok
         );
     if (!ok) {
-        // User cancelled or closed dialog
         m_requirePasswordAction->setChecked(false);
         return;
     }
@@ -238,7 +218,6 @@ void SecurityManager::setMasterPassword(bool isEdit)
         return;
     }
 
-    // Save hashed password
     QString hashedPassword = hashPassword(password);
     m_settings.setValue("security/masterPasswordHash", hashedPassword);
 
@@ -292,7 +271,6 @@ bool SecurityManager::validateMasterPassword()
         }
     }
 
-    // 3 failed attempts - show options dialog
     QMessageBox msgBox(m_parent);
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setWindowTitle("Access Denied");
@@ -318,7 +296,6 @@ void SecurityManager::clearSecuritySettings()
     m_settings.remove("security/masterPasswordHash");
     m_settings.sync();
 
-    // Update the menu checkbox
     if (m_requirePasswordAction) {
         m_requirePasswordAction->setChecked(false);
     }

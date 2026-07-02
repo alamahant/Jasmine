@@ -35,14 +35,11 @@ void SearchIPTVDialog::setupUI()
     mainLayout->setSpacing(12);
     mainLayout->setContentsMargins(16, 16, 16, 16);
     
-    // Tab widget for sources
     m_tabWidget = new QTabWidget();
     
-    // ========== M3U Tab ==========
     QWidget *m3uTab = new QWidget();
     QVBoxLayout *m3uLayout = new QVBoxLayout(m3uTab);
     
-    // Remote URL section
     QGroupBox *remoteGroup = new QGroupBox("Remote M3U Playlist");
     QHBoxLayout *remoteLayout = new QHBoxLayout(remoteGroup);
     m_remoteUrlEdit = new QLineEdit();
@@ -52,7 +49,6 @@ void SearchIPTVDialog::setupUI()
     remoteLayout->addWidget(m_loadRemoteButton);
     m3uLayout->addWidget(remoteGroup);
     
-    // Local file section
     QGroupBox *localGroup = new QGroupBox("Local M3U File");
     QHBoxLayout *localLayout = new QHBoxLayout(localGroup);
     m_localFileEdit = new QLineEdit();
@@ -68,7 +64,6 @@ void SearchIPTVDialog::setupUI()
     m3uLayout->addStretch();
     m_tabWidget->addTab(m3uTab, "M3U Playlist");
     
-    // ========== Xtream Tab (Placeholder) ==========
     QWidget *xtreamTab = new QWidget();
     QVBoxLayout *xtreamLayout = new QVBoxLayout(xtreamTab);
     
@@ -90,7 +85,6 @@ void SearchIPTVDialog::setupUI()
     
     m_xtreamConnectButton = new QPushButton("Connect & Load");
     m_xtreamConnectButton->setEnabled(true);
-    //m_xtreamConnectButton->setToolTip("");
     xtreamForm->addRow("", m_xtreamConnectButton);
     
 
@@ -101,7 +95,6 @@ void SearchIPTVDialog::setupUI()
     
     mainLayout->addWidget(m_tabWidget);
     
-    // ========== Filter section ==========
     QHBoxLayout *filterLayout = new QHBoxLayout();
     QLabel *filterLabel = new QLabel("Filter:");
     m_filterEdit = new QLineEdit();
@@ -113,7 +106,6 @@ void SearchIPTVDialog::setupUI()
     filterLayout->addWidget(m_searchButton);
     mainLayout->addLayout(filterLayout);
     
-    // ========== Results table ==========
     m_resultsTable = new QTableWidget();
     m_resultsTable->setColumnCount(5);
     m_resultsTable->setHorizontalHeaderLabels({"Select", "Channel Name", "Category", "Country", "Resolution"});
@@ -124,7 +116,6 @@ void SearchIPTVDialog::setupUI()
     m_resultsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     mainLayout->addWidget(m_resultsTable);
     
-    // ========== Buttons ==========
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     
@@ -145,7 +136,6 @@ void SearchIPTVDialog::setupUI()
     
     mainLayout->addLayout(buttonLayout);
     
-    // ========== Connect signals ==========
     connect(m_loadRemoteButton, &QPushButton::clicked, this, &SearchIPTVDialog::onLoadRemoteM3U);
     connect(m_browseButton, &QPushButton::clicked, this, &SearchIPTVDialog::onBrowseLocalFile);
     connect(m_loadLocalButton, &QPushButton::clicked, this, &SearchIPTVDialog::onLoadLocalM3U);
@@ -157,7 +147,6 @@ void SearchIPTVDialog::setupUI()
     connect(m_resultsTable, &QTableWidget::doubleClicked, this, &SearchIPTVDialog::onTableDoubleClicked);
     connect(m_xtreamConnectButton, &QPushButton::clicked, this, &SearchIPTVDialog::onXtreamConnect);
     
-    // Connect table selection change to update preview button
     connect(m_resultsTable, &QTableWidget::itemSelectionChanged, this, &SearchIPTVDialog::updatePreviewButtonState);
 }
 
@@ -180,7 +169,6 @@ void SearchIPTVDialog::onLoadRemoteM3U()
         return;
     }
 
-    // Clear existing data BEFORE loading new one
     m_allChannels.clear();
     m_filteredChannels.clear();
     m_selectedRows.clear();
@@ -207,7 +195,6 @@ void SearchIPTVDialog::loadRemoteM3U(const QUrl &url)
         progress->accept();
         if (reply->error() == QNetworkReply::NoError) {
             QString content = QString::fromUtf8(reply->readAll());
-            //parseM3U(content, url.toString());
             parseM3UAsync(content, url.toString());
         } else {
             QMessageBox::warning(this, "Error", "Failed to load M3U: " + reply->errorString());
@@ -244,7 +231,6 @@ void SearchIPTVDialog::loadLocalM3U(const QString &filePath)
     QString content = QString::fromUtf8(file.readAll());
     file.close();
     
-    //parseM3U(content, filePath);
     parseM3UAsync(content, filePath);
 }
 
@@ -257,7 +243,6 @@ void SearchIPTVDialog::displayChannels()
     for (int i = 0; i < m_filteredChannels.size(); ++i) {
         const IPTVChannel &channel = m_filteredChannels[i];
         
-        // Checkbox column
         QWidget *checkWidget = new QWidget();
         QHBoxLayout *checkLayout = new QHBoxLayout(checkWidget);
         checkLayout->setAlignment(Qt::AlignCenter);
@@ -271,7 +256,6 @@ void SearchIPTVDialog::displayChannels()
             m_selectedRows[i] = checked;
         });
         
-        // Other columns
         m_resultsTable->setItem(i, 1, new QTableWidgetItem(channel.name));
         m_resultsTable->setItem(i, 2, new QTableWidgetItem(channel.category));
         m_resultsTable->setItem(i, 3, new QTableWidgetItem(channel.country));
@@ -356,13 +340,11 @@ void SearchIPTVDialog::onAddSelectedClicked()
     
     emit channelsSelected(selectedChannels);
     emit showNotification("Selected Channels Added!", 3000);
-    // Clear selection after adding
     for (int i = 0; i < m_selectedRows.size(); ++i) {
         m_selectedRows[i] = false;
     }
     displayChannels();
     
-    //statusBar()->showMessage(QString("Added %1 channel(s). You can load another playlist or add more.").arg(selectedChannels.size()), 3000);
 }
 
 void SearchIPTVDialog::updatePreviewButtonState()
@@ -383,17 +365,14 @@ void SearchIPTVDialog::onXtreamConnect()
         return;
     }
 
-    // Remove trailing slash if present
     if (server.endsWith("/")) {
         server.chop(1);
     }
 
-    // Show progress
     QProgressDialog *progress = new QProgressDialog("Connecting to Xtream server...", "Cancel", 0, 0, this);
     progress->setWindowModality(Qt::WindowModal);
     progress->show();
 
-    // Authenticate and get server info
     QString authUrl = QString("%1/player_api.php?username=%2&password=%3")
                       .arg(server, username, password);
 
@@ -412,7 +391,6 @@ void SearchIPTVDialog::onXtreamConnect()
             if (doc.isObject()) {
                 QJsonObject obj = doc.object();
                 if (obj.contains("user_info")) {
-                    // Authentication successful, fetch live streams
                     fetchXtreamChannels(server, username, password, userAgent);
                 } else {
                     QMessageBox::warning(this, "Error", "Invalid credentials or server response.");
@@ -497,17 +475,14 @@ void SearchIPTVDialog::parseXtreamChannels(const QByteArray &data)
 
 
 
-// concurrent parsing
 
 void SearchIPTVDialog::parseM3UAsync(const QString &content, const QString &sourceName)
 {
-    // Show parsing progress dialog
     QProgressDialog *progress = new QProgressDialog("Parsing playlist...", "Cancel", 0, 0, this);
     progress->setWindowModality(Qt::WindowModal);
     progress->setMinimumDuration(500);
     progress->show();
 
-    // Run parsing in background thread
     QFuture<QVector<IPTVChannel>> future = QtConcurrent::run([content, sourceName]() {
         QVector<IPTVChannel> channels;
         QStringList lines = content.split('\n', Qt::SkipEmptyParts);
@@ -568,7 +543,6 @@ void SearchIPTVDialog::parseM3UAsync(const QString &content, const QString &sour
         return channels;
     });
 
-    // Watch for completion
     m_parseWatcher = new QFutureWatcher<QVector<IPTVChannel>>(this);
     connect(m_parseWatcher, &QFutureWatcher<QVector<IPTVChannel>>::finished, this, &SearchIPTVDialog::onParseFinished);
     connect(progress, &QProgressDialog::canceled, [this]() {
@@ -579,10 +553,8 @@ void SearchIPTVDialog::parseM3UAsync(const QString &content, const QString &sour
 
     m_parseWatcher->setFuture(future);
 
-    // Store source name for later
     m_currentSource = sourceName;
 
-    // Clean up progress dialog when done
     connect(m_parseWatcher, &QFutureWatcher<QVector<IPTVChannel>>::finished, progress, &QProgressDialog::accept);
     connect(m_parseWatcher, &QFutureWatcher<QVector<IPTVChannel>>::finished, progress, &QProgressDialog::deleteLater);
 }
@@ -618,20 +590,17 @@ void SearchIPTVDialog::onParseFinished()
 
     QMessageBox::information(this, "Loaded", msg);
 
-    //QMessageBox::information(this, "Loaded", QString("Loaded %1 channels from %2").arg(m_allChannels.size()).arg(m_currentSource));
 }
 
 void SearchIPTVDialog::onSearchClicked()
 {
     QString searchText = m_filterEdit->text().trimmed();
 
-    // Show progress dialog
     QProgressDialog *progress = new QProgressDialog("Filtering channels...", "Cancel", 0, 0, this);
     progress->setWindowModality(Qt::WindowModal);
     progress->setMinimumDuration(200);
     progress->show();
 
-    // Run filtering in background
     QFuture<QVector<IPTVChannel>> future = QtConcurrent::run([this, searchText]() {
         QVector<IPTVChannel> filtered;
         if (searchText.isEmpty()) {
@@ -656,9 +625,7 @@ void SearchIPTVDialog::onSearchClicked()
         watcher->deleteLater();
         progress->deleteLater();
 
-        // Show result count in status bar
         if (m_filteredChannels.size() != m_allChannels.size()) {
-            //statusBar()->showMessage(QString("Found %1 matching channels").arg(m_filteredChannels.size()), 3000);
         }
     });
     connect(progress, &QProgressDialog::canceled, [watcher]() {

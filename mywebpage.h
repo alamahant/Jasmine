@@ -9,18 +9,14 @@
 class MyWebPage : public QWebEnginePage {
     Q_OBJECT
 public:
-    // Match your existing code: parent is the QWebEngineView
     explicit MyWebPage(QWebEngineProfile *profile, QObject *parent = nullptr);
 
 protected:
-    // Handle new-window/tab requests
     QWebEnginePage* createWindow(WebWindowType type) override;
-
 private:
     void connectStandardSignals();
 
 signals:
-    // Emitted when a new tab should be created
     void newTabRequested(QWebEngineView *view, QWebEngineProfile *profile);
     void newPopupRequested(QWebEngineView* view, QWebEngineProfile* profile);  // New signal for popups
     void urlChangedExternally(const QUrl &url);

@@ -58,6 +58,8 @@ qt_add_executable(Jasmine
     podcast.h
     searchpodcastdialog.cpp searchpodcastdialog.h
     countrymapper.h
+    bookmarkmanager.cpp bookmarkmanager.h
+    historymanager.cpp historymanager.h
 
 
 )

@@ -36,7 +36,6 @@ void SearchRadioStationsDialog::setupUI()
     mainLayout->setSpacing(12);
     mainLayout->setContentsMargins(16, 16, 16, 16);
     
-    // Search section
     QGroupBox *searchGroup = new QGroupBox("Search Criteria");
     QFormLayout *searchLayout = new QFormLayout(searchGroup);
     
@@ -53,7 +52,6 @@ void SearchRadioStationsDialog::setupUI()
     
     mainLayout->addWidget(searchGroup);
     
-    // Results section
     QGroupBox *resultsGroup = new QGroupBox("Results");
     QVBoxLayout *resultsLayout = new QVBoxLayout(resultsGroup);
     
@@ -71,7 +69,6 @@ void SearchRadioStationsDialog::setupUI()
     mainLayout->addWidget(resultsGroup);
     
 
-    // Filter section (add this after resultsGroup but before previewGroup)
     QGroupBox *filterGroup = new QGroupBox("Filter Results");
     QHBoxLayout *filterLayout = new QHBoxLayout(filterGroup);
 
@@ -85,7 +82,6 @@ void SearchRadioStationsDialog::setupUI()
 
     mainLayout->insertWidget(mainLayout->indexOf(resultsGroup) + 1, filterGroup);
 
-    // Preview section
     QGroupBox *previewGroup = new QGroupBox("Preview");
     QFormLayout *previewLayout = new QFormLayout(previewGroup);
     
@@ -106,7 +102,6 @@ void SearchRadioStationsDialog::setupUI()
     
     mainLayout->addWidget(previewGroup);
     
-    // Button section
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     
@@ -129,7 +124,6 @@ void SearchRadioStationsDialog::setupUI()
     
     mainLayout->addLayout(buttonLayout);
     
-    // Connect signals
     connect(m_searchButton, &QPushButton::clicked, this, &SearchRadioStationsDialog::onSearchClicked);
     connect(m_resultsTable, &QTableWidget::itemSelectionChanged, this, &SearchRadioStationsDialog::onResultSelectionChanged);
     connect(m_playButton, &QPushButton::clicked, this, &SearchRadioStationsDialog::onPlayClicked);
@@ -141,7 +135,6 @@ void SearchRadioStationsDialog::populateCountryCombo()
 {
     m_countryCombo->addItem("All", "");
     
-    // Get countries from Constants
     QList<QString> countryCodes = CountryMapper::getAllCountryCodes();
     for (const QString &code : countryCodes) {
         QString countryName = CountryMapper::getCountryNameFromCode(code);
@@ -154,7 +147,6 @@ void SearchRadioStationsDialog::performSearch()
     QString countryCode = m_countryCombo->currentData().toString();
     QString stationName = m_nameEdit->text().trimmed();
     
-    // Clear previous results
     m_resultsTable->setRowCount(0);
     m_currentResults.clear();
     m_playButton->setEnabled(false);
@@ -163,16 +155,12 @@ void SearchRadioStationsDialog::performSearch()
     
     if (m_api) {
         if (!stationName.isEmpty()) {
-            // Search by name
             if (!countryCode.isEmpty()) {
-                // Search by name + country
                 m_api->searchStations(stationName, countryCode);
             } else {
-                // Search by name only
                 m_api->searchStations(stationName);
             }
         } else if (!countryCode.isEmpty()) {
-            // Search by country only
             m_api->searchStationsByCountry(countryCode);
         } else {
             QMessageBox::information(this, "Search", "Please enter a station name or select a country.");
@@ -243,7 +231,6 @@ void SearchRadioStationsDialog::onAddClicked()
         RadioStation station = m_currentResults[m_currentSelectedIndex];
         emit showNotification(QString("Added %1").arg(station.name), 3000);
 
-        // Download icon if URL exists
         if (!station.iconUrl.isEmpty()) {
 
             QNetworkAccessManager *nam = new QNetworkAccessManager(this);
@@ -251,7 +238,6 @@ void SearchRadioStationsDialog::onAddClicked()
 
             connect(reply, &QNetworkReply::finished, [this, reply, nam, station]() mutable {
                 if (reply->error() == QNetworkReply::NoError) {
-                    // Save icon to disk
                     QString iconDir = JASMINE_CONSTANTS::iconDir;
 
                     QString iconPath = iconDir + "/" + station.stationuuid + ".png";
@@ -260,7 +246,6 @@ void SearchRadioStationsDialog::onAddClicked()
                         file.write(reply->readAll());
                         file.close();
 
-                        // Update station with local path
                         RadioStation stationWithIcon = station;
                         stationWithIcon.iconUrl = iconPath;  // Store local path instead of URL
 
@@ -279,8 +264,6 @@ void SearchRadioStationsDialog::onAddClicked()
         }
 
 
-        //emit stationSelected(m_currentResults[m_currentSelectedIndex]);
-        //accept(); // Close dialog after adding
     }
 }
 
@@ -338,12 +321,10 @@ RadioBrowserAPI *SearchRadioStationsDialog::api() const
 void SearchRadioStationsDialog::filterResults(const QString &text)
 {
     if (text.isEmpty()) {
-        // Show all rows
         for (int i = 0; i < m_resultsTable->rowCount(); ++i) {
             m_resultsTable->showRow(i);
         }
     } else {
-        // Hide rows that don't match
         for (int i = 0; i < m_resultsTable->rowCount(); ++i) {
             QString stationName = m_resultsTable->item(i, 0)->text();
             QString genre = m_resultsTable->item(i, 4)->text();

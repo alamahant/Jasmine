@@ -1,5 +1,38 @@
 # Changelog
 
+## [v1.3.3] - 2026-07-02
+
+### New Features
+
+**Bookmark Manager**
+- Full CRUD operations with folder support (Default, Favorites, Reading List + custom)
+- Duplicate detection with highlighting
+- Multi-select delete
+- Persistent notes/comments per bookmark
+- Dark theme support
+
+**History Manager**
+- Automatic browsing history tracking with date filtering
+- URL normalization (no duplicates)
+- Multi-select delete
+- Search by title/URL
+
+**Search/Find**
+- Dashboard: search cards (websites, sessions, radio, IPTV, podcasts)
+- WebView: find text in page (case insensitive, real-time)
+
+**YouTube/SPA Navigation Fix**
+- History now records YouTube internal navigation (SPA)
+- 1.5s delay ensures title is loaded
+
+**UI/UX Improvements**
+- Dark theme support for all dialogs
+- Window hides on close (reopen via menu)
+- History/Bookmarks enable/disable toggle with QSettings persistence
+- Sandwich menu with quick access to all features
+
+---
+
 ## [v1.3.2] - 2026-05-24
 
 ### New Features: Xtream Codes API Support

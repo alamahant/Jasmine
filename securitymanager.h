@@ -17,13 +17,10 @@ class SecurityManager : public QObject
 public:
     explicit SecurityManager(QWidget* parent = nullptr);
 
-    // Menu setup
     void setupSecurityMenu(class QMenuBar* menuBar);
 
-    // Startup check
     bool checkPasswordOnStartup();
 
-    // Settings
     bool isPasswordProtectionEnabled() const;
     void clearSecuritySettings();
 

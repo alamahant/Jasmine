@@ -31,11 +31,9 @@ void DownloadWindow::setupUI()
     resize(600, 500);  // Normal for desktop
 #endif
 
-    //resize(600, 500);
 
     m_mainLayout = new QVBoxLayout(this);
 
-    // Top buttons
     QHBoxLayout *buttonLayout = new QHBoxLayout();
 
     m_clearFinishedButton = new QPushButton("Clear Finished");
@@ -46,7 +44,6 @@ void DownloadWindow::setupUI()
     buttonLayout->addStretch();
 
     m_mainLayout->addLayout(buttonLayout);
-    // Scroll area for download items
     m_scrollArea = new QScrollArea();
     m_scrollArea->setWidgetResizable(true);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -60,13 +57,11 @@ void DownloadWindow::setupUI()
     m_scrollArea->setWidget(m_scrollWidget);
     m_mainLayout->addWidget(m_scrollArea);
 
-    // Empty state label
     m_emptyLabel = new QLabel("No downloads yet");
     m_emptyLabel->setAlignment(Qt::AlignCenter);
     m_emptyLabel->setStyleSheet("color: gray; font-size: 14px; padding: 50px;");
     m_scrollLayout->addWidget(m_emptyLabel);
 
-    // Connect button signals
     connect(m_clearFinishedButton, &QPushButton::clicked, this, &DownloadWindow::onClearFinishedClicked);
     connect(m_openFolderButton, &QPushButton::clicked, this, &DownloadWindow::onOpenDownloadsFolderClicked);
 }
@@ -81,7 +76,6 @@ void DownloadWindow::addDownloadItem(DownloadItem *item)
     m_downloadItems.append(item);
     m_scrollLayout->addWidget(item);
 
-    // Connect remove signal
     connect(item, &DownloadItem::removeRequested, this, &DownloadWindow::onDownloadItemRemoveRequested);
 
     updateEmptyState();
@@ -123,12 +117,10 @@ void DownloadWindow::onClearFinishedClicked()
 
 void DownloadWindow::onOpenDownloadsFolderClicked(){
     QDir downloadsDir(JASMINE_CONSTANTS::downloadsDirPath);
-    // Create directory if it doesn't exist
     if (!downloadsDir.exists()) {
         downloadsDir.mkpath(".");
     }
 #ifdef FLATPAK_BUILD
-    // Show helpful message for Flatpak users
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Downloads Location");
     msgBox.setText(QString("Your downloads are saved to:\n\n%1\n\n"
@@ -143,7 +135,6 @@ void DownloadWindow::onOpenDownloadsFolderClicked(){
         QApplication::clipboard()->setText(JASMINE_CONSTANTS::downloadsDirPath);
     }
 #else
-    // Open in system file manager
     QDesktopServices::openUrl(QUrl::fromLocalFile(JASMINE_CONSTANTS::downloadsDirPath));
 #endif
 }

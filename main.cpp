@@ -52,7 +52,6 @@ int main(int argc, char *argv[])
 #endif
 
     MainWindow w;
-    // Check password protection before showing window
     if (!w.checkStartupSecurity()) {
         return 0;
     }

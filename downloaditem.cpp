@@ -16,13 +16,11 @@ DownloadItem::DownloadItem(QWebEngineDownloadRequest *download, QWidget *parent)
 {
     setupUI();
 
-    // Connect download signals
     connect(m_download, &QWebEngineDownloadRequest::receivedBytesChanged,
             this, &DownloadItem::updateProgress);
     connect(m_download, &QWebEngineDownloadRequest::stateChanged,
             this, &DownloadItem::onStateChanged);
 
-    // Initial update
     updateProgress();
     updateButtons();
 }
@@ -34,10 +32,8 @@ void DownloadItem::setupUI()
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
     mainLayout->setContentsMargins(10, 5, 10, 5);
 
-    // Left side - file info and progress
     QVBoxLayout *infoLayout = new QVBoxLayout();
 
-    // File name and size
     QHBoxLayout *fileInfoLayout = new QHBoxLayout();
     m_fileNameLabel = new QLabel(m_download->downloadFileName());
     m_fileNameLabel->setStyleSheet("font-weight: bold;");
@@ -47,11 +43,9 @@ void DownloadItem::setupUI()
     fileInfoLayout->addStretch();
     fileInfoLayout->addWidget(m_fileSizeLabel);
 
-    // Progress bar
     m_progressBar = new QProgressBar();
     m_progressBar->setRange(0, 100);
 
-    // Status label
     m_statusLabel = new QLabel("Starting download...");
     m_statusLabel->setStyleSheet("color: gray; font-size: 11px;");
 
@@ -61,7 +55,6 @@ void DownloadItem::setupUI()
 
     mainLayout->addLayout(infoLayout, 1);
 
-    // Right side - buttons
     QVBoxLayout *buttonLayout = new QVBoxLayout();
 
     QHBoxLayout *topButtons = new QHBoxLayout();
@@ -105,7 +98,6 @@ void DownloadItem::setupUI()
     m_openFileButton->setToolTip("Open Downloaded File");
     m_openFolderButton->setToolTip("Open Download Folder");
     m_removeButton->setToolTip("Remove from List");
-    // Connect button signals
     connect(m_cancelButton, &QPushButton::clicked, this, &DownloadItem::onCancelClicked);
     connect(m_openFileButton, &QPushButton::clicked, this, &DownloadItem::onOpenFileClicked);
     connect(m_openFolderButton, &QPushButton::clicked, this, &DownloadItem::onOpenFolderClicked);
@@ -119,7 +111,6 @@ void DownloadItem::updateProgress()
     qint64 received = m_download->receivedBytes();
     qint64 total = m_download->totalBytes();
 
-    // Update file size label
     if (total > 0) {
         m_fileSizeLabel->setText(QString("%1 / %2")
                                      .arg(formatFileSize(received))
@@ -132,7 +123,6 @@ void DownloadItem::updateProgress()
         m_progressBar->setRange(0, 0); // Indeterminate progress
     }
 
-    // Calculate speed
     QTime currentTime = QTime::currentTime();
     int elapsed = m_lastUpdateTime.msecsTo(currentTime);
 
@@ -207,7 +197,6 @@ void DownloadItem::onOpenFileClicked(){
 void DownloadItem::onOpenFolderClicked()
 {
 #ifdef FLATPAK_BUILD
-    // Show helpful message for Flatpak users
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Downloads Location");
     msgBox.setText(QString("Your downloads are saved to:\n\n%1\n\n"
@@ -222,10 +211,8 @@ void DownloadItem::onOpenFolderClicked()
         QApplication::clipboard()->setText(m_download->downloadDirectory());
     }
 #else
-    // Open in system file manager
     QDesktopServices::openUrl(QUrl::fromLocalFile(m_download->downloadDirectory()));
 #endif
-    //QDesktopServices::openUrl(QUrl::fromLocalFile(m_download->downloadDirectory()));
 }
 
 bool DownloadItem::isFinished() const

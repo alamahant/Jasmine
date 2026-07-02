@@ -47,8 +47,10 @@
 #include"searchiptvdialog.h"
 #include"podcast.h"
 #include"searchpodcastdialog.h"
+#include"historymanager.h"
+#include"bookmarkmanager.h"
+#include<QToolButton>
 
-// Session data structure
 struct SessionData {
     QString name;
     QDateTime timestamp;
@@ -58,11 +60,9 @@ struct SessionData {
     QIcon icon;  // Session icon
     QString comments;
     bool usingSeparateProfiles;
-    // New fields to track actual per-tab profile state
     QList<bool> tabHasSeparateProfile;  // Which tabs actually have separate profiles
     QStringList tabOriginalProfileNames;  // Original profile names for each tab
 
-    // Named profiles fields
     bool usingNamedProfiles = false;
     QString selectedProfileName;
     QList<bool> tabHasNamedProfile;
@@ -98,7 +98,6 @@ private slots:
 
 private:
 
-    // UI Components
     QStackedWidget* detailsStack = nullptr;
     QStackedWidget* m_stackedWidget;
     QWidget* m_dashboardWidget;
@@ -116,7 +115,6 @@ private:
     QSplitter* m_dashboardSplitter;
     QCheckBox* m_separateProfilesCheckbox;
 
-    // Actions
     QAction* m_addAction;
     QAction* m_editAction;
     QAction* m_deleteAction;
@@ -124,7 +122,6 @@ private:
     QAction* m_webBackAction;
     QAction* m_webForwardAction;
     QAction* m_webReloadAction;
-    // Modern UI Components
     QTabWidget* m_leftPanelTabs;
     QScrollArea* m_websitesScrollArea;
     QScrollArea* m_sessionsScrollArea;
@@ -134,18 +131,15 @@ private:
     QGridLayout* m_sessionsGrid;
     QFrame* m_detailsPanel;
 
-    // Card tracking
     QMap<int, QFrame*> m_websiteCards;
     QMap<QString, QFrame*> m_sessionCards;
 
-    // Data
     WebsiteListModel* m_model;
     QWebEngineProfile* m_webProfile;
     QMap<QWebEngineView*, QWebEngineProfile*> m_tabProfiles;
     QMap<QString, SessionData> m_sessions;
     bool m_usingSeparateProfiles = false;
 
-    // UI Creation Methods
     QWidget* createModernDashboard();
     QWidget* createWebViewContainer();
     QFrame* createWebsiteCard(const Website& website, int index);
@@ -153,25 +147,20 @@ private:
     QFrame* createDetailPanel();
     void setupModernStyles();
 
-    // UI Update Methods
     void updateWebsiteCards();
     void updateSessionCards();
     void highlightCard(QFrame* card, bool highlight);
     void updateReturnToWebViewButton();
 
-    // Navigation Methods
     void showDashboard();
     void showWebViews();
 
-    // Form Methods
     void populateFormFromWebsite(const Website &website);
 
-    // Data Methods
     void saveModel();
     WebsiteListModel* loadModel();
     void updateWebsiteList();
 
-    // Session Methods
     void createMenus();
     QStringList getAvailableSessions();
     void deleteSession(const QString& name);
@@ -180,7 +169,6 @@ private:
     void saveSession(const QString& name);
     void loadSession(const QString& name);
 
-    // Profile Methods
     void setupProfilesCheckbox();
     QWebEngineProfile* createProfileForTab(int tabIndex = -1, const QString& sessionName = QString());
     void cleanupTabProfile(QWebEngineView* webView);
@@ -191,18 +179,15 @@ private:
     void prepareForShutdown();
     void listDirectoryContents(const QString& dirPath, int level = 0);
 
-    // Helper Methods
     bool hasOpenTabs() const;
     QString getWebsitesFilePath();
     void updateWebsiteIcon(int websiteIndex, const QIcon &icon);
     QLabel* m_iconLabel;
 
 
-    //session panel
     QFrame* createSessionDetailPanel();
     void populateSessionForm(const SessionData &session);
 
-    // Session detail panel controls
     QLineEdit* m_sessionNameInput;
     QListWidget* m_sessionTabsDisplay;
     QLabel* m_sessionTimestampLabel;
@@ -231,7 +216,6 @@ private:
     void updateTabCountStatus();
     QLabel* m_tabCountLabel;
 
-    // Current selections
     int m_currentWebsiteIndex = -1;
     QString m_currentSessionName = "";
     void selectFirstItemIfNoneSelected();
@@ -249,7 +233,6 @@ private:
     QAction *m_screenshotAction;
     QAction *m_openDownloadsFolderAction;
     void openDownloadsFolder();
-    //theme
     QPushButton *m_themeToggle;
     QString loadDarkTheme();
     QString loadLightTheme();
@@ -262,12 +245,10 @@ private:
     void performFactoryReset();
     TwoFAManager* m_twoFAManager;
     QAction* m_open2faManagerAction;
-    //username-passwd
     QLineEdit* m_usernameInput;
     QLineEdit* m_passwordInput;
     QPushButton* m_usernameEyeButton;
     QPushButton* m_passwordEyeButton;
-    //securitymanager
     SecurityManager* m_securityManager;
 public:
     bool checkStartupSecurity();
@@ -277,7 +258,6 @@ private:
     QPushButton* deleteBtn;
     QIcon m_originalDownloadIcon;
     bool m_isDarkTheme = false;
-    //urlbar
     URLBar* m_urlBar;
     QAction* m_toggleUrlBarAction;
     bool isUrlBarVisible = false;
@@ -300,20 +280,16 @@ private:
     bool hasSymlinksPointingTo(const QString& targetPath);
     RequestInterceptor *interceptor = nullptr;
     void configureBrowserSettings(QWebEngineProfile* profile);
-    // AdBlocker
     SimpleAdBlocker *m_adBlocker;
 
-    //void setupAdBlocker(QWebEngineProfile* profile);
     void injectAdBlockScript(MyWebPage *page);
 
 private:
-    // Named profiles system
     bool m_usingNamedProfiles = false;
     QString m_selectedProfileName;
     QMap<QString, QWebEngineProfile*> m_namedProfiles;
     QMap<QWebEngineView*, QString> m_tabNamedProfiles;
     QComboBox* profileSelector = nullptr;
-    // Named profiles methods
     QWebEngineProfile* getOrCreateNamedProfile(const QString& name);
     void saveNamedProfilesData();
     void loadNamedProfilesData();
@@ -326,7 +302,6 @@ private:
 public slots:
     void handleFullScreenRequest(QWebEngineFullScreenRequest request);
 private:
-    //full screen needed vars
     int m_lastTabIndex = -1;
 
     QWebEngineView* m_theaterWebView = nullptr;
@@ -343,7 +318,6 @@ private:
     void configurePage(MyWebPage* page);
     QAction* m_openCopiedLinkAction;
 
-    //open links in new tab
     MyWebPage *page = nullptr;
     void setupCustomContextMenu(QWebEngineView *view, QWebEngineProfile *profile);
     void setupVideoAdBlocking(QWebEngineProfile *profile);
@@ -357,20 +331,16 @@ private:
     bool buttonsHighlighted  = false;
     QToolButton* toggleButton;
     QAction* highlightButtonsAction;
-    //extensions
-    //ExtensionManager* m_extManager = nullptr;
     AdFreePlayerDialog* player = nullptr;
     QPushButton* streamButton;
 
 
-    //radio
     private:
         void createRadioTab();
         void updateRadioGrid();  // Renamed from populateRadioGrid (matches website/session pattern)
         void saveRadioStations();
         void loadRadioStations();
 
-        // Radio tab components
         QScrollArea* m_radioScrollArea;
         QWidget* m_radioContainer;
         QGridLayout* m_radioGrid;
@@ -380,7 +350,6 @@ private:
         QVector<RadioStation> m_radioStations;
         int m_currentRadioIndex;
 
-        // Radio details panel widgets
         QLabel* m_radioIconLabel;
         QLineEdit* m_radioNameEdit;
         QLineEdit* m_radioStreamUrlEdit;
@@ -418,10 +387,8 @@ private:
     QLineEdit* m_searchLineEdit;
     QAction* searchAction;
 
-/////////////// IPTV
 private:
 
-    // IPTV tab components
     void createIPTVTab();
     void updateIPTVGrid();
     void saveIPTVChannels();
@@ -431,12 +398,10 @@ private:
     QFrame* createIPTVCard(const IPTVChannel& channel, int index);
     QFrame* createIPTVDetailPanel();
 
-    // IPTV data
     QVector<IPTVChannel> m_iptvChannels;
     QMap<int, QFrame*> m_iptvCards;
     int m_currentIPTVIndex;
 
-    // IPTV widgets
     QScrollArea* m_iptvScrollArea;
     QWidget* m_iptvContainer;
     QGridLayout* m_iptvGrid;
@@ -471,9 +436,7 @@ private:
     void downloadIPTVIconIfNeeded(int index);
     void sortAllCards();
 
-    // podcasts
 private:
-    // Podcast tab components
     void createPodcastTab();
     void updatePodcastGrid();
     void savePodcasts();
@@ -482,13 +445,11 @@ private:
     QFrame* createPodcastCard(const PodcastShow& show, int index);
     QFrame* createPodcastDetailPanel();
 
-    // Podcast data
     QVector<PodcastShow> m_podcastShows;
     QMap<int, QFrame*> m_podcastCards;
     int m_currentPodcastIndex;
     int m_currentEpisodeIndex;
 
-    // Podcast widgets
     QScrollArea* m_podcastScrollArea;
     QWidget* m_podcastContainer;
     QGridLayout* m_podcastGrid;
@@ -525,7 +486,19 @@ private slots:
 private:
     int m_currentPlayingPodcastIndex = -1;
     int m_currentPlayingEpisodeIndex = -1;
+    HistoryManager* historyManager = nullptr;
+    BookmarkManager* bookmarkManager = nullptr;
+    void createMenuButton();
+    QToolButton* menuButton;
+    bool historyEnabled = false;
+    QAction* enableHistoryAction;
+    //QMap<QWebEngineView*, QMetaObject::Connection> m_historyConnections;
+    bool showUrlBar = false;
+    QAction* showUrlBarAction;
+    void findInPage(const QString& text);
 
+private slots:
+    void onHistoryEnabled(QWebEngineView* view);
 };
 
 #endif // MAINWINDOW_H

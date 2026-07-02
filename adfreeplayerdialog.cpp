@@ -20,8 +20,8 @@ AdFreePlayerDialog::AdFreePlayerDialog(QWidget *parent)
     setWindowTitle("Jasmine - Media Player");
     setMinimumSize(800, 450);
     setupUI();
-    connect(m_player, &QMediaPlayer::mediaStatusChanged,
-            this, &AdFreePlayerDialog::onMediaStatusChanged);
+   // connect(m_player, &QMediaPlayer::mediaStatusChanged,
+     //       this, &AdFreePlayerDialog::onMediaStatusChanged);
 }
 
 AdFreePlayerDialog::~AdFreePlayerDialog()
@@ -36,10 +36,8 @@ void AdFreePlayerDialog::setupUI()
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // Video widget
     m_videoWidget = new QVideoWidget(this);
 
-    // Install event filter on video widget and container
     m_videoWidget->installEventFilter(this);
     m_videoWidget->setAttribute(Qt::WA_AcceptTouchEvents);
 
@@ -47,7 +45,6 @@ void AdFreePlayerDialog::setupUI()
     connect(m_videoWidget, &QVideoWidget::customContextMenuRequested, this, &AdFreePlayerDialog::showContextMenu);
     mainLayout->addWidget(m_videoWidget);
 
-    // Top bar with URL and buttons
     topBar = new QWidget(this);
     topBar->setStyleSheet("background-color: rgba(0, 0, 0, 180); color: white;");
     topBar->setFixedHeight(45);
@@ -59,7 +56,6 @@ void AdFreePlayerDialog::setupUI()
     m_getUrlButton->setToolTip("Navigato to any youtube -- or other -- video and click to stream ad-free");
     m_getUrlButton->setFixedWidth(160);
 
-    //m_urlDisplay = new QLabel("No URL loaded", topBar);
     m_urlDisplay = new QLineEdit(topBar);
     m_urlDisplay->setText("No URL loaded");
     m_urlDisplay->setReadOnly(true);
@@ -80,11 +76,9 @@ void AdFreePlayerDialog::setupUI()
 
     mainLayout->addWidget(topBar);
 
-    // Video toolbar (no next/previous buttons)
     createVideoToolbar();
     mainLayout->addWidget(m_videoToolbar);
 
-    // Connect signals
     connect(m_getUrlButton, &QPushButton::clicked, this, &AdFreePlayerDialog::onGetUrlClicked);
     connect(m_clearButton, &QPushButton::clicked, this, &AdFreePlayerDialog::onClearClicked);
     connect(m_playButton, &QPushButton::clicked, this, &AdFreePlayerDialog::onPlayPause);
@@ -92,7 +86,7 @@ void AdFreePlayerDialog::setupUI()
     connect(m_volumeSlider, &QSlider::valueChanged, this, &AdFreePlayerDialog::onVolumeChanged);
     connect(m_progressSlider, &QSlider::sliderMoved, this, &AdFreePlayerDialog::onProgressSliderMoved);
     connect(m_fullscreenButton, &QPushButton::clicked, this, &AdFreePlayerDialog::toggleFullscreen);
-    connect(m_player, &QMediaPlayer::mediaStatusChanged, this, &AdFreePlayerDialog::onMediaStatusChanged);
+    //connect(m_player, &QMediaPlayer::mediaStatusChanged, this, &AdFreePlayerDialog::onMediaStatusChanged);
 }
 
 void AdFreePlayerDialog::createVideoToolbar()
@@ -218,7 +212,6 @@ void AdFreePlayerDialog::setUrl(const QString &url)
 void AdFreePlayerDialog::onGetUrlClicked()
 {
     setWindowTitle("Jasmine - Media Player");
-    // Check if a URL is already loaded
     if (!m_currentUrl.isEmpty()) {
         QMessageBox::StandardButton reply = QMessageBox::question(
             this,
@@ -232,7 +225,6 @@ void AdFreePlayerDialog::onGetUrlClicked()
             return; // Cancel - don't load new URL
         }
 
-        // User chose Yes - stop current playback
         if (m_player) {
             m_player->stop();
             m_isPlaying = false;
@@ -256,15 +248,12 @@ void AdFreePlayerDialog::extractStreamUrl()
     m_ytProcess = new QProcess(this);
 
     QStringList args;
-    // YouTube needs -f best for single merged URL
     if (m_currentUrl.contains("youtube.com") || m_currentUrl.contains("youtu.be") || m_currentUrl.contains("music.youtube")) {
         args << "-f" << "best" << "--no-progress" << "-g" << m_currentUrl;
     }
-    // Vimeo also needs -f best for direct MP4
     else if (m_currentUrl.contains("vimeo.com")) {
         args << "-f" << "best" << "-g" << m_currentUrl;
     }
-    // Dailymotion, Rumble, Odysee work with just -g
     else {
         args << "-g" << m_currentUrl;
     }
@@ -284,7 +273,6 @@ void AdFreePlayerDialog::extractStreamUrl()
     m_getUrlButton->setEnabled(false);
     m_getUrlButton->setText("Extracting...");
 
-    // Clean up previous process if exists
     if (m_ytProcess) {
         disconnect(m_ytProcess, nullptr, this, nullptr);
         if (m_ytProcess->state() == QProcess::Running) {
@@ -304,30 +292,20 @@ void AdFreePlayerDialog::extractStreamUrl()
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/136.0 Safari/537.36";
 
-    //args << "--user-agent" << userAgent;
 
-    //if (m_currentUrl.contains("youtube.com") || m_currentUrl.contains("youtu.be") || m_currentUrl.contains("music.youtube.com")) {
         args << "--no-progress" << "--no-playlist" << "--quiet" <<  "-f" << "best" << "-g" << m_currentUrl;
-    //} else if (m_currentUrl.contains("vimeo.com")) {
-      //  args << "-f" << "best" << "-g" << m_currentUrl;
-    //} else {
-      //  args << "-g" << m_currentUrl;
-    //}
 
 
 
-    // Collect output as it comes
     connect(m_ytProcess, &QProcess::readyReadStandardOutput, this, [this]() {
         m_outputBuffer.append(m_ytProcess->readAllStandardOutput());
         QString output = QString::fromUtf8(m_outputBuffer);
 
     });
 
-    // Single timer - just wait 9 seconds then get URL
     QTimer::singleShot(9000, this, [this]() {
         if (!m_ytProcess) return;
 
-        // Kill the process if still running
         if (m_ytProcess->state() == QProcess::Running) {
             m_ytProcess->kill();
         }
@@ -391,6 +369,7 @@ void AdFreePlayerDialog::playStreamWithUrl(const QString &streamUrl)
 
         connect(m_player, &QMediaPlayer::positionChanged, this, &AdFreePlayerDialog::updatePosition);
         connect(m_player, &QMediaPlayer::durationChanged, this, &AdFreePlayerDialog::updateDuration);
+        connect(m_player, &QMediaPlayer::mediaStatusChanged, this, &AdFreePlayerDialog::onMediaStatusChanged);
 
         QAudioOutput *audioOutput = new QAudioOutput(this);
         m_player->setAudioOutput(audioOutput);
@@ -426,6 +405,7 @@ void AdFreePlayerDialog::playStream()
 
         connect(m_player, &QMediaPlayer::positionChanged, this, &AdFreePlayerDialog::updatePosition);
         connect(m_player, &QMediaPlayer::durationChanged, this, &AdFreePlayerDialog::updateDuration);
+        connect(m_player, &QMediaPlayer::mediaStatusChanged, this, &AdFreePlayerDialog::onMediaStatusChanged);
 
         QAudioOutput *audioOutput = new QAudioOutput(this);
         m_player->setAudioOutput(audioOutput);
@@ -613,9 +593,7 @@ void AdFreePlayerDialog::showContextMenu(const QPoint &pos)
 
 void AdFreePlayerDialog::closeEvent(QCloseEvent *event)
 {
-    // Stop playback
     if (m_player) {
-        //m_player->stop();
     }
 
 
@@ -630,7 +608,6 @@ bool AdFreePlayerDialog::eventFilter(QObject *watched, QEvent *event)
         if (event->type() == QEvent::MouseButtonRelease) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
             if (mouseEvent->button() == Qt::LeftButton) {
-                // Toggle both top bar and video toolbar
                 bool topBarVisible = topBar->isVisible();
                 bool toolbarVisible = m_videoToolbar->isVisible();
 
@@ -664,7 +641,6 @@ void AdFreePlayerDialog::onClearClicked()
         return; // User cancelled
     }
 
-    // Kill yt-dlp process if running
     if (m_ytProcess && m_ytProcess->state() == QProcess::Running) {
         m_ytProcess->kill();
         m_ytProcess->waitForFinished(1000);
@@ -672,7 +648,6 @@ void AdFreePlayerDialog::onClearClicked()
         m_ytProcess = nullptr;
     }
 
-    // Stop playback
     if (m_player) {
         m_player->stop();
         m_isPlaying = false;
@@ -681,19 +656,15 @@ void AdFreePlayerDialog::onClearClicked()
         m_timeLabel->setText("00:00 / 00:00");
     }
 
-    // Clear URL display
     m_currentUrl.clear();
     m_urlDisplay->setText("No URL loaded");
     m_urlDisplay->setStyleSheet("color: white; padding: 5px; background-color: rgba(0, 0, 0, 100); border-radius: 3px;");
 
-    // Re-enable get URL button if it was disabled
     m_getUrlButton->setEnabled(true);
     m_getUrlButton->setText("Get URL");
 
-    //statusBar()->showMessage("Cleared", 2000); // If you have status bar, or just ignore
 }
 
-// for radio
 
 void AdFreePlayerDialog::stop()
 {

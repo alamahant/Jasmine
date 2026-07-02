@@ -1,7 +1,6 @@
 #pragma once
 #include<QString>
 
-// Radio data structures
         struct RadioStation {
             QString stationuuid;
             QString name;

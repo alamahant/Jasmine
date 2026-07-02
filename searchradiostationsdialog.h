@@ -43,13 +43,11 @@ private:
     void updatePreview(const RadioStation &station);
     void clearPreview();
 
-    // UI Components
     QComboBox *m_countryCombo;
     QLineEdit *m_nameEdit;
     QPushButton *m_searchButton;
     QTableWidget *m_resultsTable;
     
-    // Preview section
     QLabel *m_previewName;
     QLabel *m_previewUrl;
     QLabel *m_previewCountry;
@@ -57,12 +55,10 @@ private:
     QLabel *m_previewCodec;
     QLabel *m_previewGenre;
     
-    // Buttons
     QPushButton *m_playButton;
     QPushButton *m_addButton;
     QPushButton *m_cancelButton;
     
-    // API and data
     RadioBrowserAPI *m_api;
     QVector<RadioStation> m_currentResults;
     int m_currentSelectedIndex;

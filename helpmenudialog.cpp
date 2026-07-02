@@ -20,7 +20,6 @@ void HelpMenuDialog::setupUI()
 
     m_contentArea = new QTextEdit(this);
     m_contentArea->setReadOnly(true);
-   // m_contentArea->setAcceptRichText(true);
 
 
     m_closeButton = new QPushButton("Close", this);
@@ -1505,6 +1504,27 @@ QString HelpMenuDialog::getChangelogContent()
 {
     return QString(
         "<h3>Changelog</h3>"
+
+        "<h4>[v1.3.3] - 2026-07-02</h4>"
+        "<ul>"
+        "<li><b>Bookmark Manager:</b> Full CRUD operations with folder support (Default, Favorites, Reading List + custom). Duplicate detection with highlighting, multi-select delete, and persistent notes.</li>"
+        "<li><b>History Manager:</b> Automatic browsing history tracking with date filtering. URL normalization (no duplicates), multi-select delete, and search by title/URL.</li>"
+        "<li><b>Search/Find:</b> Dashboard search cards (websites, sessions, radio, IPTV, podcasts) and WebView find text in page (case insensitive, real-time highlighting).</li>"
+        "<li><b>YouTube/SPA Navigation Fix:</b> History now records YouTube internal navigation (SPA) with 1.5s delay to ensure title is loaded.</li>"
+        "<li><b>UI/UX Improvements:</b> Dark theme support for all dialogs, window hides on close (reopen via menu), History/Bookmarks enable/disable toggle with QSettings persistence, and sandwich menu with quick access to all features.</li>"
+        "<li><b>Bug Fixes:</b> Fixed multi-delete crashes, duplicate connections, custom folders not persisting, and comments not saving properly.</li>"
+        "</ul>"
+
+        "<h4>[v1.3.2] - 2026-05-24</h4>"
+        "<ul>"
+        "<li><b>Xtream Codes API Support:</b> Connect IPTV providers using Server URL, Username, and Password. Optional User-Agent header for providers that require it. Automatic channel loading from Xtream server with same selection and preview functionality as M3U playlists.</li>"
+        "</ul>"
+
+        "<h4>[v1.3.1] - 2026-05-22</h4>"
+        "<ul>"
+        "<li><b>Fixed:</b> Removed separator lines appearing above podcast episode items.</li>"
+        "</ul>"
+
 
         "<h4>[v1.3.0] - 2026-05-22</h4>"
         "<ul>"

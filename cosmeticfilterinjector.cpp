@@ -33,7 +33,6 @@ void CosmeticFilterInjector::addCssFilter(const QString &name, const QString &cs
 /*
 void CosmeticFilterInjector::installDefaultFilters()
 {
-    // Hide YouTube ads
     addCssFilter("YouTubeAds", R"CSS(
         .ytp-ad-module,
         .ytp-ad-player-overlay,
@@ -44,7 +43,6 @@ void CosmeticFilterInjector::installDefaultFilters()
         }
     )CSS");
 
-    // Hide Facebook sponsored posts
     addCssFilter("FacebookSponsored", R"CSS(
         div[aria-label="Sponsored"],
         a[href*="facebook.com/ads"] {
@@ -55,13 +53,10 @@ void CosmeticFilterInjector::installDefaultFilters()
 */
 
 
-////recent edits
 void CosmeticFilterInjector::installDefaultFilters()
 {
-    // YouTube ad blocker with MutationObserver
     QString youtubeScript = R"JS(
         (function() {
-            // CSS to hide ads
             const style = document.createElement('style');
             style.textContent = `
                 .ytp-ad-module,
@@ -80,9 +75,7 @@ void CosmeticFilterInjector::installDefaultFilters()
             `;
             (document.head || document.documentElement).appendChild(style);
 
-            // Function to remove ad elements
             function removeAds() {
-                // Remove video ads
                 const adSelectors = [
                     '.ytp-ad-module',
                     '.ytp-ad-player-overlay',
@@ -95,31 +88,26 @@ void CosmeticFilterInjector::installDefaultFilters()
                     document.querySelectorAll(selector).forEach(el => el.remove());
                 });
 
-                // Auto-skip ads if skip button appears
                 const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button');
                 if (skipButton) {
                     skipButton.click();
                 }
             }
 
-            // Run immediately
             removeAds();
 
-            // Watch for dynamically added ads
             const observer = new MutationObserver(removeAds);
             observer.observe(document.documentElement, {
                 childList: true,
                 subtree: true
             });
 
-            // Also run periodically as backup
             setInterval(removeAds, 1000);
         })();
     )JS";
 
     addScript("YouTubeAdBlocker", youtubeScript, QWebEngineScript::DocumentCreation);
 
-    // Facebook sponsored posts
     QString facebookScript = R"JS(
         (function() {
             const style = document.createElement('style');
@@ -133,7 +121,6 @@ void CosmeticFilterInjector::installDefaultFilters()
             (document.head || document.documentElement).appendChild(style);
 
             function removeSponsored() {
-                // Remove sponsored posts
                 document.querySelectorAll('div[aria-label="Sponsored"]').forEach(el => {
                     el.closest('div[data-pagelet]')?.remove();
                 });

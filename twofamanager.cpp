@@ -35,9 +35,7 @@ TwoFAManager::TwoFAManager(QWidget *parent)
 
     setupUI();
     loadData();
-    // Force reset progress bar on startup
     m_timeProgressBar->setValue(Simple2FA::getTimeRemaining());
-    // Start the update timer
     m_updateTimer = new QTimer(this);
     connect(m_updateTimer, &QTimer::timeout, this, &TwoFAManager::updateCurrentCode);
     m_updateTimer->start(1000); // Update every second
@@ -57,10 +55,8 @@ void TwoFAManager::setupUI()
 {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-    // Create splitter for resizable sections
     QSplitter* splitter = new QSplitter(Qt::Vertical, this);
 
-    // === ACCOUNTS SECTION ===
     QGroupBox* accountsGroup = new QGroupBox("2FA Accounts");
     QVBoxLayout* accountsLayout = new QVBoxLayout(accountsGroup);
 
@@ -68,7 +64,6 @@ void TwoFAManager::setupUI()
     m_accountList->setMinimumHeight(150);
     accountsLayout->addWidget(m_accountList);
 
-    // Account buttons
     QHBoxLayout* accountButtonsLayout = new QHBoxLayout;
     QPushButton* addBtn = new QPushButton("Add Account");
     m_deleteBtn = new QPushButton("Delete");
@@ -81,11 +76,9 @@ void TwoFAManager::setupUI()
 
     splitter->addWidget(accountsGroup);
 
-    // === CODE DISPLAY SECTION ===
     QGroupBox* codeGroup = new QGroupBox("Current Code");
     QVBoxLayout* codeLayout = new QVBoxLayout(codeGroup);
 
-    // Code display frame
     QFrame* codeFrame = new QFrame;
     codeFrame->setFrameStyle(QFrame::StyledPanel);
     codeFrame->setStyleSheet(
@@ -101,13 +94,11 @@ void TwoFAManager::setupUI()
         );
     codeFrameLayout->addWidget(m_currentCodeLabel);
 
-    // Time remaining
     m_timeRemainingLabel = new QLabel("Select an account");
     m_timeRemainingLabel->setAlignment(Qt::AlignCenter);
     m_timeRemainingLabel->setStyleSheet("font-size: 12px; color: #666;");
     codeFrameLayout->addWidget(m_timeRemainingLabel);
 
-    // Progress bar for time remaining
     m_timeProgressBar = new QProgressBar;
     m_timeProgressBar->setRange(0, 30);
     m_timeProgressBar->setValue(30);
@@ -121,7 +112,6 @@ void TwoFAManager::setupUI()
 
     codeLayout->addWidget(codeFrame);
 
-    // Copy button
     m_copyBtn = new QPushButton("Copy Code to Clipboard");
     m_copyBtn->setEnabled(false);
     m_copyBtn->setStyleSheet(
@@ -135,7 +125,6 @@ void TwoFAManager::setupUI()
 
     mainLayout->addWidget(splitter);
 
-    // === CONNECTIONS ===
     connect(addBtn, &QPushButton::clicked, this, &TwoFAManager::onAddAccount);
     connect(m_deleteBtn, &QPushButton::clicked, this, &TwoFAManager::onDeleteAccount);
     connect(m_copyBtn, &QPushButton::clicked, this, &TwoFAManager::onCopyCode);
@@ -236,7 +225,6 @@ void TwoFAManager::onCopyCode()
     if (code != "------" && code != "000000") {
         QApplication::clipboard()->setText(code);
 
-        // Visual feedback
         QString originalStyle = m_copyBtn->styleSheet();
         m_copyBtn->setText("Copied!");
         m_copyBtn->setStyleSheet(originalStyle + "background-color: #2196F3;");
@@ -264,7 +252,6 @@ void TwoFAManager::updateCurrentCode()
     if (currentItem.isEmpty() || !m_entries.contains(currentItem)) {
         m_currentCodeLabel->setText("------");
         m_timeRemainingLabel->setText("Select an account");
-       // m_timeProgressBar->setValue(30);
         m_timeProgressBar->setValue(Simple2FA::getTimeRemaining());
 
         return;
@@ -286,7 +273,6 @@ void TwoFAManager::updateProgressBar()
     int timeRemaining = Simple2FA::getTimeRemaining();
     m_timeProgressBar->setValue(timeRemaining);
 
-    // Change color based on time remaining
     QString color;
     if (timeRemaining > 20) {
         color = "#4CAF50"; // Green

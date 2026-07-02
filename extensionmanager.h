@@ -25,7 +25,6 @@ struct ExtensionData {
     bool installed = false;
     QString path;
     QString errorString;
-    // Note: No version or icon - not available in API
 };
 
 class ExtensionManager : public QObject
@@ -36,24 +35,20 @@ public:
     explicit ExtensionManager(QWebEngineProfile *profile, QObject *parent = nullptr);
     ~ExtensionManager();
 
-    // Core extension operations
     bool loadFromPath(const QString &path);
     bool loadFromZip(const QString &zipPath);
     bool loadFromFolder(const QString &folderPath);
     void loadPreinstalled(const QString &directory);
 
-    // Management - these now need to find the extension by ID first
     bool enableExtension(const QString &id);
     bool disableExtension(const QString &id);
     bool removeExtension(const QString &id);
 
-    // Query
     QList<ExtensionData> getInstalledExtensions() const;
     ExtensionData getExtensionInfo(const QString &id) const;
     bool isExtensionEnabled(const QString &id) const;
     bool isExtensionInstalled(const QString &id) const;
 
-    // UI helpers
     QList<QAction*> createToolbarButtons(QWidget *parent = nullptr);
     bool showExtensionPopup(const QString &id, QWidget *parent = nullptr);
     void saveSettings();

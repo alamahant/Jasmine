@@ -52,9 +52,7 @@ private:
     QVideoWidget *m_videoWidget;
     QProcess *m_ytProcess;
 
-    // UI elements
     QPushButton *m_getUrlButton;
-    //QLabel *m_urlDisplay;
     QLineEdit *m_urlDisplay;
 
     QWidget *m_videoToolbar;
@@ -73,7 +71,6 @@ private:
     QByteArray m_outputBuffer;
     void showStreamLoadingDialog();
 
-    //NEEDED FOR RADIO
 public:
     void stop();
     void play();

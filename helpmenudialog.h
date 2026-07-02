@@ -37,7 +37,6 @@ private:
     void loadContent(HelpType type);
     QString getTitle(HelpType type);
 
-    // HTML content methods for each enum
     QString getAboutContent();
     QString getFeaturesContent();
     QString getInstructionsContent();

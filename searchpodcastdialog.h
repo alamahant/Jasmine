@@ -39,22 +39,18 @@ private:
     void updatePreview(const PodcastShow &show);
     PodcastShow parseJsonToPodcast(const QJsonObject &obj);
 
-    // UI Components
     QLineEdit *m_searchEdit;
     QPushButton *m_searchButton;
     QTableWidget *m_resultsTable;
     
-    // Preview section
     QLabel *m_previewName;
     QLabel *m_previewAuthor;
     QLabel *m_previewCategory;
     QLabel *m_previewFeedUrl;
     
-    // Buttons
     QPushButton *m_subscribeButton;
     QPushButton *m_cancelButton;
     
-    // API and data
     QNetworkAccessManager *m_nam;
     QVector<PodcastShow> m_currentResults;
     int m_currentSelectedIndex;

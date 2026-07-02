@@ -160,6 +160,24 @@ Jasmine is a website launcher and session management platform with shared, named
 
   <releases>
 
+<release version="1.3.3" date="2026-07-02">
+    <description>
+        <p>Bookmark Manager, History Manager, Search/Find, and UI Improvements</p>
+        <ul>
+            <li>Added full Bookmark Manager with folders (Default, Favorites, Reading List + custom), duplicate detection, multi-select delete, and persistent notes.</li>
+            <li>Added History Manager with date filtering, URL normalization, multi-select delete, and search by title/URL.</li>
+            <li>Added Dashboard search (cards) and WebView find-in-page (case insensitive, real-time).</li>
+            <li>Fixed YouTube SPA navigation – history now records internal video navigation with 1.5s delay.</li>
+            <li>Added History/Bookmarks enable/disable toggle with QSettings persistence.</li>
+            <li>Added dark theme support for all dialogs and form fields.</li>
+            <li>Added sandwich menu with quick access to all features.</li>
+            <li>Window hides on close (reopen via menu).</li>
+            <li>Fixed multi-delete crashes and duplicate connections.</li>
+            <li>Fixed custom folders and comments not persisting.</li>
+        </ul>
+    </description>
+</release>
+
 <release version="1.3.2" date="2026-05-24">
     <description>
         <p>Xtream Codes API Support for IPTV</p>

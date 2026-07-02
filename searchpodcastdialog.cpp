@@ -30,7 +30,6 @@ void SearchPodcastDialog::setupUI()
     mainLayout->setSpacing(12);
     mainLayout->setContentsMargins(16, 16, 16, 16);
 
-    // ========== SUBSCRIBE BY URL SECTION ==========
     QGroupBox *urlGroup = new QGroupBox("Subscribe by URL");
     QHBoxLayout *urlLayout = new QHBoxLayout(urlGroup);
 
@@ -43,12 +42,10 @@ void SearchPodcastDialog::setupUI()
     urlLayout->addWidget(m_urlSubscribeButton);
     mainLayout->addWidget(urlGroup);
 
-    // Add separator line
     QFrame* line = new QFrame();
     line->setFrameShape(QFrame::HLine);
     mainLayout->addWidget(line);
 
-    // Search section
     QGroupBox *searchGroup = new QGroupBox("Search");
     QHBoxLayout *searchLayout = new QHBoxLayout(searchGroup);
     
@@ -61,23 +58,28 @@ void SearchPodcastDialog::setupUI()
     searchLayout->addWidget(m_searchButton);
     mainLayout->addWidget(searchGroup);
 
-    // Results section
     QGroupBox *resultsGroup = new QGroupBox("Results");
     QVBoxLayout *resultsLayout = new QVBoxLayout(resultsGroup);
     
-    m_resultsTable = new QTableWidget();
+    m_resultsTable = new QTableWidget(this);
     m_resultsTable->setColumnCount(3);
     m_resultsTable->setHorizontalHeaderLabels({"Podcast", "Category", "Author"});
     m_resultsTable->horizontalHeader()->setStretchLastSection(true);
     m_resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_resultsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+
+#ifndef FLATPAK_BUILD
+    m_resultsTable->setAlternatingRowColors(false);
+
+#else
     m_resultsTable->setAlternatingRowColors(true);
+
+#endif
     m_resultsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     
     resultsLayout->addWidget(m_resultsTable);
     mainLayout->addWidget(resultsGroup);
 
-    // Preview section
     QGroupBox *previewGroup = new QGroupBox("Preview");
     QFormLayout *previewLayout = new QFormLayout(previewGroup);
     
@@ -96,7 +98,6 @@ void SearchPodcastDialog::setupUI()
     
     mainLayout->addWidget(previewGroup);
 
-    // Button section
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     
@@ -112,12 +113,10 @@ void SearchPodcastDialog::setupUI()
     
     mainLayout->addLayout(buttonLayout);
 
-    // Connect signals
     connect(m_searchButton, &QPushButton::clicked, this, &SearchPodcastDialog::onSearchClicked);
     connect(m_resultsTable, &QTableWidget::itemSelectionChanged, this, &SearchPodcastDialog::onResultSelectionChanged);
     connect(m_subscribeButton, &QPushButton::clicked, this, &SearchPodcastDialog::onSubscribeClicked);
     connect(m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
-    // Connect URL subscribe button
     connect(m_urlSubscribeButton, &QPushButton::clicked, this, &SearchPodcastDialog::onUrlSubscribeClicked);
 }
 
@@ -129,13 +128,11 @@ void SearchPodcastDialog::performSearch()
         return;
     }
     
-    // Clear previous results
     m_resultsTable->setRowCount(0);
     m_currentResults.clear();
     m_subscribeButton->setEnabled(false);
     clearPreview();
     
-    // Build iTunes API URL
     QString url = QString("https://itunes.apple.com/search?term=%1&media=podcast&limit=100")
                       .arg(QUrl::toPercentEncoding(searchTerm));
     
@@ -206,7 +203,6 @@ void SearchPodcastDialog::onSubscribeClicked()
         emit podcastSelected(m_currentResults[m_currentSelectedIndex]);
         emit showNotification(QString("%1 Added!").arg(m_currentResults[m_currentSelectedIndex].title), 7000);
 
-        // Keep dialog open for multiple subscriptions
     }
 }
 
@@ -259,12 +255,10 @@ void SearchPodcastDialog::onUrlSubscribeClicked()
         return;
     }
 
-    // Add http:// if missing
     if (!feedUrl.startsWith("http://") && !feedUrl.startsWith("https://")) {
         feedUrl = "http://" + feedUrl;
     }
 
-    // Fetch and parse the feed
 
     QNetworkAccessManager* nam = new QNetworkAccessManager(this);
     QNetworkReply* reply = nam->get(QNetworkRequest(QUrl(feedUrl)));
@@ -317,7 +311,6 @@ PodcastShow SearchPodcastDialog::parseRSSFeedToShow(const QByteArray &data, cons
             } else if (xml.name() == "link") {
                 show.websiteUrl = xml.readElementText();
             } else if (xml.name() == "image") {
-                // Some feeds have image as child element
                 while (!(xml.isEndElement() && xml.name() == "image")) {
                     xml.readNext();
                     if (xml.isStartElement() && xml.name() == "url") {
@@ -325,13 +318,11 @@ PodcastShow SearchPodcastDialog::parseRSSFeedToShow(const QByteArray &data, cons
                     }
                 }
             } else if (xml.name() == "url" && xml.attributes().value("rel").toString() == "image") {
-                // Other feeds use link rel="image"
                 show.artworkUrl = xml.attributes().value("href").toString();
             }
         }
     }
 
-    // Generate a showId
     show.showId = QUuid::createUuid().toString();
 
     return show;

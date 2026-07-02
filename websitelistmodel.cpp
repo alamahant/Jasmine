@@ -60,7 +60,6 @@ void WebsiteListModel::setWebsites(const QList<Website>& websites) {
     m_websites = websites;
     endResetModel();
 
-    // Emit a signal to notify that the data has changed
     emit dataChanged(index(0, 0), index(rowCount() - 1, 0));
 }
 
@@ -68,7 +67,6 @@ void WebsiteListModel::setWebsite(int row, const Website& website) {
     if (row >= 0 && row < m_websites.size()) {
         m_websites[row] = website;
 
-        // Emit a signal to notify that the data has changed for this specific row
         QModelIndex modelIndex = index(row, 0);
         emit dataChanged(modelIndex, modelIndex);
     }

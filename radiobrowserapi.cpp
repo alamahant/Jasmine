@@ -13,7 +13,6 @@ RadioBrowserAPI::RadioBrowserAPI(QObject *parent)
     if (!savedServers.isEmpty()) {
         m_servers = savedServers;
     } else {
-        // First run - discover servers
         discoverServers();
     }
 }
@@ -55,7 +54,6 @@ void RadioBrowserAPI::searchStations(const QString &searchTerm)
     QUrl url(server + "/json/stations/search");
     QUrlQuery query;
     query.addQueryItem("name", searchTerm);
-    //query.addQueryItem("limit", "50");
     query.addQueryItem("hidebroken", "true");
     url.setQuery(query);
     
@@ -74,7 +72,6 @@ void RadioBrowserAPI::searchStations(const QString &searchTerm, const QString &c
     QUrlQuery query;
     query.addQueryItem("name", searchTerm);
     query.addQueryItem("countrycode", countryCode);
-    //query.addQueryItem("limit", "50");
     query.addQueryItem("hidebroken", "true");
     url.setQuery(query);
     
@@ -94,7 +91,6 @@ void RadioBrowserAPI::searchStationsByCountry(const QString &countryCode)
     query.addQueryItem("countrycode", countryCode);
     query.addQueryItem("order", "clickcount");   // ← Add this for popularity
     query.addQueryItem("reverse", "true");       // ← Highest first
-    //query.addQueryItem("limit", "50");
     query.addQueryItem("hidebroken", "true");
     url.setQuery(query);
     
@@ -140,13 +136,11 @@ void RadioBrowserAPI::discoverServers()
                         m_servers.append("https://" + name);
                     }
                 }
-                // Save to QSettings
                 QSettings settings;
                 settings.setValue("radioBrowser/servers", m_servers);
             }
         }
 
-        // Fallback if discovery failed
         if (m_servers.isEmpty()) {
             m_servers = {
                 "https://de1.api.radio-browser.info",

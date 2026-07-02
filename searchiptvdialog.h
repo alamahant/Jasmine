@@ -44,24 +44,20 @@ private:
     void displayChannels();
     void updatePreviewButtonState();
     
-    // UI Components
     QTabWidget *m_tabWidget;
     
-    // M3U Tab
     QLineEdit *m_remoteUrlEdit;
     QPushButton *m_loadRemoteButton;
     QLineEdit *m_localFileEdit;
     QPushButton *m_browseButton;
     QPushButton *m_loadLocalButton;
     
-    // Xtream Tab (placeholder)
     QLineEdit *m_xtreamServerEdit;
     QLineEdit *m_xtreamUsernameEdit;
     QLineEdit *m_xtreamPasswordEdit;
     QLineEdit *m_xtreamUserAgentEdit;
     QPushButton *m_xtreamConnectButton;
     
-    // Results section
     QLineEdit *m_filterEdit;
     QTableWidget *m_resultsTable;
     QPushButton *m_selectAllButton;
@@ -69,7 +65,6 @@ private:
     QPushButton *m_addButton;
     QPushButton *m_cancelButton;
     
-    // Data
     QVector<IPTVChannel> m_allChannels;
     QVector<IPTVChannel> m_filteredChannels;
     QVector<bool> m_selectedRows;
@@ -81,7 +76,6 @@ private:
 private slots:
     void onParseFinished();
     void onSearchClicked();
-    //xtream
 private:
     void fetchXtreamChannels(const QString &server, const QString &username,
                               const QString &password, const QString &userAgent);
