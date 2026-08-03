@@ -15,7 +15,7 @@ A comprehensive web launcher and session management application that transforms 
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Profile System](#profile-system)
@@ -26,38 +26,38 @@ A comprehensive web launcher and session management application that transforms 
 - [Contributing](#contributing)
 - [License](#license)
 
-## 🚀 Overview
+## Overview
 **Version:** 1.0.0  
 **Built with:** Qt Framework  
 **Platform:** Cross-platform  
 
 Jasmine combines bookmarking, multi-tab session handling, flexible browsing profiles, Internet Radio, IPTV, Podcast management, and integrated utilities into one streamlined tool.
 
-## ✨ Key Features
+## Key Features
 
-### 🔥 Core
+### Core
 - **Smart Bookmarking** - Store websites with titles, URLs, comments, favicons, and login references
 - **Session Management** - Create, save, and restore multi-tab sessions with one click
 - **Flexible Profiles** - Choose between shared, named-shared (user-created), or private (incognito) profiles per tab
 - **Multi-Account Support** - Access multiple accounts on the same service without conflicts
 
-### 🎵 Media
+### Media
 - **Internet Radio** - Browse, search, and play thousands of stations with local icon caching
 - **IPTV** - Import M3U playlists, browse channels by category, and watch live TV
 - **Podcast Manager** - Subscribe via iTunes search or RSS, manage episodes, and play audio
 
-### 🛠️ Utilities
+### Utilities
 - **Download Manager** - Progress tracking and file organization
 - **Screenshot Capture** - Take and save web page screenshots
 - **Login Reference** - Store username/password reminders with privacy controls
 - **2FA Integration** - Built-in TOTP code generator
 - **Visit Tracking** - Monitor site usage with counts and timestamps
 
-### 🔐 Security
+### Security
 - **Master Password Protection** - Encrypted data protection
 - **Private Profiles** - Completely isolated browsing environments
 
-## 🔒 Profile System
+## Profile System
 
 Three distinct profile types:
 
@@ -75,7 +75,7 @@ Three distinct profile types:
 | Isolated from other profiles | No | Yes | Yes |
 | Can save in sessions | Yes | Yes | Yes |
 
-## 💼 Use Cases
+## Use Cases
 
 ### Work Session
 Create named profile "Work" → Launch Gmail, Slack, Jira, GitHub, Google Drive under it. All share logins. Save as session. One-click access to entire work ecosystem.
@@ -114,34 +114,34 @@ Launch Internet Radio, IPTV, Podcast Manager alongside shared profile browsing. 
 - Stack Overflow (shared)
 - Personal Email (private)
 
-## 🔐 2FA Manager
+## 2FA Manager
 
 Built-in TOTP code generator. Add accounts with secret keys from any 2FA-enabled service (Google, GitHub, Discord, banking, etc.). Codes auto-update every 30 seconds with copy-to-clipboard.
 
-## 🗂️ Data Management
+## Data Management
 
 **Sessions menu options:**
 - **Clean Current Session Data** - Cookies, cache, history from all active sessions
 - **Clean Shared Profile Data** - Shared profile only, leaves named/private profiles intact
 - **Restore Factory Defaults** - Complete reset (cannot be undone)
 
-## 📥 Download Manager
+## Download Manager
 
 Downloads save to `Downloads/Jasmine/`. Features real-time progress, speed, time remaining, cancel option, and one-click file/folder access.
 
-## 📻 Internet Radio
+## Internet Radio
 
 Browse/search thousands of stations. Local icon caching. Double-click to play.
 
-## 📺 IPTV Player
+## IPTV Player
 
 Import M3U/M3U8 playlists. Browse channels by category. Watch live streams.
 
-## 🎙️ Podcast Manager
+## Podcast Manager
 
 Subscribe via iTunes search or RSS URL. Manage episodes. Built-in audio player.
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 - Qt Framework (LGPL v3)
@@ -156,7 +156,7 @@ make
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 1. **Add websites** - Fill details panel, click "Add Website"
 2. **Choose profile** - Shared (default), named-shared, or private
@@ -168,7 +168,7 @@ make
 - **Replace** - Close existing tabs first, then launch session
 - **Expand** - Launch session, add more tabs, save updated version
 
-## 🔐 Security
+## Security
 
 ### Master Password
 1. Go to **Security** → **"Require Password on Startup"**
@@ -178,29 +178,29 @@ make
 
 ⚠️ **Important:** Forgotten password requires factory reset (clears all data).
 
-## 🎛️ Interface Controls
+## Interface Controls
 - **Dashboard/WebView Toggle** - Switch between management and browsing
 - **Dark/Light Theme Toggle** - Switch visual themes
 - **Profile Selector** - Choose shared, named-shared, or private
 
-## ⚠️ Important Notes
+## Important Notes
 - Do not log out before saving sessions if you want to retain login status
 - Named-shared profiles share data across ALL tabs using that profile name, regardless of website
 - Private profiles can be saved in sessions for repeated clean-slate use
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please read our contributing guidelines and submit pull requests.
 
-## 📄 License
+## License
 
 GPL v3 License - see [LICENSE](LICENSE) file.
 
-## 🙏 Credits
+## Credits
 - **Qt Framework** (https://www.qt.io/) - Licensed under LGPL v3
 - **Feather Icons** (https://feathericons.com/) - MIT License, Copyright (c) 2013-2017 Cole Bemis
 
 ---
 
 **Copyright © 2025 Alamahant**  
-Made with ❤️ for productivity enthusiasts, multi-account managers, and media lovers
+
