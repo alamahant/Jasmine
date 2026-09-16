@@ -293,8 +293,17 @@ void AdFreePlayerDialog::extractStreamUrl()
         "Chrome/136.0 Safari/537.36";
 
 
-        args << "--no-progress" << "--no-playlist" << "--quiet" <<  "-f" << "best" << "-g" << m_currentUrl;
-
+        //args << "--no-progress" << "--no-playlist" << "--quiet" <<  "-f" << "best" << "-g" << m_currentUrl;
+    if (m_currentUrl.contains("youtube.com") || m_currentUrl.contains("youtu.be")) {
+        args << "--no-progress" << "--no-playlist" << "--quiet"
+             << "--extractor-args" << "youtube:player_client=web_embedded"
+             << "-f" << "best[ext=mp4]/best"
+             << "-g" << m_currentUrl;
+    } else {
+        args << "--no-progress" << "--no-playlist" << "--quiet"
+             << "-f" << "best"
+             << "-g" << m_currentUrl;
+    }
 
 
     connect(m_ytProcess, &QProcess::readyReadStandardOutput, this, [this]() {

@@ -80,7 +80,7 @@ private:
     void fetchXtreamChannels(const QString &server, const QString &username,
                               const QString &password, const QString &userAgent);
     void parseXtreamChannels(const QByteArray &data);
-
+    void setupCornerWidget();
 };
 
 #endif // SEARCHIPTVDIALOG_H

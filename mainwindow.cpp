@@ -58,7 +58,8 @@ MainWindow::MainWindow(QWidget *parent)
       searchIPTVDialog(new SearchIPTVDialog(this)),
       searchPodcastdialog(new SearchPodcastDialog(this)),
       historyManager(new HistoryManager(this)),
-      bookmarkManager(new BookmarkManager(this))
+      bookmarkManager(new BookmarkManager(this)),
+      rssDialog(new RssNotificationDialog(this))
 
 {
     setWindowTitle("Jasmine");
@@ -287,6 +288,23 @@ MainWindow::MainWindow(QWidget *parent)
     showUrlBarAction->blockSignals(true);
     showUrlBarAction->setChecked(showUrlBar);
     showUrlBarAction->blockSignals(false);
+
+    connect(rssDialog, &RssNotificationDialog::newContentAvailable,
+                this, [this](bool hasNew){
+
+            if (!rssAction) return;
+
+            if (hasNew) {
+                rssAction->setIcon(QIcon(":/resources/icons/rss-green.svg"));
+                // rssAction->setIcon(QIcon(":/icons/rss-red.svg"));
+            } else {
+                rssAction->setIcon(QIcon(":/resources/icons/rss.svg"));
+
+            }
+
+
+        });
+
 
 }
 
@@ -1473,7 +1491,19 @@ void MainWindow::createMenus() {
     fileMenu->addAction(m_addCurrentSessionAction);
     fileMenu->addSeparator();
     fileMenu->addAction(m_addWebsiteFromUrlAction);
+    fileMenu->addSeparator();
+
     fileMenu->addAction(m_screenshotAction);
+
+    fileMenu->addSeparator();
+
+    rssAction = fileMenu->addAction("&RSS Notifications");
+    rssAction->setShortcut(QKeySequence("Ctrl+R"));
+    rssAction->setIcon(QIcon(":/resources/icons/rss.svg"));
+    connect(rssAction, &QAction::triggered, this, [this]{
+        if(rssDialog) rssDialog->show();
+    });
+    fileMenu->addAction(rssAction);
 
 
     fileMenu->addSeparator();
@@ -1481,6 +1511,7 @@ void MainWindow::createMenus() {
     editMenu->addAction(m_copyUrlAction);
     editMenu->addSeparator();
     editMenu->addAction(m_addCurrentWebsiteAction);
+    editMenu->addSeparator();
 
     QMenu* zoomSubmenu = viewMenu->addMenu("Zoom");
 
@@ -1508,9 +1539,13 @@ void MainWindow::createMenus() {
 
     viewMenu->addSeparator();
     viewMenu->addAction(m_toggleViewAction);
+    viewMenu->addSeparator();
+
     viewMenu->addAction(m_toggleUrlBarAction);
     viewMenu->addSeparator();
     viewMenu->addAction(m_downloadsAction);
+    viewMenu->addSeparator();
+
     viewMenu->addAction(m_closeAllTabsAction);
     viewMenu->addSeparator();
 
@@ -1542,27 +1577,54 @@ void MainWindow::createMenus() {
     sessionMenu->addSeparator();
     QAction* cleanAllDataAction = sessionMenu->addAction("Clean Current Sessions' Data");
     QAction* cleanSharedDataAction = sessionMenu->addAction("Clean Shared Profile Data");
+    sessionMenu->addSeparator();
+
     QAction* factoryResetAction = new QAction("Restore Factory Defaults", this);
     sessionMenu->addAction(factoryResetAction);
 
     QAction* separateProfilesAction = toolsMenu->addAction("Toggle Private Profile");
+    toolsMenu->addSeparator();
+
     QAction* themeAction = toolsMenu->addAction("Toggle Theme");
     toolsMenu->addSeparator();
     toolsMenu->addAction(m_open2faManagerAction);
 
     QAction* exitAction = fileMenu->addAction("Exit");
+    fileMenu->addSeparator();
     QAction* aboutAction = helpMenu->addAction("About");
+    fileMenu->addSeparator();
+
     QAction* featuresAction = helpMenu->addAction("Features");
+    helpMenu->addSeparator();
     QAction* instructionsAction = helpMenu->addAction("How to Use");
+    helpMenu->addSeparator();
+
     QAction* securityAction = helpMenu->addAction("Security");
+    helpMenu->addSeparator();
+
     QAction* twofaAction = helpMenu->addAction("2FA Utility");
+    helpMenu->addSeparator();
+
     QAction* dataManagementAction = helpMenu->addAction("Data Management");
+    helpMenu->addSeparator();
+
     QAction* downloadManagementAction = helpMenu->addAction("Download Management");
+    helpMenu->addSeparator();
+
     QAction* onSitesandSessiosAction = helpMenu->addAction("On Sites and Sessions");
+    helpMenu->addSeparator();
+
     QAction* onSecurityAction = helpMenu->addAction("On Security");
+    helpMenu->addSeparator();
+
     QAction* onNewStorageAction = helpMenu->addAction("On the New Storage System");
+    helpMenu->addSeparator();
+
     QAction* onNamedProfilesAction = helpMenu->addAction("On Named Shared Profiles");
+    helpMenu->addSeparator();
+
     QAction* showChangelogAction = helpMenu->addAction("Changelog");
+    helpMenu->addSeparator();
 
     QAction* supportusAction = helpMenu->addAction("Support Us");
 
@@ -1772,6 +1834,7 @@ void MainWindow::createMenus() {
     toolsMenu->addSeparator();
 
     QAction *disableGpuAction = toolsMenu->addAction("Disable GPU Acceleration (NVIDIA Fix)");
+    toolsMenu->addSeparator();
     disableGpuAction->setCheckable(true);
     disableGpuAction->setToolTip("Fix graphical issues on NVIDIA systems (requires restart)");
 

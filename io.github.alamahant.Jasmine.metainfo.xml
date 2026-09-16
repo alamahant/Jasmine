@@ -7,7 +7,7 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <url type="vcs-browser">https://github.com/alamahant/Jasmine</url>
-
+  <url type="donation">https://ko-fi.com/alamahant</url>
 
 <description>
     <p>
@@ -159,6 +159,22 @@ Jasmine is a website launcher and session management platform with shared, named
   </content_rating>
 
   <releases>
+
+<release version="1.3.4" date="2026-09-16">
+    <description>
+        <p>YouTube Extraction Fix and Info Buttons</p>
+        <ul>
+            <li>Fixed YouTube stream extraction broken by recent YouTube changes.</li>
+            <li>Switched YouTube to the web_embedded player client.</li>
+            <li>YouTube URLs now return a single merged MP4 stream instead of separate video and audio tracks.</li>
+            <li>Added dedicated YouTube extraction path; other streaming sites unchanged.</li>
+            <li>Restored playback of YouTube links in the player.</li>
+            <li>Added info button to the IPTV search dialog with a quick guide tooltip.</li>
+            <li>Added info button to the radio stations search dialog with a quick guide tooltip.</li>
+            <li>Added info button to the podcast search dialog with a quick guide tooltip.</li>
+        </ul>
+    </description>
+</release>
 
 <release version="1.3.3" date="2026-07-02">
     <description>

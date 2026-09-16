@@ -1505,6 +1505,12 @@ QString HelpMenuDialog::getChangelogContent()
     return QString(
         "<h3>Changelog</h3>"
 
+        "<h4>[v1.3.4] - 2026-09-16</h4>"
+        "<ul>"
+        "<li><b>YouTube Extraction Fix:</b> Fixed YouTube stream extraction broken by recent YouTube changes. Switched YouTube to the web_embedded player client. YouTube URLs now return a single merged MP4 stream instead of separate video and audio tracks. Other streaming sites unchanged.</li>"
+        "<li><b>Info Buttons:</b> Added info button to the IPTV search dialog with a quick guide tooltip. Added info button to the radio stations search dialog with a quick guide tooltip. Added info button to the podcast search dialog with a quick guide tooltip.</li>"
+        "</ul>"
+
         "<h4>[v1.3.3] - 2026-07-02</h4>"
         "<ul>"
         "<li><b>Bookmark Manager:</b> Full CRUD operations with folder support (Default, Favorites, Reading List + custom). Duplicate detection with highlighting, multi-select delete, and persistent notes.</li>"

@@ -87,5 +87,6 @@
         <file>resources/icons-white/tv.svg</file>
         <file>resources/icons/menu.svg</file>
         <file>resources/icons-white/menu.svg</file>
+        <file>resources/icons/rss-green.svg</file>
     </qresource>
 </RCC>

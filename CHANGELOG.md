@@ -1,5 +1,25 @@
 # Changelog
 
+## [v1.3.4] - 2026-09-16
+
+### Fixes
+
+**YouTube Extraction**
+- Fixed YouTube stream extraction broken by recent YouTube changes
+- Switched YouTube to the web_embedded player client
+- YouTube URLs now return a single merged MP4 stream instead of separate video and audio tracks
+- Added dedicated YouTube extraction path; other streaming sites unchanged
+- Restored playback of YouTube links in the player
+
+### New Features
+
+**Info Buttons**
+- Added info button to the IPTV search dialog with a quick guide tooltip
+- Added info button to the radio stations search dialog with a quick guide tooltip
+- Added info button to the podcast search dialog with a quick guide tooltip
+
+---
+
 ## [v1.3.3] - 2026-07-02
 
 ### New Features

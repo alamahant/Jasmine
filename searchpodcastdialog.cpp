@@ -99,6 +99,60 @@ void SearchPodcastDialog::setupUI()
     mainLayout->addWidget(previewGroup);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
+
+    //
+    QPushButton *infoButton = new QPushButton("i", this);
+    infoButton->setFixedSize(32, 32);
+    infoButton->setObjectName("infoButton");
+    infoButton->setToolTip(
+        "<html><body>"
+        "<b>Search Podcasts — Quick Guide</b><br><br>"
+
+        "<b>Subscribe by URL:</b><br>"
+        "• Paste a podcast RSS feed URL and click <b>Subscribe</b><br>"
+        "• Works with any valid RSS/Atom podcast feed<br>"
+        "• The app fetches and parses the feed to extract title, artwork, and description<br><br>"
+
+        "<b>Search:</b><br>"
+        "• Type a podcast name, category, or author<br>"
+        "• Click <b>Search</b> to query the iTunes podcast directory<br>"
+        "• Up to 100 results are returned<br><br>"
+
+        "<b>Results Table:</b><br>"
+        "• Shows Podcast name, Category, Author<br>"
+        "• Click a row to load it into the Preview panel<br>"
+        "• Click <b>Subscribe</b> to add the selected podcast<br><br>"
+
+        "<b>Preview Panel:</b><br>"
+        "• Displays the selected podcast's details<br>"
+        "• Feed URL is selectable so you can copy it<br><br>"
+
+        "<b>Actions:</b><br>"
+        "• <b>Subscribe</b> adds the selected podcast to your library<br>"
+        "• <b>Cancel</b> closes without changes<br><br>"
+
+        "<b>Notes:</b><br>"
+        "• Search uses the public iTunes Search API — no account needed<br>"
+        "• Some feeds may be private or geo-restricted<br>"
+        "• If a feed fails to parse, verify the URL points to a valid RSS file<br>"
+        "</body></html>"
+    );
+    infoButton->setStyleSheet(
+        "QPushButton#infoButton { "
+        "background-color: rgba(37, 99, 235, 0.15); "
+        "font-size: 18px; "
+        "font-weight: bold; "
+        "color: #60a5fa; "
+        "border: none; "
+        "padding: 0px; "
+        "} "
+        "QPushButton#infoButton:hover { "
+        "background-color: rgba(37, 99, 235, 0.3); "
+        "color: #93bbfc; "
+        "}"
+    );
+    buttonLayout->addWidget(infoButton);
+    //
     buttonLayout->addStretch();
     
     m_subscribeButton = new QPushButton("Subscribe");

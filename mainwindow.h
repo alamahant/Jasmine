@@ -50,6 +50,7 @@
 #include"historymanager.h"
 #include"bookmarkmanager.h"
 #include<QToolButton>
+#include"rssnotificationdialog.h"
 
 struct SessionData {
     QString name;
@@ -497,6 +498,9 @@ private:
     QAction* showUrlBarAction;
     void findInPage(const QString& text);
 
+    // rssfeed
+    RssNotificationDialog* rssDialog = nullptr;
+    QAction *rssAction;
 private slots:
     void onHistoryEnabled(QWebEngineView* view);
 };

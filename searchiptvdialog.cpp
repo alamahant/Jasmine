@@ -36,7 +36,7 @@ void SearchIPTVDialog::setupUI()
     mainLayout->setContentsMargins(16, 16, 16, 16);
     
     m_tabWidget = new QTabWidget();
-    
+    setupCornerWidget();
     QWidget *m3uTab = new QWidget();
     QVBoxLayout *m3uLayout = new QVBoxLayout(m3uTab);
     
@@ -634,4 +634,72 @@ void SearchIPTVDialog::onSearchClicked()
         }
     });
     watcher->setFuture(future);
+}
+
+void SearchIPTVDialog::setupCornerWidget()
+{
+    QPushButton *infoButton = new QPushButton("i", this);
+    infoButton->setFixedSize(24, 24);
+    infoButton->setObjectName("infoButton");
+    //infoButton->setEnabled(false);
+    infoButton->setToolTip(
+        "<html><body>"
+        "<b>Search IPTV Channels — Quick Guide</b><br><br>"
+
+        "<b>M3U Playlist Tab:</b><br>"
+        "• Paste a remote URL and click <b>Load</b><br>"
+        "• Or browse a local <code>.m3u</code>/<code>.m3u8</code> file and click <b>Load</b><br>"
+        "• The playlist is parsed in the background — the dialog stays responsive<br><br>"
+
+        "<b>Xtream Codes Tab:</b><br>"
+        "• Enter server URL, username, password<br>"
+        "• User-Agent is optional but may be required by some panels<br>"
+        "• Click <b>Connect & Load</b> to authenticate and fetch channels<br><br>"
+
+        "<b>Filtering:</b><br>"
+        "• Type in the <b>Filter</b> box to narrow channels by name or category<br>"
+        "• Press <b>Search</b> for large playlists — runs in the background<br>"
+        "• Search also matches on country<br><br>"
+
+        "<b>Selecting & Adding:</b><br>"
+        "• Tick the checkbox in the first column to select a channel<br>"
+        "• <b>Select All</b> toggles all currently filtered rows<br>"
+        "• <b>Add Selected</b> adds checked channels to your player<br>"
+        "• Selections are cleared after adding<br><br>"
+
+        "<b>Preview:</b><br>"
+        "• Highlight a row and click <b>Preview</b><br>"
+        "• Or <b>double-click</b> a row to preview instantly<br>"
+        "• Preview plays the channel without adding it to the playlist<br><br>"
+
+        "<b>Notes:</b><br>"
+        "• Filtering resets your selection — re-check after filtering<br>"
+        "• Very large playlists (>1000 channels) work best via the Filter box<br>"
+        "• Country column is only populated by some sources<br>"
+        "</body></html>"
+    );
+
+    infoButton->setStyleSheet(
+        "QPushButton#infoButton { "
+        "background-color: rgba(37, 99, 235, 0.15); "
+        "font-size: 16px; "
+        "font-weight: bold; "
+        "color: #60a5fa; "
+        "border: none; "
+        "padding: 0px; "
+        "} "
+        "QPushButton#infoButton:hover { "
+        "background-color: rgba(37, 99, 235, 0.3); "
+        "color: #93bbfc; "
+        "}"
+    );
+    QWidget *cornerContainer = new QWidget(this);
+    QHBoxLayout *cornerLayout = new QHBoxLayout(cornerContainer);
+    cornerLayout->setContentsMargins(0, 0, 6, 0);
+    cornerLayout->setSpacing(6);
+    cornerLayout->addWidget(infoButton);
+
+    if (m_tabWidget) {
+        m_tabWidget->setCornerWidget(cornerContainer, Qt::TopRightCorner);
+    }
 }

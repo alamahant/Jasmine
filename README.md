@@ -10,7 +10,7 @@ A comprehensive web launcher and session management application that transforms 
 
 | Platform | Where to Get It |
 | :--- | :--- |
-| **Linux** | [Flathub](https://flathub.org/en/apps/search?q=alamahant) |
+| **Linux** | [Flathub](https://flathub.org/en/apps/io.github.alamahant.Jasmine) |
 | **Windows and Mac** | [Buy on Gumroad](https://jnanadhakini.gumroad.com/) - Pre-compiled binary, no compilation needed |
 
 ---

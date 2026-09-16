@@ -103,6 +103,56 @@ void SearchRadioStationsDialog::setupUI()
     mainLayout->addWidget(previewGroup);
     
     QHBoxLayout *buttonLayout = new QHBoxLayout();
+
+    //
+    QPushButton *infoButton = new QPushButton("i", this);
+    infoButton->setFixedSize(32, 32);
+    infoButton->setObjectName("infoButton");
+    //infoButton->setEnabled(false);
+    infoButton->setToolTip(
+        "<html><body>"
+        "<b>Search Radio Stations — Quick Guide</b><br><br>"
+
+        "<b>Searching:</b><br>"
+        "• Pick a <b>Country</b> from the dropdown (default: All)<br>"
+        "• Optionally type a <b>Station Name</b><br>"
+        "• Click <b>Search</b> to query the Radio Browser database<br><br>"
+
+        "<b>Results Table:</b><br>"
+        "• Shows Name, Country, Bitrate, Codec, Genre<br>"
+        "• Click any row to load it into the Preview panel<br>"
+        "• Higher bitrate usually means better audio quality<br><br>"
+
+        "<b>Filter:</b><br>"
+        "• Type in the <b>Filter</b> box to narrow visible rows<br>"
+        "• Matches on Station Name and Genre<br><br>"
+
+        "<b>Actions:</b><br>"
+        "• <b>Preview</b> plays the station without adding it<br>"
+        "• <b>Add to My Stations</b> saves the station to your list<br>"
+        "• <b>Cancel</b> closes without changes<br><br>"
+
+        "<b>Notes:</b><br>"
+        "• Results come from radio-browser.info, a community database<br>"
+        "• Some stations may be offline or geo-blocked<br>"
+        "</body></html>"
+    );
+    infoButton->setStyleSheet(
+        "QPushButton#infoButton { "
+        "background-color: rgba(37, 99, 235, 0.15); "
+        "font-size: 18px; "
+        "font-weight: bold; "
+        "color: #60a5fa; "
+        "border: none; "
+        "padding: 0px; "
+        "} "
+        "QPushButton#infoButton:hover { "
+        "background-color: rgba(37, 99, 235, 0.3); "
+        "color: #93bbfc; "
+        "}"
+    );
+    //
+    buttonLayout->addWidget(infoButton);
     buttonLayout->addStretch();
     
     m_playButton = new QPushButton("Preview");

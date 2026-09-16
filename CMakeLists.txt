@@ -60,6 +60,7 @@ qt_add_executable(Jasmine
     countrymapper.h
     bookmarkmanager.cpp bookmarkmanager.h
     historymanager.cpp historymanager.h
+    rssnotificationdialog.cpp rssnotificationdialog.h
 
 
 )
