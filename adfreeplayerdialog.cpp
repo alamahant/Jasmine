@@ -8,6 +8,9 @@
 #include<QTimer>
 #include<QRegularExpression>
 #include<QProgressDialog>
+#include"Constants.h"
+#include<QFile>
+#include<QApplication>
 
 AdFreePlayerDialog::AdFreePlayerDialog(QWidget *parent)
     : QDialog(parent)
@@ -188,15 +191,7 @@ void AdFreePlayerDialog::createVideoToolbar()
     m_videoToolbar->setStyleSheet(toolbarStyle);
 }
 
-/*
-void AdFreePlayerDialog::setUrl(const QString &url)
-{
-    m_currentUrl = url;
-    m_urlDisplay->setText(url);
-    m_urlDisplay->setStyleSheet("color: white; padding: 5px; background-color: rgba(0, 0, 0, 100); border-radius: 3px;");
-    extractStreamUrl();
-}
-*/
+
 
 void AdFreePlayerDialog::setUrl(const QString &url)
 {
@@ -222,7 +217,7 @@ void AdFreePlayerDialog::onGetUrlClicked()
         );
 
         if (reply == QMessageBox::No) {
-            return; // Cancel - don't load new URL
+            return;
         }
 
         if (m_player) {
@@ -237,33 +232,6 @@ void AdFreePlayerDialog::onGetUrlClicked()
     emit requestCurrentUrl();
 }
 
-/*
-void AdFreePlayerDialog::extractStreamUrl()
-{
-    if (m_currentUrl.isEmpty()) return;
-
-    m_getUrlButton->setEnabled(false);
-    m_getUrlButton->setText("Extracting...");
-
-    m_ytProcess = new QProcess(this);
-
-    QStringList args;
-    if (m_currentUrl.contains("youtube.com") || m_currentUrl.contains("youtu.be") || m_currentUrl.contains("music.youtube")) {
-        args << "-f" << "best" << "--no-progress" << "-g" << m_currentUrl;
-    }
-    else if (m_currentUrl.contains("vimeo.com")) {
-        args << "-f" << "best" << "-g" << m_currentUrl;
-    }
-    else {
-        args << "-g" << m_currentUrl;
-    }
-
-    connect(m_ytProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &AdFreePlayerDialog::playStream);
-
-    m_ytProcess->start("yt-dlp", args);
-}
-*/
 
 
 void AdFreePlayerDialog::extractStreamUrl()
@@ -285,7 +253,6 @@ void AdFreePlayerDialog::extractStreamUrl()
     m_ytProcess = new QProcess(this);
     m_outputBuffer.clear();
 
-    QStringList args;
 
     QString userAgent =
         "Mozilla/5.0 (X11; Linux x86_64) "
@@ -293,11 +260,16 @@ void AdFreePlayerDialog::extractStreamUrl()
         "Chrome/136.0 Safari/537.36";
 
 
+        QStringList args;
         //args << "--no-progress" << "--no-playlist" << "--quiet" <<  "-f" << "best" << "-g" << m_currentUrl;
     if (m_currentUrl.contains("youtube.com") || m_currentUrl.contains("youtu.be")) {
+
+//#ifdef FLATPAK_BUILD
+   args << "--js-runtimes" << jsRuntimeArg();
+//#endif
         args << "--no-progress" << "--no-playlist" << "--quiet"
              << "--extractor-args" << "youtube:player_client=web_embedded"
-             << "-f" << "best[ext=mp4]/best"
+             << "-f" << "b"
              << "-g" << m_currentUrl;
     } else {
         args << "--no-progress" << "--no-playlist" << "--quiet"
@@ -697,3 +669,21 @@ void AdFreePlayerDialog::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
     }
 }
 
+
+QString AdFreePlayerDialog::jsRuntimeArg() const
+{
+
+    QString denoPath = JASMINE_CONSTANTS::appDirPath + "/deno";
+    if (QFile::exists(denoPath)) {
+        QFile::setPermissions(denoPath,
+            QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+            QFile::ReadGroup | QFile::ExeGroup |
+            QFile::ReadOther | QFile::ExeOther);
+        return QString("deno:%1").arg(denoPath);
+    }
+    QString qjsPath = QApplication::applicationDirPath() + "/qjs";
+    return QString("quickjs:%1").arg(qjsPath);
+
+    return QString();
+
+}

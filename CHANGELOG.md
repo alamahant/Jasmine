@@ -1,5 +1,21 @@
 # Changelog
 
+## [v1.3.5] - 2026-11-11
+
+### Fixes
+
+**YouTube Extraction**
+- Updated bundled yt-dlp to 2026.08.19
+- Added quickjs-ng so yt-dlp can solve YouTube's JavaScript challenges
+- YouTube links now extract and play reliably again
+
+### Changed
+
+**Build**
+- Flatpak manifest now ships yt-dlp and quickjs-ng together
+
+---
+
 ## [v1.3.4] - 2026-09-16
 
 ### Fixes

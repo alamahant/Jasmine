@@ -160,6 +160,18 @@ Jasmine is a website launcher and session management platform with shared, named
 
   <releases>
 
+<release version="1.3.5" date="2026-11-11">
+    <description>
+        <p>YouTube Extraction Fix</p>
+        <ul>
+            <li>Updated bundled yt-dlp to 2026.08.19.</li>
+            <li>Added quickjs-ng so yt-dlp can solve YouTube's JavaScript challenges.</li>
+            <li>YouTube links now extract and play reliably again.</li>
+            <li>Flatpak manifest now ships yt-dlp and quickjs-ng together.</li>
+        </ul>
+    </description>
+</release>
+
 <release version="1.3.4" date="2026-09-16">
     <description>
         <p>YouTube Extraction Fix and Info Buttons</p>

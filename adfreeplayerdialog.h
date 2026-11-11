@@ -70,6 +70,7 @@ private:
     void playStreamWithUrl(const QString &streamUrl);
     QByteArray m_outputBuffer;
     void showStreamLoadingDialog();
+    QString jsRuntimeArg() const;
 
 public:
     void stop();

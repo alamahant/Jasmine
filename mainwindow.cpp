@@ -1508,6 +1508,11 @@ void MainWindow::createMenus() {
 
     fileMenu->addSeparator();
 
+    QAction *openFolderAction = fileMenu->addAction("&Open Data Directory");
+    connect(openFolderAction, &QAction::triggered, this, &MainWindow::openFolder);
+    fileMenu->addSeparator();
+
+
     editMenu->addAction(m_copyUrlAction);
     editMenu->addSeparator();
     editMenu->addAction(m_addCurrentWebsiteAction);
@@ -1624,6 +1629,10 @@ void MainWindow::createMenus() {
     helpMenu->addSeparator();
 
     QAction* showChangelogAction = helpMenu->addAction("Changelog");
+    helpMenu->addSeparator();
+
+    QAction *denoHelpAction = helpMenu->addAction(tr("Faster YouTube Extraction (Optional)"));
+    connect(denoHelpAction, &QAction::triggered, this, &MainWindow::showDenoHelpDialog);
     helpMenu->addSeparator();
 
     QAction* supportusAction = helpMenu->addAction("Support Us");
@@ -4089,17 +4098,14 @@ void MainWindow::updateUrlBarState() {
 void MainWindow::connectUrlBar() {
 
 
-    connect(m_urlBar, &URLBar::urlChanged, this, [this](const QString &url) {
+    connect(m_urlBar, &URLBar::urlChanged, this, [this](const QString &input) {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget())) {
-            view->load(QUrl(url));
+            view->load(QUrl(resolveInput(input)));
             onHistoryEnabled(view);
-
         } else {
-            createNewTabWithUrl(url);
+            createNewTabWithUrl(input);
         }
-
     });
-
     connect(m_urlBar, &URLBar::backRequested, this, [this]() {
         if (QWebEngineView *view = qobject_cast<QWebEngineView*>(m_tabWidget->currentWidget()))
             view->back();
@@ -4231,24 +4237,63 @@ void MainWindow::createNewTabWithUrl(const QString &url) {
     int tabIndex = m_tabWidget->addTab(webView, "New Tab");
     showWebViews();
     m_tabWidget->setCurrentIndex(tabIndex);
-    QString finalUrl;
-    QString processedUrl = url;
-    if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://") && !processedUrl.startsWith("file://")) {
-        processedUrl = "https://" + processedUrl;
-    }
-    QUrl testUrl(processedUrl);
-    if (testUrl.isValid() && processedUrl.contains('.') && !processedUrl.contains(' ')) {
-        finalUrl = processedUrl;
-    } else {
-        QUrl searchBase = m_urlBar->getSearchUrl();
-        QString searchTerm = QUrl::toPercentEncoding(url);
-        finalUrl = searchBase.toString() + searchTerm;
-    }
-    webView->setUrl(QUrl(finalUrl));
+
+    webView->setUrl(QUrl(resolveInput(url)));
+
     connect(webView, &QObject::destroyed, this, [this, webView]() {
         cleanupTabProfile(webView);
     });
 
+}
+
+
+QString MainWindow::resolveInput(const QString &input)
+{
+    QString processedUrl = input;
+
+    // Only prepend https:// if there's no scheme already.
+    // Also skip prepending for things that already look like a scheme (mailto:, ftp:, etc.)
+    bool hasScheme = false;
+    int colonPos = processedUrl.indexOf(':');
+    if (colonPos > 0) {
+        // A scheme is only valid before any /, ?, or #
+        int firstSlash = processedUrl.indexOf('/');
+        int firstQuery = processedUrl.indexOf('?');
+        int firstFrag  = processedUrl.indexOf('#');
+        bool schemeValid = (firstSlash == -1 || colonPos < firstSlash)
+                        && (firstQuery == -1 || colonPos < firstQuery)
+                        && (firstFrag  == -1 || colonPos < firstFrag);
+        if (schemeValid) {
+            QString scheme = processedUrl.left(colonPos).toLower();
+            // accept common schemes
+            if (scheme == "http" || scheme == "https" || scheme == "file"
+             || scheme == "ftp"  || scheme == "mailto" || scheme == "about") {
+                hasScheme = true;
+            }
+        }
+    }
+
+    if (!hasScheme) {
+        processedUrl = "https://" + processedUrl;
+    }
+
+    QUrl testUrl(processedUrl);
+
+    // Treat as URL only if it parses, has a dotted host, and has no spaces.
+    bool looksLikeUrl = testUrl.isValid()
+                     && !testUrl.host().isEmpty()
+                     && testUrl.host().contains('.')
+                     && !testUrl.host().endsWith('.')
+                     && !input.contains(' ');
+
+    if (looksLikeUrl) {
+        return processedUrl;
+    }
+
+    // Otherwise: search
+    QUrl searchBase = m_urlBar->getSearchUrl();
+    QString searchTerm = QString::fromUtf8(QUrl::toPercentEncoding(input));
+    return searchBase.toString() + searchTerm;
 }
 
 void MainWindow::createNewTab() {
@@ -5053,21 +5098,7 @@ void MainWindow::createNewTabWithUrlFromLink(const QString &url, QWebEngineView 
 
     m_tabWidget->setCurrentIndex(tabIndex);
 
-    QString finalUrl;
-    QString processedUrl = url;
-    if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://") && !processedUrl.startsWith("file://")) {
-        processedUrl = "https://" + processedUrl;
-    }
-    QUrl testUrl(processedUrl);
-    if (testUrl.isValid() && processedUrl.contains('.') && !processedUrl.contains(' ')) {
-        finalUrl = processedUrl;
-    } else {
-        QUrl searchBase = m_urlBar->getSearchUrl();
-        QString searchTerm = QUrl::toPercentEncoding(url);
-        finalUrl = searchBase.toString() + searchTerm;
-    }
-
-    webView->setUrl(QUrl(finalUrl));
+    webView->setUrl(QUrl(resolveInput(url)));
 
     connect(webView, &QWebEngineView::iconChanged, this, [this, webView](const QIcon &icon) {
 
@@ -7859,3 +7890,93 @@ void MainWindow::onHistoryEnabled(QWebEngineView *view)
     });
 }
 */
+
+void MainWindow::openFolder() {
+    QDir dir(JASMINE_CONSTANTS::appDirPath);
+    if (!dir.exists()) {
+        return;
+    }
+
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(JASMINE_CONSTANTS::appDirPath))) {
+    }
+}
+
+void MainWindow::showDenoHelpDialog()
+{
+    QDialog dlg(this);
+    dlg.setWindowTitle("Faster YouTube Extraction");
+    dlg.setMinimumSize(520, 400);
+
+    QVBoxLayout *layout = new QVBoxLayout(&dlg);
+
+    QTextBrowser *tb = new QTextBrowser(&dlg);
+    tb->setOpenExternalLinks(true);
+
+    QString denoPath = JASMINE_CONSTANTS::appDirPath + "/deno";
+    bool installed = QFile::exists(denoPath);
+
+    QString status = installed
+        ? "<p style='color: green;'><b>Deno is installed.</b> "
+          "YouTube extraction is running at full speed.</p>"
+        : "<p style='color: #b88;'><b>Deno is not installed.</b> "
+          "Extraction falls back to QuickJS, which is slower.</p>";
+
+    tb->setHtml(QString(R"(
+        <h3>Faster YouTube Extraction</h3>
+        %1
+
+        <p>%3 uses <code>yt-dlp</code> to extract stream URLs from YouTube.
+        Some YouTube challenges require a JavaScript runtime. The app ships with
+        <b>QuickJS</b> (about 2 MB), which works but is slow — each challenge is
+        written to a temporary file and run from disk.</p>
+
+        <p><b>Deno</b> is a faster JavaScript runtime. When it is present,
+        extraction drops from a few seconds to under a second.</p>
+
+        <h4>How to install Deno</h4>
+        <ol>
+            <li>Go to the Deno releases page:<br>
+                <a href="https://github.com/denoland/deno/releases">
+                https://github.com/denoland/deno/releases</a></li>
+            <li>Download the archive for your platform:
+                <ul>
+                    <li><b>Linux x86_64:</b> <code>deno-x86_64-unknown-linux-gnu.zip</code></li>
+                    <li><b>Linux aarch64:</b> <code>deno-aarch64-unknown-linux-gnu.zip</code></li>
+                    <li><b>Windows x86_64:</b> <code>deno-x86_64-pc-windows-msvc.zip</code></li>
+                </ul>
+            </li>
+            <li>Extract the archive. It contains a single file called
+                <code>deno</code> (or <code>deno.exe</code> on Windows).</li>
+            <li>Place that file in the folder shown below. Use the
+                <b>Open Data Folder</b> button to open it.</li>
+            <li>Restart Asteria. The next extraction will use Deno automatically.</li>
+        </ol>
+
+        <p><b>Expected file location:</b><br>
+        <code>%2</code></p>
+
+        <p>If you later want to go back to the default behavior, delete the
+        file. Asteria will fall back to QuickJS.</p>
+        )").arg(status, denoPath, QApplication::applicationName()));
+
+    layout->addWidget(tb);
+
+    QHBoxLayout *buttons = new QHBoxLayout();
+
+    QPushButton *openFolderBtn = new QPushButton("Open Data Folder", &dlg);
+    buttons->addWidget(openFolderBtn);
+    connect(openFolderBtn, &QPushButton::clicked, []() {
+        QDesktopServices::openUrl(
+            QUrl::fromLocalFile(JASMINE_CONSTANTS::appDirPath));
+    });
+
+    buttons->addStretch();
+
+    QPushButton *closeBtn = new QPushButton("Close", &dlg);
+    buttons->addWidget(closeBtn);
+    connect(closeBtn, &QPushButton::clicked, &dlg, &QDialog::reject);
+
+    layout->addLayout(buttons);
+
+    dlg.exec();
+}

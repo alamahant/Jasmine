@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
 
     QCoreApplication::setApplicationVersion(JASMINE_CONSTANTS::APP_VERSION);
 
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+
     QDir().mkpath(JASMINE_CONSTANTS::appDirPath);
     QDir().mkpath(JASMINE_CONSTANTS::downloadsDirPath);
     QDir().mkpath(JASMINE_CONSTANTS::screenshotsDirPath);
@@ -34,7 +36,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
 
 
-#ifndef FLATPAK_BUILD
+//#ifdef Q_OS_WIN
 
     a.setStyle(QStyleFactory::create("Fusion"));
 
@@ -49,7 +51,8 @@ int main(int argc, char *argv[])
     lightPalette.setColor(QPalette::HighlightedText, Qt::white);
 
     a.setPalette(lightPalette);
-#endif
+    a.setStyleSheet("QLineEdit { placeholder-text-color: #999999; }");
+//#endif
 
     MainWindow w;
     if (!w.checkStartupSecurity()) {

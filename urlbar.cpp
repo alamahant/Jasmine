@@ -136,7 +136,7 @@ void URLBar::updateNavigationState(bool canGoBack, bool canGoForward)
 }
 
 
-
+/*
 void URLBar::onUrlEditingFinished()
 {
     QString url = m_urlInput->text().trimmed();
@@ -146,6 +146,14 @@ void URLBar::onUrlEditingFinished()
         }
         emit urlChanged(url);
     }
+}
+*/
+
+void URLBar::onUrlEditingFinished()
+{
+    const QString input = m_urlInput->text().trimmed();
+    if (!input.isEmpty())
+        emit urlChanged(input);
 }
 
 void URLBar::onBackClicked()

@@ -501,8 +501,13 @@ private:
     // rssfeed
     RssNotificationDialog* rssDialog = nullptr;
     QAction *rssAction;
+    QString resolveInput(const QString &input);
+
 private slots:
     void onHistoryEnabled(QWebEngineView* view);
+    void openFolder();
+    void showDenoHelpDialog();
+
 };
 
 #endif // MAINWINDOW_H

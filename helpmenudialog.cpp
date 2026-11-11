@@ -1505,6 +1505,12 @@ QString HelpMenuDialog::getChangelogContent()
     return QString(
         "<h3>Changelog</h3>"
 
+        "<h4>[v1.3.5] - 2026-11-11</h4>"
+        "<ul>"
+        "<li><b>YouTube Extraction Fix:</b> Updated bundled yt-dlp to 2026.08.19 and added quickjs-ng so yt-dlp can solve YouTube's JavaScript challenges. YouTube links now extract and play reliably again.</li>"
+        "<li><b>Flatpak Build:</b> The manifest now ships yt-dlp and quickjs-ng together.</li>"
+        "</ul>"
+
         "<h4>[v1.3.4] - 2026-09-16</h4>"
         "<ul>"
         "<li><b>YouTube Extraction Fix:</b> Fixed YouTube stream extraction broken by recent YouTube changes. Switched YouTube to the web_embedded player client. YouTube URLs now return a single merged MP4 stream instead of separate video and audio tracks. Other streaming sites unchanged.</li>"
